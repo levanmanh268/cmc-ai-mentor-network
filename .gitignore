@@ -1,0 +1,27 @@
+# Environment
+.env
+.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database & Cache
+chroma_db/
+*.db
+
+# Streamlit
+.streamlit/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
