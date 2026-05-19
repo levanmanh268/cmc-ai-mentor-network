@@ -42,3 +42,4 @@ LangChain
 Lê Văn Mạnh
 Sinh viên năm 1 - Ngành Trí tuệ Nhân tạo
 Đại học CMC (CMCU)
+Member of Technical Staff at Zhira AI 
