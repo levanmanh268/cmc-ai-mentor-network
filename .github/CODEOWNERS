@@ -1,0 +1,11 @@
+# Default review ownership
+* @levanmanh268
+
+# AI and retrieval
+/rag_engine.py @levanmanh268
+/knowledge_base/ @levanmanh268
+
+# Delivery workflow
+/.github/ @levanmanh268
+/CONTRIBUTING.md @levanmanh268
+/docs/ @levanmanh268
