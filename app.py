@@ -3,10 +3,9 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from groq import Groq
-from langchain_chroma import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from matching_engine import get_top_matches, generate_match_explanation
+from rag_engine import KnowledgeBase, answer_with_rag
 
 load_dotenv()
 _groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
@@ -14,207 +13,214 @@ client = Groq(api_key=_groq_api_key) if _groq_api_key else None
 
 
 @st.cache_resource
-def load_rag():
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-        model_kwargs={"device": "cpu"},
-    )
-    vectorstore = Chroma(
-        persist_directory="chroma_db",
-        embedding_function=embeddings,
-    )
-    return vectorstore.as_retriever(search_kwargs={"k": 4})
+def load_knowledge_base() -> KnowledgeBase:
+    return KnowledgeBase("knowledge_base")
 
 
-retriever = load_rag()
-
-
-def get_ai_response(user_message: str) -> str:
-    if client is None:
-        return (
-            "AI Assistant chưa được cấu hình GROQ_API_KEY. "
-            "Hãy copy .env.example thành .env, điền API key riêng của bạn rồi khởi động lại ứng dụng."
-        )
-
-    try:
-        docs = retriever.invoke(user_message)
-        context = "\n\n".join(doc.page_content for doc in docs)
-
-        system_prompt = f"""Bạn là CMC AI Mentor, trợ lý AI dành cho sinh viên Đại học CMC.
-
-Vai trò:
-- Hỗ trợ học AI, làm project, debug code, chuẩn bị CV và thực tập.
-- Ưu tiên trả lời dựa trên Context được truy xuất.
-- Nếu Context chưa đủ, phải nói rõ giới hạn thay vì bịa thông tin.
-
-Nguyên tắc:
-- Trả lời ngắn gọn nhưng đầy đủ, bằng tiếng Việt tự nhiên.
-- Khi có thể, đưa ví dụ và bước tiếp theo cụ thể.
-- Không tiết lộ secret, API key hoặc dữ liệu cấu hình nhạy cảm.
-
-Context:
-{context}
-"""
-
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            model="llama-3.3-70b-versatile",
-            temperature=0.4,
-            max_tokens=900,
-        )
-        return chat_completion.choices[0].message.content
-    except Exception:
-        return "Xin lỗi, AI đang gặp sự cố kỹ thuật. Bạn vui lòng thử lại sau."
-
+knowledge_base = load_knowledge_base()
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
 with st.sidebar:
     st.title("🤖 CMC AI Mentor Network")
-    st.caption("Pilot • CMCU AI Students")
+    st.caption("AI learning support • CMCU course project")
     st.divider()
     page = st.radio(
         "Chọn trang",
         ["🏠 Dashboard", "👤 Hồ sơ cá nhân", "💬 AI Assistant", "👥 Tìm Mentor"],
     )
-    if not _groq_api_key:
-        st.warning("Chưa cấu hình GROQ_API_KEY. Các tính năng LLM sẽ chạy ở chế độ giới hạn.")
+    st.divider()
+    st.caption(
+        f"Knowledge base: {knowledge_base.document_count} tài liệu • "
+        f"{knowledge_base.chunk_count} chunks"
+    )
+    if _groq_api_key:
+        st.success("LLM: online")
+    else:
+        st.info("LLM: offline grounded mode")
+
 
 if "favorite_mentors" not in st.session_state:
     st.session_state.favorite_mentors = []
 
+if "user_profile" not in st.session_state:
+    st.session_state.user_profile = {}
+
+
 if page == "🏠 Dashboard":
-    st.title("🏠 Dashboard • CMC AI Mentor Network")
+    st.title("🏠 CMC AI Mentor Network")
+    st.write(
+        "Một prototype giáo dục AI gồm trợ lý hỏi đáp có căn cứ theo tài liệu "
+        "và hệ thống ghép mentor theo hồ sơ sinh viên."
+    )
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Mentor đang có", "5")
+        st.metric("Tài liệu RAG", knowledge_base.document_count)
     with col2:
-        st.metric("Chế độ AI", "Online" if client else "Offline")
+        st.metric("Chunks đã index", knowledge_base.chunk_count)
     with col3:
-        st.metric("Phiên bản", "v1.1")
-    st.info("Tạo hồ sơ trước, sau đó dùng AI Matching để tìm mentor phù hợp.")
+        st.metric("LLM", "Online" if client else "Offline")
+
+    st.subheader("Luồng sử dụng")
+    st.markdown(
+        "1. Điền **Hồ sơ cá nhân**.\n"
+        "2. Hỏi **AI Assistant** về nội dung trong kho tài liệu.\n"
+        "3. Mở **Tìm Mentor** để nhận danh sách phù hợp.\n"
+        "4. Mỗi câu trả lời RAG đều hiển thị nguồn đã dùng."
+    )
 
 elif page == "👤 Hồ sơ cá nhân":
     st.title("👤 Hồ sơ cá nhân")
-    if "user_profile" not in st.session_state:
-        st.session_state.user_profile = {}
+    profile = st.session_state.user_profile
 
-    name = st.text_input(
-        "Họ và tên",
-        value=st.session_state.user_profile.get("name", "Lê Văn Mạnh"),
-    )
+    name = st.text_input("Họ và tên", value=profile.get("name", ""))
     years = ["Năm 1", "Năm 2", "Năm 3", "Năm 4"]
-    current_year = st.session_state.user_profile.get("year", "Năm 1")
+    current_year = profile.get("year", "Năm 1")
     year = st.selectbox(
         "Bạn là sinh viên năm mấy?",
         years,
         index=years.index(current_year) if current_year in years else 0,
     )
     field_interest = st.text_input(
-        "Lĩnh vực bạn quan tâm",
-        value=st.session_state.user_profile.get("field_interest", "NLP, LLM, RAG"),
+        "Lĩnh vực quan tâm",
+        value=profile.get("field_interest", "NLP, LLM, RAG"),
     )
     goals = st.text_input(
-        "Mục tiêu của bạn",
-        value=st.session_state.user_profile.get("goals", "Làm project RAG, thực tập AI Engineer"),
+        "Mục tiêu",
+        value=profile.get("goals", "Làm project AI và chuẩn bị thực tập"),
     )
     bio = st.text_area(
-        "Giới thiệu ngắn về bản thân",
-        value=st.session_state.user_profile.get("bio", "Em thích chatbot và hệ thống AI."),
+        "Giới thiệu ngắn",
+        value=profile.get("bio", "Em muốn cải thiện kỹ năng xây dựng hệ thống AI."),
     )
 
     if st.button("💾 Lưu hồ sơ", type="primary"):
         st.session_state.user_profile = {
-            "name": name,
+            "name": name.strip(),
             "year": year,
-            "field_interest": field_interest,
-            "goals": goals,
-            "bio": bio,
+            "field_interest": field_interest.strip(),
+            "goals": goals.strip(),
+            "bio": bio.strip(),
         }
         st.success("Đã lưu hồ sơ.")
 
 elif page == "💬 AI Assistant":
-    st.title("💬 AI Assistant 24/7")
-    st.caption("Hỏi về AI, code, project, CV và thực tập.")
+    st.title("💬 Grounded AI Assistant")
+    st.caption(
+        "RAG theo tài liệu Markdown. Nếu không đủ bằng chứng, hệ thống sẽ từ chối suy diễn thay vì bịa."
+    )
+
+    if knowledge_base.document_count == 0:
+        st.warning(
+            "Chưa có tài liệu trong knowledge_base. Hãy thêm file .md rồi khởi động lại ứng dụng."
+        )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message.get("sources"):
+                with st.expander("Nguồn đã dùng"):
+                    for source in message["sources"]:
+                        st.caption(
+                            f"{source['name']} • relevance={source['score']:.3f}"
+                        )
 
-    if prompt := st.chat_input("Hỏi AI Assistant..."):
+    if prompt := st.chat_input("Ví dụ: Quy trình xử lý một issue GitHub là gì?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Đang xử lý..."):
-                response = get_ai_response(prompt)
-                st.markdown(response)
+            with st.spinner("Đang truy xuất tài liệu và kiểm tra bằng chứng..."):
+                result = answer_with_rag(prompt, knowledge_base, client=client)
+            st.markdown(result.answer)
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            source_payload = [
+                {"name": item.source, "score": item.score}
+                for item in result.sources
+            ]
+            if source_payload:
+                with st.expander("Nguồn đã dùng", expanded=True):
+                    for item in result.sources:
+                        st.markdown(
+                            f"**{item.source}** • relevance={item.score:.3f}"
+                        )
+                        st.caption(item.text[:350] + ("…" if len(item.text) > 350 else ""))
+
+            st.caption(
+                f"Mode: {result.mode} • top relevance={result.top_score:.3f}"
+            )
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": result.answer,
+                "sources": source_payload,
+            }
+        )
 
 elif page == "👥 Tìm Mentor":
     st.title("👥 Tìm Mentor phù hợp")
-    st.caption("Hybrid Matching + giải thích tùy chọn bằng LLM")
+    st.caption("Hybrid scoring + giải thích có fallback khi LLM offline")
 
-    if "user_profile" in st.session_state and st.session_state.user_profile:
-        with st.expander("Thông tin hồ sơ đang sử dụng"):
-            sp = st.session_state.user_profile
-            st.write(f"**Năm học:** {sp.get('year')} | **Lĩnh vực:** {sp.get('field_interest')}")
+    student_profile = st.session_state.user_profile or {
+        "year": "Năm 1",
+        "field_interest": "NLP, LLM, RAG",
+        "goals": "Làm project AI",
+        "bio": "",
+    }
 
-    if st.button("🔍 Tìm Mentor phù hợp", type="primary"):
-        student_profile = st.session_state.get(
-            "user_profile",
-            {
-                "year": 1,
-                "field_interest": "NLP, LLM, RAG",
-                "goals": "Làm project RAG",
-                "bio": "",
-            },
-        )
+    with st.expander("Hồ sơ dùng để matching"):
+        st.json(student_profile)
 
-        with st.spinner("Đang phân tích..."):
+    if st.button("🔍 Tìm Mentor", type="primary"):
+        with st.spinner("Đang xếp hạng mentor..."):
             top_matches = get_top_matches(student_profile, top_k=3)
-            st.success(f"Tìm được {len(top_matches)} mentor phù hợp.")
 
-            for i, match in enumerate(top_matches, 1):
-                mentor = match["mentor"]
-                h_score = match["hybrid_score"]
-                s_score = match["semantic_score"]
+        for rank, match in enumerate(top_matches, start=1):
+            mentor = match["mentor"]
+            with st.container(border=True):
+                left, right = st.columns([3, 1])
+                with left:
+                    st.markdown(
+                        f"### {rank}. {mentor['name']} • {mentor['title']}"
+                    )
+                    st.caption(
+                        f"{mentor['company']} • {mentor['field']} • "
+                        f"{mentor['experience_years']} năm kinh nghiệm"
+                    )
+                    st.write(mentor["bio"])
+                with right:
+                    st.metric("Match", f"{match['hybrid_score']:.1f}%")
+                    st.caption(f"Semantic: {match['semantic_score']:.1f}%")
 
-                with st.container(border=True):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"### {i}. {mentor['name']} • {mentor['title']}")
-                        st.caption(f"{mentor['company']} • {mentor['experience_years']} năm")
-                    with col2:
-                        st.metric("Match Score", f"{h_score:.1f}%", delta=f"{s_score:.1f}% semantic")
+                explanation = generate_match_explanation(
+                    student_profile,
+                    mentor,
+                    match["hybrid_score"],
+                )
+                st.markdown("**Vì sao phù hợp**")
+                st.write(explanation)
 
-                    explanation = generate_match_explanation(student_profile, mentor, h_score)
-                    st.markdown("**💡 Tại sao phù hợp?**")
-                    st.markdown(explanation)
-
-                    if st.button("❤️ Lưu mentor này", key=f"save_{mentor['id']}"):
-                        if mentor not in st.session_state.favorite_mentors:
-                            st.session_state.favorite_mentors.append(mentor)
-                            st.success(f"Đã lưu {mentor['name']}.")
-                            st.rerun()
+                if st.button("❤️ Lưu mentor", key=f"save_{mentor['id']}"):
+                    if mentor not in st.session_state.favorite_mentors:
+                        st.session_state.favorite_mentors.append(mentor)
+                        st.success(f"Đã lưu {mentor['name']}.")
+                        st.rerun()
 
     if st.session_state.favorite_mentors:
         st.divider()
         st.subheader("❤️ Mentor đã lưu")
-        for idx, mentor in enumerate(st.session_state.favorite_mentors):
+        for index, mentor in enumerate(st.session_state.favorite_mentors):
             with st.container(border=True):
-                st.markdown(f"**{mentor['name']}** • {mentor['title']}")
-                st.caption(f"{mentor['company']} • {mentor['experience_years']} năm kinh nghiệm")
-                if st.button("🗑️ Xóa", key=f"delete_{idx}"):
-                    st.session_state.favorite_mentors.pop(idx)
+                st.write(f"**{mentor['name']}** • {mentor['title']} • {mentor['company']}")
+                if st.button("Xóa", key=f"delete_{index}"):
+                    st.session_state.favorite_mentors.pop(index)
                     st.rerun()
 
-st.caption("CMC AI Mentor Network • Course project")
+st.divider()
+st.caption("CMC AI Mentor Network • Group 6 • Software Engineering")
