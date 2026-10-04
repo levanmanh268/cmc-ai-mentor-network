@@ -1,6 +1,7 @@
 # CMC AI Mentor Network
 
 [![CI](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/workflows/ci.yml/badge.svg)](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 CMC AI Mentor Network là prototype giáo dục AI của **Nhóm 6, môn Công nghệ phần mềm**. Sản phẩm kết hợp:
 
