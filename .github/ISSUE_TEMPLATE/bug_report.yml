@@ -1,0 +1,45 @@
+name: Bug report
+description: Báo lỗi có thể tái hiện trong sản phẩm
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Mô tả lỗi
+      placeholder: Điều gì đã xảy ra?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Các bước tái hiện
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Môi trường
+      placeholder: Windows 11, Python 3.11, Chrome...
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Log / screenshot
+      description: Không dán API key, password hoặc secret.

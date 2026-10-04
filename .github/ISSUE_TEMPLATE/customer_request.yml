@@ -1,0 +1,51 @@
+name: Customer request
+description: Yêu cầu mới hoặc thay đổi nghiệp vụ từ khách hàng
+title: "[Customer] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã gửi yêu cầu. Nhóm sẽ dùng issue này làm nguồn sự thật cho việc phân tích, code, review và nghiệm thu.
+  - type: textarea
+    id: need
+    attributes:
+      label: Nhu cầu / vấn đề
+      description: Mô tả điều bạn muốn thay đổi hoặc kết quả mong muốn.
+      placeholder: Tôi muốn...
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Hiện trạng
+      description: Hệ thống hiện đang hoạt động thế nào?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Những điều nào phải đúng để bạn chấp nhận yêu cầu đã hoàn tất?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Mức ưu tiên
+      options:
+        - Normal
+        - High
+        - Critical
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Ảnh / dữ liệu / ví dụ
+      description: Thêm screenshot, ví dụ input-output hoặc tài liệu liên quan nếu có.
