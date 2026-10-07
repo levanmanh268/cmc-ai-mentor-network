@@ -59,25 +59,27 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
                          ┌─────────────────────┐
                          │   Streamlit UI      │
                          │      app.py         │
-                         └──────┬────────┬─────┘
-                                │        │
-                  hỏi đáp tài liệu      │ tìm mentor
-                                │        │
-                                v        v
-                    ┌──────────────┐  ┌─────────────────┐
+                         └───┬──────┬──────┬──┘
+                             │      │      │
+                             │      │      └──────────────┐
+                             │      │                     v
+                             │      │              ┌──────────────┐
+                             │      │              │ llm_client.py │
+                             │      │              └──────┬───────┘
+                             │      │                     │ optional
+                             v      v                     v
+                    ┌──────────────┐  ┌─────────────────┐  Groq API
                     │ RAG Engine   │  │ Matching Engine │
                     │rag_engine.py │  │matching_engine.py│
                     └──────┬───────┘  └────────┬────────┘
                            │                    │
                            v                    v
                  knowledge_base/*.md      mentors_data.py
-                           │
-                           │ optional LLM generation
-                           v
-                       Groq API
+
+          LLM client được app.py tạo một lần rồi inject vào các engine.
 ```
 
-Thiết kế ưu tiên ba thuộc tính chất lượng: **khả năng kiểm thử**, **khả năng giải thích** và **graceful degradation** khi dịch vụ LLM không khả dụng.
+Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu kiến trúc đầy đủ: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Cách chạy nhanh
 
@@ -178,7 +180,7 @@ Hệ thống tính hybrid score theo:
 Chạy toàn bộ kiểm tra local:
 
 ```bash
-python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+python -m py_compile app.py llm_client.py rag_engine.py matching_engine.py mentors_data.py ingest.py
 python -m pytest -q
 ```
 
