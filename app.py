@@ -1,15 +1,10 @@
-import os
-
 import streamlit as st
-from dotenv import load_dotenv
-from groq import Groq
 
+from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
 from rag_engine import KnowledgeBase, answer_with_rag
 
-load_dotenv()
-_groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
-client = Groq(api_key=_groq_api_key) if _groq_api_key else None
+client = build_llm_client()
 
 
 @st.cache_resource
@@ -34,7 +29,7 @@ with st.sidebar:
         f"Knowledge base: {knowledge_base.document_count} tài liệu • "
         f"{knowledge_base.chunk_count} chunks"
     )
-    if _groq_api_key:
+    if llm_enabled():
         st.success("LLM: online")
     else:
         st.info("LLM: offline grounded mode")
@@ -202,6 +197,7 @@ elif page == "👥 Tìm Mentor":
                     student_profile,
                     mentor,
                     match["hybrid_score"],
+                    client=client,
                 )
                 st.markdown("**Vì sao phù hợp**")
                 st.write(explanation)
