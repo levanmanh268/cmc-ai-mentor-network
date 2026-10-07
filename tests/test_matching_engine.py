@@ -1,5 +1,6 @@
 from matching_engine import (
     calculate_hybrid_score,
+    generate_match_explanation,
     get_top_matches,
     parse_student_year,
 )
@@ -49,3 +50,29 @@ def test_empty_profile_still_returns_stable_results():
 
     assert len(results) == 5
     assert all(0.0 <= item["hybrid_score"] <= 100.0 for item in results)
+
+
+def test_explanation_has_deterministic_fallback_without_llm():
+    mentor = {
+        "name": "Mentor Test",
+        "title": "AI Engineer",
+        "company": "Demo",
+        "field": "NLP & LLM",
+        "experience_years": 4,
+        "strengths": ["RAG", "LLM"],
+    }
+    profile = {
+        "year": "Năm 1",
+        "field_interest": "RAG, LLM",
+        "goals": "Làm chatbot RAG",
+    }
+
+    explanation = generate_match_explanation(
+        profile,
+        mentor,
+        82.5,
+        client=None,
+    )
+
+    assert "82.5%" in explanation
+    assert "Mentor Test" in explanation
