@@ -59,22 +59,24 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
                          ┌─────────────────────┐
                          │   Streamlit UI      │
                          │      app.py         │
-                         └──────┬────────┬─────┘
-                                │        │
-                  hỏi đáp tài liệu      │ tìm mentor
-                                │        │
-                                v        v
-                    ┌──────────────┐  ┌─────────────────┐
+                         └───┬──────┬──────┬──┘
+                             │      │      │
+                             │      │      └──────────────┐
+                             │      │                     v
+                             │      │              ┌──────────────┐
+                             │      │              │ llm_client.py │
+                             │      │              └──────┬───────┘
+                             │      │                     │ optional
+                             v      v                     v
+                    ┌──────────────┐  ┌─────────────────┐  Groq API
                     │ RAG Engine   │  │ Matching Engine │
                     │rag_engine.py │  │matching_engine.py│
                     └──────┬───────┘  └────────┬────────┘
                            │                    │
                            v                    v
                  knowledge_base/*.md      mentors_data.py
-                           │
-                           │ optional LLM generation
-                           v
-                       Groq API
+
+          LLM client được app.py tạo một lần rồi inject vào các engine.
 ```
 
 Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu kiến trúc đầy đủ: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
