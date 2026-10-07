@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import os
 import re
 from typing import Any
 
-from dotenv import load_dotenv
-from groq import Groq
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from mentors_data import mentors
-
-load_dotenv()
-_api_key = os.getenv("GROQ_API_KEY", "").strip()
-client = Groq(api_key=_api_key) if _api_key else None
 
 
 def parse_student_year(value: Any) -> int:
@@ -189,7 +182,11 @@ def generate_match_explanation(
     student_profile: dict,
     mentor: dict,
     hybrid_score: float,
+    *,
+    client: Any | None = None,
+    model: str = "llama-3.3-70b-versatile",
 ) -> str:
+    """Explain a ranking while keeping the external LLM dependency optional."""
     if client is None:
         return _fallback_explanation(student_profile, mentor, hybrid_score)
 
@@ -216,7 +213,7 @@ Viết tối đa 4 câu tiếng Việt, cụ thể, không phóng đại.
     try:
         completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
+            model=model,
             temperature=0.2,
             max_tokens=260,
         )
