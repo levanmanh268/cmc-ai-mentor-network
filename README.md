@@ -1,109 +1,185 @@
 # CMC AI Mentor Network
 
 [![CI](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/workflows/ci.yml/badge.svg)](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-CMC AI Mentor Network là prototype giáo dục AI của **Nhóm 6, môn Công nghệ phần mềm**. Sản phẩm kết hợp:
+> **Nhóm 6 · Môn Công nghệ phần mềm · CMC University**
 
-- **Grounded AI Assistant** hỏi đáp trên kho tài liệu Markdown bằng RAG nhẹ, có nguồn và chế độ từ chối khi thiếu bằng chứng.
-- **Mentor Matching** xếp hạng mentor bằng hybrid score gồm TF-IDF similarity, domain overlap và experience fit.
-- **Offline-safe mode** để sản phẩm vẫn chạy khi chưa có Groq API key hoặc API tạm lỗi.
-- **GitHub Issues + Pull Requests + CI** làm quy trình tiếp nhận yêu cầu khách hàng, phát triển, review và regression test.
+**CMC AI Mentor Network** là prototype hỗ trợ học tập AI cho sinh viên, kết hợp một trợ lý hỏi đáp có căn cứ theo tài liệu và hệ thống gợi ý mentor có thể giải thích được. Repository được tổ chức theo quy trình phát triển phần mềm có truy vết: **Issue → Branch → Commit → Pull Request → CI → Review → Merge**.
 
-> Đây là project học tập. Dữ liệu mentor và tài liệu mẫu trong repository là dữ liệu demo, không phải thông tin hay chính sách chính thức của Đại học CMC.
+> Dữ liệu mentor và tài liệu trong repository là dữ liệu demo phục vụ học tập, không phải thông tin hay chính sách chính thức của Đại học CMC.
 
-## 1. Demo flow
+## Mục lục
 
-1. Mở **Hồ sơ cá nhân** và điền năm học, lĩnh vực quan tâm, mục tiêu.
-2. Mở **AI Assistant** và hỏi một câu liên quan đến tài liệu trong `knowledge_base/`.
-3. Hệ thống truy xuất top chunks, hiển thị relevance score và nguồn đã dùng.
-4. Nếu không có bằng chứng đủ liên quan, hệ thống từ chối suy diễn.
-5. Mở **Tìm Mentor** để nhận top mentor cùng match score và phần giải thích.
-6. Khi LLM offline, ranking và explanation deterministic vẫn hoạt động.
+- [Bài toán](#bài-toán)
+- [Tính năng chính](#tính-năng-chính)
+- [Kiến trúc tổng quan](#kiến-trúc-tổng-quan)
+- [Cách chạy nhanh](#cách-chạy-nhanh)
+- [Cách sử dụng](#cách-sử-dụng)
+- [Kiểm thử và chất lượng](#kiểm-thử-và-chất-lượng)
+- [Cấu trúc repository](#cấu-trúc-repository)
+- [Quy trình làm việc với GitHub Issues](#quy-trình-làm-việc-với-github-issues)
+- [AI safety và giảm hallucination](#ai-safety-và-giảm-hallucination)
+- [Nhóm phát triển](#nhóm-phát-triển)
+- [Security và License](#security-và-license)
 
-## 2. Kiến trúc
+## Bài toán
+
+Sinh viên mới học AI thường gặp ba khó khăn:
+
+1. Tài liệu học tập phân tán, khó tìm câu trả lời có căn cứ.
+2. Chatbot sinh ngôn ngữ có thể trả lời trôi chảy nhưng thiếu bằng chứng.
+3. Khó xác định mentor phù hợp với lĩnh vực, mục tiêu và mức kinh nghiệm hiện tại.
+
+CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc lập nhưng bổ trợ nhau: **Grounded RAG** cho hỏi đáp tài liệu và **Explainable Mentor Matching** cho gợi ý mentor.
+
+## Tính năng chính
+
+| Tính năng | Mô tả |
+| --- | --- |
+| Grounded AI Assistant | Truy xuất tài liệu Markdown bằng TF-IDF + cosine similarity trước khi sinh câu trả lời |
+| Citation | Hiển thị nguồn và relevance score để người dùng kiểm chứng |
+| No-evidence refusal | Từ chối suy diễn khi không tìm được bằng chứng đủ liên quan |
+| Offline-safe mode | Không có Groq API key vẫn dùng được retrieval và fallback |
+| Mentor Matching | Xếp hạng mentor bằng semantic similarity + domain overlap + experience fit |
+| Explainable ranking | Hiển thị match score và lý do phù hợp |
+| Customer workflow | Có Issue Forms cho customer request và bug report |
+| CI quality gate | Secret guard, compile check, pytest và Streamlit runtime health check |
+
+## Kiến trúc tổng quan
 
 ```text
-User
-  |
-  v
-Streamlit UI (app.py)
-  |------------------------------|
-  v                              v
-RAG Engine                       Mentor Matching
-(rag_engine.py)                  (matching_engine.py)
-  |                              |
-  v                              v
-knowledge_base/*.md              mentors_data.py
-  |                              |
-  +---------- optional ----------+
-             Groq API
+                         ┌─────────────────────┐
+                         │       Người dùng    │
+                         └──────────┬──────────┘
+                                    │
+                                    v
+                         ┌─────────────────────┐
+                         │   Streamlit UI      │
+                         │      app.py         │
+                         └──────┬────────┬─────┘
+                                │        │
+                  hỏi đáp tài liệu      │ tìm mentor
+                                │        │
+                                v        v
+                    ┌──────────────┐  ┌─────────────────┐
+                    │ RAG Engine   │  │ Matching Engine │
+                    │rag_engine.py │  │matching_engine.py│
+                    └──────┬───────┘  └────────┬────────┘
+                           │                    │
+                           v                    v
+                 knowledge_base/*.md      mentors_data.py
+                           │
+                           │ optional LLM generation
+                           v
+                       Groq API
 ```
 
-### Grounded RAG
+Thiết kế ưu tiên ba thuộc tính chất lượng: **khả năng kiểm thử**, **khả năng giải thích** và **graceful degradation** khi dịch vụ LLM không khả dụng.
 
-`rag_engine.py` đọc các file Markdown, chia chunk, tạo TF-IDF index và dùng cosine similarity để retrieval. Câu trả lời online bị ràng buộc chỉ dùng context được truy xuất, có chống prompt injection cơ bản và yêu cầu citation `[S1]`, `[S2]`.
+## Cách chạy nhanh
 
-Không có API key vẫn dùng được retrieval. Khi đó hệ thống trả các đoạn liên quan nhất thay vì tự bịa câu trả lời.
+Yêu cầu: **Python 3.11+**.
 
-### Mentor Matching
-
-`matching_engine.py` dùng ba thành phần dễ giải thích:
-
-- 65% TF-IDF similarity
-- 25% domain overlap
-- 10% experience fit
-
-Điểm cuối luôn được chặn trong khoảng 0 đến 100 và ranking có tie-break ổn định.
-
-## 3. Cài đặt
-
-Yêu cầu Python 3.11+.
+### 1. Clone repository
 
 ```bash
 git clone https://github.com/levanmanh268/cmc-ai-mentor-network.git
 cd cmc-ai-mentor-network
-
-python -m venv .venv
 ```
+
+### 2. Tạo virtual environment
 
 Windows:
 
 ```bash
+python -m venv .venv
 .venv\Scripts\activate
 ```
 
 macOS/Linux:
 
 ```bash
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Cài dependency:
+### 3. Cài dependency
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Tạo file cấu hình local:
+### 4. Cấu hình Groq tùy chọn
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
 
-Điền API key của riêng bạn vào `.env`:
+Sau đó điền key riêng vào `.env`:
 
 ```text
-GROQ_API_KEY=your_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Không commit file `.env`.
+Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**.
 
-## 4. Chạy sản phẩm
+### 5. Khởi động
 
 ```bash
 streamlit run app.py
+```
+
+Mặc định Streamlit mở tại `http://localhost:8501`.
+
+## Cách sử dụng
+
+### Hồ sơ cá nhân
+
+Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching.
+
+### Grounded AI Assistant
+
+Hỏi câu liên quan đến tài liệu trong `knowledge_base/`. Hệ thống:
+
+1. chuẩn hóa câu hỏi;
+2. truy xuất top-k chunks;
+3. áp dụng relevance threshold;
+4. chỉ gửi context đã truy xuất cho LLM;
+5. hiển thị nguồn đã dùng.
+
+Nếu retrieval không đủ bằng chứng, hệ thống trả về trạng thái `no-evidence` thay vì tự bịa.
+
+### Tìm Mentor
+
+Hệ thống tính hybrid score theo:
+
+```text
+65% semantic similarity
+25% domain overlap
+10% experience fit
+```
+
+Điểm được chặn trong khoảng 0–100 và ranking dùng tie-break ổn định để kết quả có tính tái lập.
+
+## Kiểm thử và chất lượng
+
+Chạy toàn bộ kiểm tra local:
+
+```bash
+python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+python -m pytest -q
 ```
 
 Chẩn đoán knowledge base:
@@ -112,84 +188,106 @@ Chẩn đoán knowledge base:
 python ingest.py
 ```
 
-## 5. Chạy test
+GitHub Actions tự động chạy trên Pull Request và trên `main`:
 
-```bash
-python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py ingest.py
-python -m pytest -q
-```
+- cài dependency từ môi trường sạch;
+- quét pattern secret phổ biến trong tracked files;
+- compile smoke check;
+- regression tests bằng pytest;
+- khởi động Streamlit thật và kiểm tra health endpoint.
 
-GitHub Actions tự chạy hai quality gates trên mỗi Pull Request vào `main`.
-
-## 6. Quy trình Issue -> Branch -> Commit -> PR
-
-Mọi thay đổi bắt đầu bằng GitHub Issue.
-
-Ví dụ với issue `#12`:
-
-```bash
-git checkout main
-git pull
-git checkout -b feat/issue-12-short-name
-```
-
-Sau khi sửa:
-
-```bash
-git status
-git diff
-python -m pytest -q
-
-git add path/to/changed-file
-git commit -m "feat: short description" -m "Refs #12"
-git push -u origin feat/issue-12-short-name
-```
-
-Trong Pull Request dùng `Closes #12` khi PR hoàn tất issue. Không merge khi CI fail hoặc review còn unresolved.
-
-Chi tiết xem [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## 7. Workflow tiếp nhận yêu cầu khách hàng
-
-Thầy/cô hoặc người đóng vai khách hàng có thể vào tab **Issues** và chọn:
-
-- **Customer request** cho yêu cầu tính năng, thay đổi nghiệp vụ hoặc tiêu chí mới. Tự gán label `enhancement`.
-- **Bug report** cho lỗi có thể tái hiện. Tự gán label `bug`.
-
-Mỗi yêu cầu phải có acceptance criteria trước khi code. Sau đó nhóm tạo branch riêng, commit có `Refs #issue`, mở PR có `Closes #issue`, chờ CI xanh và review rồi mới merge.
-
-## 8. Cấu trúc repository
+## Cấu trúc repository
 
 ```text
 .
-├── app.py
-├── rag_engine.py
-├── matching_engine.py
-├── mentors_data.py
-├── ingest.py
-├── knowledge_base/
-├── tests/
+├── app.py                     # Streamlit presentation layer
+├── rag_engine.py              # Retrieval + grounded answering
+├── matching_engine.py         # Mentor scoring + explanation
+├── mentors_data.py            # Demo mentor dataset
+├── ingest.py                  # Knowledge-base diagnostics
+├── knowledge_base/            # Markdown documents for RAG
+├── tests/                     # Unit + smoke/regression tests
+├── docs/                      # Project/process documentation
 ├── .github/
-│   ├── workflows/ci.yml
-│   └── ISSUE_TEMPLATE/
+│   ├── ISSUE_TEMPLATE/        # Customer request + bug report
+│   ├── workflows/ci.yml       # CI quality gate
+│   ├── CODEOWNERS             # Review ownership
+│   └── pull_request_template.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
+├── LICENSE
 ├── requirements.txt
 └── .env.example
 ```
 
-## 9. Nhóm 6
+## Quy trình làm việc với GitHub Issues
+
+Mọi yêu cầu mới bắt đầu từ một Issue có scope và acceptance criteria.
+
+```text
+Customer/Teacher Request
+        ↓
+      Issue
+        ↓
+  Feature/Fix Branch
+        ↓
+ Commit có Refs #ID
+        ↓
+   Pull Request
+        ↓
+  CI + Code Review
+        ↓
+      Merge
+        ↓
+ Issue tự đóng bằng Closes #ID
+```
+
+Ví dụ:
+
+```bash
+git checkout main
+git pull
+git checkout -b feat/issue-15-short-name
+
+# sau khi sửa và test
+git add path/to/file
+git commit -m "feat: short description" -m "Refs #15"
+git push -u origin feat/issue-15-short-name
+```
+
+Trong Pull Request dùng `Closes #15` khi toàn bộ acceptance criteria đã đạt.
+
+Xem thêm: [CONTRIBUTING.md](CONTRIBUTING.md) và [Customer Feedback Workflow](docs/CUSTOMER_WORKFLOW.md).
+
+## AI safety và giảm hallucination
+
+Grounded AI Assistant áp dụng các cơ chế phòng thủ cơ bản:
+
+- retrieval trước generation;
+- relevance threshold;
+- prompt yêu cầu chỉ dùng context;
+- citation `[S1]`, `[S2]`, ... cho khẳng định quan trọng;
+- no-evidence refusal;
+- coi nội dung tài liệu là dữ liệu, không phải instruction;
+- temperature thấp;
+- fallback khi API lỗi hoặc thiếu key.
+
+Đây là prototype học tập, vì vậy người dùng vẫn nên kiểm chứng thông tin quan trọng bằng nguồn gốc.
+
+## Nhóm phát triển
 
 | Thành viên | Mã sinh viên | Workstream |
 | --- | --- | --- |
-| Lê Văn Mạnh | BAI250042 | Leader, AI/RAG, integration, review |
+| **Lê Văn Mạnh** | BAI250042 | Leader, AI/RAG, integration, review |
 | Đỗ Văn Cường | BCS252484 | Backend, matching |
 | Lê Hải Đăng | BAI250012 | Testing, CI/CD |
 | Dương Tuấn Dũng | BIT250099 | Backend, data |
 | Nguyễn Văn Phúc | BCS252351 | AI/RAG, QA |
 
-Bảng trên mô tả phạm vi phối hợp của nhóm, không dùng để thay thế lịch sử commit hoặc bằng chứng đóng góp cá nhân.
+Bảng phân công mô tả workstream, không thay thế lịch sử commit/PR làm bằng chứng đóng góp cá nhân.
 
-## 10. Security
+## Security và License
 
-Repository từng chứa một credential trong lịch sử Git. Credential cũ phải được revoke/rotate. Xem [SECURITY.md](SECURITY.md).
+Không commit API key, token, password hoặc file `.env`. Xem [SECURITY.md](SECURITY.md).
+
+Dự án phát hành theo [MIT License](LICENSE).
