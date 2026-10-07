@@ -41,7 +41,7 @@ jobs:
 
       - name: Compile smoke check
         run: |
-          python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+          python -m py_compile app.py llm_client.py rag_engine.py matching_engine.py mentors_data.py ingest.py
 
       - name: Run regression tests
         env:
