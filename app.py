@@ -4,6 +4,8 @@ from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
 from rag_engine import KnowledgeBase, answer_with_rag
 
+st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
+
 client = build_llm_client()
 
 
@@ -13,8 +15,6 @@ def load_knowledge_base() -> KnowledgeBase:
 
 
 knowledge_base = load_knowledge_base()
-
-st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
 with st.sidebar:
     st.title("🤖 CMC AI Mentor Network")
@@ -30,13 +30,19 @@ with st.sidebar:
         f"{knowledge_base.chunk_count} chunks"
     )
     if llm_enabled():
-        st.success("LLM: online")
+        st.success("LLM: configured (API connection not yet verified)")
     else:
         st.info("LLM: offline grounded mode")
 
 
 if "favorite_mentors" not in st.session_state:
     st.session_state.favorite_mentors = []
+
+if "top_matches" not in st.session_state:
+    st.session_state.top_matches = []
+
+if "match_explanations" not in st.session_state:
+    st.session_state.match_explanations = {}
 
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = {}
@@ -98,6 +104,8 @@ elif page == "👤 Hồ sơ cá nhân":
             "goals": goals.strip(),
             "bio": bio.strip(),
         }
+        st.session_state.top_matches = []
+        st.session_state.match_explanations = {}
         st.success("Đã lưu hồ sơ.")
 
 elif page == "💬 AI Assistant":
@@ -174,39 +182,44 @@ elif page == "👥 Tìm Mentor":
 
     if st.button("🔍 Tìm Mentor", type="primary"):
         with st.spinner("Đang xếp hạng mentor..."):
-            top_matches = get_top_matches(student_profile, top_k=3)
+            st.session_state.top_matches = get_top_matches(student_profile, top_k=3)
+            st.session_state.match_explanations = {}
 
-        for rank, match in enumerate(top_matches, start=1):
-            mentor = match["mentor"]
-            with st.container(border=True):
-                left, right = st.columns([3, 1])
-                with left:
-                    st.markdown(
-                        f"### {rank}. {mentor['name']} • {mentor['title']}"
-                    )
-                    st.caption(
-                        f"{mentor['company']} • {mentor['field']} • "
-                        f"{mentor['experience_years']} năm kinh nghiệm"
-                    )
-                    st.write(mentor["bio"])
-                with right:
-                    st.metric("Match", f"{match['hybrid_score']:.1f}%")
-                    st.caption(f"Semantic: {match['semantic_score']:.1f}%")
-
-                explanation = generate_match_explanation(
-                    student_profile,
-                    mentor,
-                    match["hybrid_score"],
-                    client=client,
+    # Results are stored independently of the search button state so that
+    # clicking a mentor's Save button does not make the results disappear.
+    for rank, match in enumerate(st.session_state.top_matches, start=1):
+        mentor = match["mentor"]
+        mentor_id = mentor["id"]
+        with st.container(border=True):
+            left, right = st.columns([3, 1])
+            with left:
+                st.markdown(f"### {rank}. {mentor['name']} • {mentor['title']}")
+                st.caption(
+                    f"{mentor['company']} • {mentor['field']} • "
+                    f"{mentor['experience_years']} năm kinh nghiệm"
                 )
-                st.markdown("**Vì sao phù hợp**")
-                st.write(explanation)
+                st.write(mentor["bio"])
+            with right:
+                st.metric("Match", f"{match['hybrid_score']:.1f}%")
+                st.caption(f"Semantic: {match['semantic_score']:.1f}%")
 
-                if st.button("❤️ Lưu mentor", key=f"save_{mentor['id']}"):
-                    if mentor not in st.session_state.favorite_mentors:
-                        st.session_state.favorite_mentors.append(mentor)
-                        st.success(f"Đã lưu {mentor['name']}.")
-                        st.rerun()
+            if mentor_id not in st.session_state.match_explanations:
+                st.session_state.match_explanations[mentor_id] = generate_match_explanation(
+                    student_profile, mentor, match["hybrid_score"], client=client
+                )
+            st.markdown("**Vì sao phù hợp**")
+            st.write(st.session_state.match_explanations[mentor_id])
+
+            saved = any(
+                item["id"] == mentor_id for item in st.session_state.favorite_mentors
+            )
+            if st.button(
+                "❤️ Đã lưu" if saved else "❤️ Lưu mentor",
+                key=f"save_{mentor_id}",
+                disabled=saved,
+            ):
+                st.session_state.favorite_mentors.append(mentor)
+                st.success(f"Đã lưu {mentor['name']}.")
 
     if st.session_state.favorite_mentors:
         st.divider()
