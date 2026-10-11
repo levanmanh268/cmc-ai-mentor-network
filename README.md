@@ -85,6 +85,14 @@ Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích
 
 Yêu cầu: **Python 3.11+**.
 
+### Windows: cách đơn giản nhất (khuyến nghị)
+
+Tải repo về hoặc `git clone`, rồi **nhấp đúp `run_windows.bat`** trong thư mục gốc. Trình khởi chạy tự tạo `.venv`, cài các thư viện và chạy Streamlit. Nếu trình duyệt không tự bật, mở **http://localhost:8501**. Không cần tạo `.env` khi chỉ muốn dùng offline demo.
+
+Nếu chạy lỗi: giữ cửa sổ `run_windows.bat` đang mở, **sao chép toàn bộ nội dung lỗi** (che API key nếu có) và gửi vào GitHub Issue. Xem [Hướng dẫn sửa lỗi Windows](docs/WINDOWS_TROUBLESHOOTING.md).
+
+### Cài đặt thủ công
+
 ### 1. Clone repository
 
 ```bash
