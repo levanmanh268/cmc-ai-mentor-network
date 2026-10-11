@@ -1,12 +1,12 @@
 """Streamlit UI regression tests without external LLM calls."""
-import os
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
 
 def make_app(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "")
-    app = AppTest.from_file("app.py", default_timeout=45).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=45).run()
     assert not app.exception
     return app
 
