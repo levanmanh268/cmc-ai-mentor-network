@@ -1,9 +1,12 @@
+import pytest
+
 from matching_engine import (
     calculate_hybrid_score,
     generate_match_explanation,
     get_top_matches,
     parse_student_year,
 )
+from mentors_data import validate_mentor
 
 
 def test_parse_student_year_is_safe():
@@ -50,6 +53,39 @@ def test_empty_profile_still_returns_stable_results():
 
     assert len(results) == 5
     assert all(0.0 <= item["hybrid_score"] <= 100.0 for item in results)
+
+
+def test_mentor_validation_rejects_missing_and_invalid_data():
+    with pytest.raises(ValueError):
+        validate_mentor({"id": 1, "name": "Mentor A", "field": "NLP"})
+
+    with pytest.raises(ValueError):
+        validate_mentor({
+            "id": 1,
+            "name": "Mentor A",
+            "title": "AI Engineer",
+            "company": "Demo",
+            "field": "NLP",
+            "experience_years": "three",
+            "bio": "Good",
+            "strengths": ["RAG"],
+            "available_for": ["Project"],
+        })
+
+    valid = validate_mentor({
+        "id": 1,
+        "name": "Mentor A",
+        "title": "AI Engineer",
+        "company": "Demo",
+        "field": "NLP",
+        "experience_years": 4,
+        "bio": "Good",
+        "strengths": "RAG, LLM",
+        "available_for": ["Project", "CV Review"],
+    })
+
+    assert valid["strengths"] == ["RAG", "LLM"]
+    assert valid["available_for"] == ["Project", "CV Review"]
 
 
 def test_explanation_has_deterministic_fallback_without_llm():

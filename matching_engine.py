@@ -6,7 +6,7 @@ from typing import Any
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from mentors_data import mentors
+from mentors_data import get_mentor_repository
 
 
 def parse_student_year(value: Any) -> int:
@@ -105,11 +105,12 @@ def calculate_hybrid_score(
 
 
 def _semantic_scores(student_profile: dict) -> list[float]:
+    mentor_pool = get_mentor_repository().list()
     student_text = _profile_text(student_profile)
-    mentor_texts = [_mentor_text(mentor) for mentor in mentors]
+    mentor_texts = [_mentor_text(mentor) for mentor in mentor_pool]
 
     if not student_text.strip():
-        return [0.0] * len(mentors)
+        return [0.0] * len(mentor_pool)
 
     vectorizer = TfidfVectorizer(
         lowercase=True,
@@ -122,10 +123,11 @@ def _semantic_scores(student_profile: dict) -> list[float]:
 
 
 def get_top_matches(student_profile: dict, top_k: int = 3) -> list[dict]:
+    mentor_pool = get_mentor_repository().list()
     semantic_scores = _semantic_scores(student_profile)
 
     scored: list[dict] = []
-    for mentor, semantic in zip(mentors, semantic_scores):
+    for mentor, semantic in zip(mentor_pool, semantic_scores):
         hybrid = calculate_hybrid_score(student_profile, mentor, semantic)
         scored.append(
             {
