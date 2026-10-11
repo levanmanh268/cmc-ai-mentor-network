@@ -13,7 +13,13 @@ DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
 def get_groq_api_key() -> str:
     """Read the Groq credential from the process environment."""
-    return os.getenv("GROQ_API_KEY", "").strip()
+    key = os.getenv("GROQ_API_KEY", "").strip()
+    if key.lower() in {
+        "", "your_groq_api_key_here", "your_api_key_here",
+        "replace_with_your_api_key", "change_me", "changeme",
+    }:
+        return ""
+    return key
 
 
 def llm_enabled() -> bool:
