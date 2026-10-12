@@ -70,6 +70,17 @@ class EngineTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.idx.search("q", self.principal(), method="dense")
         with self.assertRaises(ValueError): self.idx.search("q", self.principal(), as_of="bad-date")
 
+    def test_revoked_access_does_not_resurface_old_version(self):
+        base = {"family": "restricted-policy", "tenant": "alpha", "source": "test",
+                "page": 1, "kind": "policy"}
+        older = Passage.from_dict({**base, "uid": "old", "title": "old", "text": "legacy password access",
+                                   "roles": ["employee"], "version": 1, "effective": "2025-01-01"})
+        newer = Passage.from_dict({**base, "uid": "new", "title": "new", "text": "secret access policy",
+                                   "roles": ["security"], "version": 2, "effective": "2026-01-01"})
+        idx = EnterpriseIndex([older, newer])
+        self.assertEqual(idx.search("password access", self.principal(), as_of="2026-10-12"), [])
+        self.assertEqual(idx.search("password access", self.principal(), as_of="2025-07-01")[0].passage.uid, "old")
+
     def test_no_future_documents(self):
         hits = self.idx.search("hồ sơ PeopleHub", self.principal(), as_of="2025-01-01")
         self.assertTrue(all(h.passage.effective <= "2025-01-01" for h in hits))
