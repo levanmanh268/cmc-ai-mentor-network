@@ -47,6 +47,30 @@ class CoreTests(unittest.TestCase):
         hits = DenseIndex(DOCS, DummyEncoder()).search("portal")
         self.assertEqual(hits[0].document.source, "a")
 
+    def test_dense_fails_closed_on_poisoned_embeddings(self):
+        class BrokenEncoder:
+            def __init__(self, vectors):
+                self.vectors = vectors
+            def encode(self, texts):
+                return self.vectors
+        cases = [([[1.,0.]], "missing vector"),
+                 ([[1.,0.],[1.]], "ragged vector"),
+                 ([[float("nan"),0.],[0.,1.]], "NaN vector"),
+                 ([[0.,0.],[0.,1.]], "zero-norm vector")]
+        for vectors, reason in cases:
+            with self.subTest(reason=reason), self.assertRaises(ValueError):
+                DenseIndex(DOCS, BrokenEncoder(vectors))
+
+    def test_dense_query_validation(self):
+        class PoisonedQuery:
+            def encode(self, texts):
+                if len(texts) == 2:
+                    return [[1., 0.],[0., 1.]]
+                return [[float("inf"), 1.]]
+        idx = DenseIndex(DOCS, PoisonedQuery())
+        with self.assertRaises(ValueError):
+            idx.search("portal")
+
     def test_evaluator(self):
         cases = [{"id": "1", "question": "portal", "relevant_sources": ["a"]}, {"id": "2", "question": "unseenegg", "relevant_sources": []}]
         result = evaluate(BM25Index(DOCS), cases, 2)

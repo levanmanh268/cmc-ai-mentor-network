@@ -56,6 +56,10 @@ class Tokenizer:
         return len(self.vocab)
 
 def softmax(row):
+    if not isinstance(row, (tuple, list)) or not row or any(
+        not isinstance(x, (int, float)) or not math.isfinite(x) for x in row
+    ):
+        raise ValueError("Softmax requires a nonempty finite numeric row")
     m = max(row)
     z = [math.exp(v-m) for v in row]
     s = sum(z)
@@ -100,11 +104,26 @@ class BigramLM:
         return grads
 
     def step(self, grads, rate):
-        if not 0 < rate <= 2:
+        # Validate the entire update BEFORE touching parameters (atomic failure).
+        if not isinstance(rate, (float, int)) or not math.isfinite(rate) or not 0 < rate <= 2:
             raise ValueError("Invalid learning rate")
+        if not isinstance(grads, list) or len(grads) != self.size or any(
+            not isinstance(row, list) or len(row) != self.size for row in grads
+        ):
+            raise ValueError("Gradient shape must match weight matrix")
+        proposed = []
         for i in range(self.size):
+            row = []
             for j in range(self.size):
-                self.weights[i][j] -= rate * grads[i][j]
+                g = grads[i][j]
+                if not isinstance(g, (int, float)) or not math.isfinite(g):
+                    raise ValueError("Nonfinite or nonnumeric gradient")
+                value = self.weights[i][j] - rate * g
+                if not math.isfinite(value):
+                    raise ValueError("Update would produce nonfinite weights")
+                row.append(value)
+            proposed.append(row)
+        self.weights = proposed
 
     def generate(self, prompt, steps=32):
         if not prompt or not 0 <= steps <= 1000:
@@ -131,8 +150,10 @@ def cross_entropy(model, pairs):
     return -sum(model.logprob(a,b) for a,b in pairs) / len(pairs)
 
 def train(output_dir="artifacts/pretraining", epochs=5, learning_rate=0.2, seed=1729):
-    if not 1 <= epochs <= 100:
+    if type(epochs) is not int or not 1 <= epochs <= 100:
         raise ValueError("Invalid epoch count")
+    if not isinstance(learning_rate, (int, float)) or not math.isfinite(learning_rate) or not 0 < learning_rate <= 2:
+        raise ValueError("Invalid learning rate")
     docs = read_corpus()
     tokenizer = Tokenizer.fit(docs)  # vocabulary fits TRAIN ONLY
     train_pairs = transitions(docs, tokenizer, "train")
@@ -177,8 +198,13 @@ def load_checkpoint(path):
     payload = json.loads(src.read_text(encoding="utf-8"))
     if set(payload) != {"objective","architecture","charset","weights","seed","train_corpus_sha256"}:
         raise ValueError("Unexpected checkpoint fields")
-    if payload["architecture"] != "bigram_causal_lm":
-        raise ValueError("Unsupported checkpoint architecture")
+    if payload["architecture"] != "bigram_causal_lm" or payload["objective"] != "causal_next_character_cross_entropy":
+        raise ValueError("Unsupported checkpoint architecture or objective")
+    if type(payload["seed"]) is not int or not isinstance(payload["train_corpus_sha256"], str) or (
+        len(payload["train_corpus_sha256"]) != 64 or
+        any(ch not in "0123456789abcdef" for ch in payload["train_corpus_sha256"])
+    ):
+        raise ValueError("Invalid checkpoint provenance metadata")
     tokenizer = Tokenizer(payload["charset"])
     model = BigramLM(tokenizer.size, weights=payload["weights"])
     return model, tokenizer, payload

@@ -217,7 +217,14 @@ class EnterpriseIndex:
         grams = self._bm25(char_ngrams(question), [self._grams[i] for i in visible])
         dense = None
         if method in {"dense", "hybrid_dense"}:
-            qvec = self.encoder.encode([question])[0]
+            encoded_query = self.encoder.encode([question])
+            if len(encoded_query) != 1:
+                raise ValueError("Query encoder must return exactly one vector")
+            qvec = encoded_query[0]
+            if (not isinstance(qvec, (list, tuple)) or
+                len(qvec) != len(self._dense_vectors[0]) or
+                any(not math.isfinite(float(value)) for value in qvec)):
+                raise ValueError("Query embedding dimension mismatch or nonfinite values")
             dense = [_cosine(qvec, self._dense_vectors[i]) for i in visible]
         components = []
         if method in {"bm25", "hybrid", "hybrid_dense"}:

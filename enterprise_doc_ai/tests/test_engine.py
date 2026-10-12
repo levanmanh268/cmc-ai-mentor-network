@@ -111,6 +111,34 @@ class EngineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_corpus(file.with_suffix(".missing"))
 
+    def test_dense_query_poisoning_rejected(self):
+        def corpus():
+            rows = [
+                {"uid": "qa-1", "family": "a", "title": "employee alpha",
+                 "text": "employee alpha onboarding", "tenant": "alpha",
+                 "roles": ["employee"], "source": "qa", "page": 1,
+                 "version": 1, "effective": "2026-01-01"},
+                {"uid": "qa-2", "family": "b", "title": "employee alpha",
+                 "text": "employee alpha security", "tenant": "alpha",
+                 "roles": ["employee"], "source": "qa", "page": 1,
+                 "version": 1, "effective": "2026-01-01"},
+            ]
+            return [Passage.from_dict(x) for x in rows]
+        class QueryEncoder:
+            def __init__(self, bad):
+                self.bad = bad
+            def encode(self, texts):
+                if len(texts) > 1:
+                    return [[1.0, 0.0] for _ in texts]
+                return self.bad
+        bad_queries = [[], [[float("nan"),1.0]],
+                       [[float("inf"),1.0]], [[1.0]], [[1.0,0.0,1.0]]]
+        for bad in bad_queries:
+            with self.subTest(bad=bad):
+                idx = EnterpriseIndex(corpus(), encoder=QueryEncoder(bad))
+                with self.assertRaises(ValueError):
+                    idx.search("employee", self.principal(), method="dense")
+
     def test_nonfinite_and_inconsistent_dense_vectors_rejected(self):
         class NaNEncoder:
             def encode(self, texts):

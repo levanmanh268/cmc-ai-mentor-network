@@ -18,7 +18,9 @@ def load_pairs(path=None):
     if not src.is_file() or src.is_symlink() or src.stat().st_size > 500000:
         raise ValueError("Invalid preference dataset")
     rows = [json.loads(row) for row in src.read_text(encoding="utf-8").splitlines() if row.strip()]
-    prompts, splits = set(), set()
+    if not 3 <= len(rows) <= 10000:
+        raise ValueError("Invalid preference dataset size")
+    prompts, identifiers, splits = set(), set(), set()
     for sample in rows:
         if not isinstance(sample, dict) or set(sample) != {"id","split","prompt","chosen","rejected"}:
             raise ValueError("Invalid SFT/DPO sample")
@@ -29,17 +31,21 @@ def load_pairs(path=None):
                 raise ValueError("Invalid sample field")
         if sample["chosen"] == sample["rejected"]:
             raise ValueError("Identical preference responses")
-        key = sample["prompt"].casefold().strip()
-        if key in prompts:
-            raise ValueError("Duplicate prompt across splits")
-        prompts.add(key); splits.add(sample["split"])
+        key = " ".join(sample["prompt"].casefold().split())
+        if (key in prompts or sample["id"] in identifiers or
+            not sample["chosen"].strip() or not sample["rejected"].strip() or
+            " ".join(sample["chosen"].casefold().split()) == " ".join(sample["rejected"].casefold().split())):
+            raise ValueError("Duplicate ID, overlapping prompt, or indistinguishable preference")
+        prompts.add(key); identifiers.add(sample["id"]); splits.add(sample["split"])
     if splits != {"train","val","test"}:
         raise ValueError("Train, validation and test required")
     return rows
 
 def packed_response(tokenizer: Tokenizer, prompt: str, response: str):
     """Supervise assistant response tokens only, no loss on prompt tokens."""
-    if not isinstance(response, str) or not response.strip():
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 500:
+        raise ValueError("Empty or invalid prompt")
+    if not isinstance(response, str) or not response.strip() or len(response) > 500:
         raise ValueError("Empty or invalid response")
     prefix = tokenizer.encode("Q:"+prompt+"\nA:", wrap=False)
     answer = tokenizer.encode(response, wrap=False)
@@ -71,7 +77,7 @@ def dpo_loss_and_gradient(policy, reference, tok, example, beta=0.1):
 
     loss = -log(sigmoid(beta*((logπ(y+)−logπ(y−))−(logπref(y+)−logπref(y−)))))
     """
-    if not 0 < beta <= 5:
+    if not isinstance(beta, (int, float)) or not math.isfinite(beta) or not 0 < beta <= 5:
         raise ValueError("Invalid DPO beta")
     chosen, ci = packed_response(tok,example["prompt"],example["chosen"])
     rejected, ri = packed_response(tok,example["prompt"],example["rejected"])
@@ -88,7 +94,10 @@ def dpo_loss_and_gradient(policy, reference, tok, example, beta=0.1):
 
 def fit(pretrained_path, output_dir="artifacts/posttraining", sft_epochs=2,
         dpo_epochs=2, lr=0.12, beta=0.1, seed=2026):
-    if not 1 <= sft_epochs <= 25 or not 1 <= dpo_epochs <= 25 or not 0 < lr <= 2:
+    if (type(sft_epochs) is not int or type(dpo_epochs) is not int or
+        not 1 <= sft_epochs <= 25 or not 1 <= dpo_epochs <= 25 or
+        not isinstance(lr, (int, float)) or not math.isfinite(lr) or not 0 < lr <= 2 or
+        not isinstance(beta, (int, float)) or not math.isfinite(beta) or not 0 < beta <= 5):
         raise ValueError("Invalid training hyperparameters")
     policy, tok, checkpoint = load_checkpoint(pretrained_path)
     rows = load_pairs()

@@ -95,6 +95,13 @@ class EduTests(unittest.TestCase):
                 self.assertEqual(result["status"],"abstained")
                 self.assertFalse(result["evidence"])
 
+    def test_tool_router_rejects_malformed_payload_without_crashing(self):
+        for value in (None, "not a dict", [], {str(i):i for i in range(25)}):
+            with self.subTest(payload_type=type(value).__name__):
+                response=self.svc.run_tool("course_search",self.student,value)
+                self.assertEqual(response["status"],"invalid_input")
+        self.assertEqual(self.svc.run_tool("publish_grade",self.student,None)["status"],"denied_tool")
+
     def test_eval_has_no_access_leakage(self):
         from edu_trainer_ai.evaluate import evaluate
         report=evaluate()

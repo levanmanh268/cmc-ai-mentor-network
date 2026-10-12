@@ -95,6 +95,13 @@ class RetailTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.svc.handover_draft(self.staff,"không phải danh sách")
 
+    def test_tool_router_rejects_malformed_payload_without_crashing(self):
+        for value in (None, "not a dict", [], {str(i):i for i in range(25)}):
+            with self.subTest(payload_type=type(value).__name__):
+                response=self.svc.run_tool("policy_search",self.staff,value)
+                self.assertEqual(response["status"],"invalid_input")
+        self.assertEqual(self.svc.run_tool("delete_sales",self.staff,None)["status"],"denied")
+
     def test_evaluation_access_isolation(self):
         from retail_ops_ai.evaluate import evaluate
         report=evaluate()

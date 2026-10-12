@@ -178,6 +178,8 @@ class EduService:
 
     def run_tool(self,tool: str,who: Learner,payload: dict) -> dict:
         if tool not in self.tools:return {"status":"denied_tool"}
+        if not isinstance(payload,dict) or len(payload)>20:
+            return {"status":"invalid_input","reason":"expected_small_payload_object"}
         if tool=="course_search":return self.search(who,str(payload.get("question","")))
         if tool=="quiz":return self.quiz(who,str(payload.get("module","")))
         if tool=="rubric_feedback":return self.rubric_feedback(who,str(payload.get("rubric_id","")),str(payload.get("submission","")))

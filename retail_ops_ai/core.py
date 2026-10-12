@@ -204,6 +204,8 @@ class RetailService:
     def run_tool(self, tool: str, who: Principal, payload: dict) -> dict:
         if tool not in self.allowed_tools:
             return {"status":"denied","reason":"tool_not_allowed"}
+        if not isinstance(payload, dict) or len(payload) > 20:
+            return {"status":"invalid_input","reason":"expected_small_payload_object"}
         if tool=="policy_search":
             return self.policy_search(who,str(payload.get("question","")),str(payload.get("as_of","2026-10-12")))
         if tool=="stock_lookup":
