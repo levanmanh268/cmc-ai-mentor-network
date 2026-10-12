@@ -1,0 +1,10 @@
+{"id":"Q01","question":"Where should employees submit onboarding information on their first day?","relevant_sources":["onboarding.md"]}
+{"id":"Q02","question":"Who checks onboarding documents before access?","relevant_sources":["onboarding.md"]}
+{"id":"Q03","question":"Should passwords be emailed for onboarding?","relevant_sources":["onboarding.md"]}
+{"id":"Q04","question":"Where must API keys be stored?","relevant_sources":["security.md"]}
+{"id":"Q05","question":"What should happen when an access token is leaked?","relevant_sources":["security.md"]}
+{"id":"Q06","question":"Can confidential documents be uploaded to unapproved AI providers?","relevant_sources":["security.md"]}
+{"id":"Q07","question":"What is needed for expense reimbursement?","relevant_sources":["expenses.md"]}
+{"id":"Q08","question":"Which team reviews invoices for reimbursement?","relevant_sources":["expenses.md"]}
+{"id":"Q09","question":"When must receipts be submitted to the expense portal?","relevant_sources":["expenses.md"]}
+{"id":"Q10","question":"What is the launch date of the Mars helicopter?","relevant_sources":[]}
