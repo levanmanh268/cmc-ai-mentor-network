@@ -131,6 +131,10 @@ class RetailService:
         if re.search(r"(?i)(mật khẩu|password|\botp\b|api[ -]?key|access[ -]?token)", question):
             return {"status":"abstained","evidence":[],"reason":"sensitive_credentials_not_in_knowledge_base",
                     "mode":"extractive_search_not_llm_answer"}
+        # Manager-only sales variance reports are not a normal staff policy.
+        if who.role=="staff" and re.search(r"(?i)(báo cáo.*doanh thu|doanh thu.*báo cáo)", question):
+            return {"status":"abstained","evidence":[],"reason":"manager_only_report",
+                    "mode":"extractive_search_not_llm_answer"}
         requested_stores=set(re.findall(r"(?i)\bHN[0-9]{2}\b",question))
         if requested_stores and requested_stores!={who.store}:
             return {"status":"abstained","evidence":[],"reason":"ambiguous_or_foreign_store",
