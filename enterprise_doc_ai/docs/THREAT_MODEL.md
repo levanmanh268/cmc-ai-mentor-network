@@ -12,7 +12,7 @@ This is a two-tenant synthetic offline simulation, NOT security-certified softwa
 
 ## Known gaps
 
-1. API has NO authentication. Caller-supplied X-Demo-Tenant and X-Demo-Roles can be forged. NEVER deploy publicly or present as secure enterprise RBAC.
+1. **Historical critical finding, fixed in local demo:** API formerly had no authentication and caller-supplied tenant/role headers could be forged. The new API requires short-lived HMAC-signed bearer tokens but still lacks production OIDC, revocation and trusted enterprise IAM. NEVER deploy publicly.
 2. In-memory audit history can disappear on process restart; no tamper-evident logs.
 3. No real security key management, encryption, access policy service or network isolation.
 4. Regex prompt-injection guard cannot detect novel, obfuscated or multilingual attacks.
