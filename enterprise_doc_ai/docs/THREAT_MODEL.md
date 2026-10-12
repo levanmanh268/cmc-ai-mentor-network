@@ -23,3 +23,5 @@ This is a two-tenant synthetic offline simulation, NOT security-certified softwa
 9. Synthetic public eval set risks optimistic retrieval scores and sampling bias.
 
 Production path: verified OIDC sessions -> server-managed Principal -> document ACL enforcement -> encrypted vector/document store -> immutable provenance -> human adjudication -> trace and incident monitoring -> adversarial evaluations -> security review.
+
+10. Remote LLM calls transmit authorized retrieved text to the configured external provider. Citation membership validation is insufficient for factual entailment or privacy certification. A real deployment requires an approved data processing agreement and stronger output verification.
