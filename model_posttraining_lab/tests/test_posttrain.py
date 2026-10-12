@@ -71,6 +71,39 @@ class PosttrainingTests(unittest.TestCase):
             self.assertTrue((Path(folder)/"post"/"toy_posttrained.json").exists())
             self.assertLess(report["sft_train_nll_final"], report["sft_train_nll_initial"])
 
+    def test_duplicate_preference_ids_and_normalized_prompts(self):
+        import json
+        with tempfile.TemporaryDirectory() as folder:
+            file=Path(folder)/"pairs.jsonl"
+            cases=[dict(sample) for sample in self.rows]
+            cases[1]["id"]=cases[0]["id"]
+            file.write_text("\n".join(json.dumps(x) for x in cases)+"\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_pairs(file)
+            cases[1]["id"]="unique-replacement"
+            cases[1]["prompt"]="  "+" ".join(cases[0]["prompt"].upper().split())+"  "
+            file.write_text("\n".join(json.dumps(x) for x in cases)+"\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_pairs(file)
+            cases=[dict(sample) for sample in self.rows]
+            cases[0]["rejected"]=cases[0]["chosen"].upper()+"  "
+            file.write_text("\n".join(json.dumps(x) for x in cases)+"\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_pairs(file)
+
+    def test_invalid_prompts_and_numerical_parameters(self):
+        with self.assertRaises(ValueError):
+            packed_response(self.tok, " ", "yes")
+        with self.assertRaises(ValueError):
+            packed_response(self.tok, "abc", "x"*501)
+        for beta in (float("nan"), float("inf"), -1):
+            with self.subTest(beta=beta), self.assertRaises(ValueError):
+                dpo_loss_and_gradient(self.model,self.model,self.tok,self.rows[0],beta=beta)
+        with self.assertRaises(ValueError):
+            fit("unused-checkpoint",lr=float("nan"))
+        with self.assertRaises(ValueError):
+            fit("unused-checkpoint",sft_epochs=True)
+
     def test_invalid_data_and_hyperparameters(self):
         with self.assertRaises(ValueError):
             packed_response(self.tok,"abc","")
