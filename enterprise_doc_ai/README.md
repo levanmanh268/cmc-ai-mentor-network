@@ -11,7 +11,8 @@ An independent AI Engineer portfolio case study inspired by publicly described e
 | Optional real embeddings | Dependency-injected Encoder and OptionalSentenceEncoder | Requires model download; not measured in offline benchmark |
 | Document access scopes | Tenant, role, effective-date and version filtering before ranking | Demo API does NOT authenticate requests |
 | Document Intelligence | Local PDF/DOCX/text ingestion, structured invoice parsing with source/page/span | Regex baseline; optional local Tesseract OCR, not benchmarked |
-| RAG evidence | GroundedQA returns verbatim excerpt with page/version/source | No LLM generation, claim-level faithfulness not established |
+| RAG evidence | GroundedQA returns verbatim excerpts with page/version/source | Extractive mode; claim-level entailment not established |
+| Optional LLM generation | llm.py: OpenAI-compatible opt-in adapter, mocked integration tests and citation ID validation | API credentials required for real inference; citations checked for membership, NOT factual entailment |
 | Guarded agent workflow | Retrieve, prepare draft, independent approval | Zero external side effects, transient state |
 | Evaluation | 80 labelled bilingual-oriented questions, ablations, retrieval metrics, abstention and isolation | Public synthetic fixture, NOT a blind/enterprise benchmark |
 | Integration | CLI and optional FastAPI with OpenAPI docs | Demo API HTTP headers are NOT secure RBAC |
@@ -60,6 +61,12 @@ Read the [reproducible evaluation report](docs/EVALUATION_REPORT.md) for measure
     python -m pip install -r enterprise_doc_ai/requirements-ocr.txt
 
 OptionalSentenceEncoder loads a multilingual SentenceTransformer. The offline experiments do not use or evaluate it. The local OCR adapter uses PyMuPDF, PIL and pytesseract, requiring an installed Tesseract executable and Vietnamese language models. The default benchmarks do not evaluate OCR accuracy. Do not claim measured neural or OCR performance.
+
+## Evaluation and reproducibility evidence
+
+The evaluation job checks Python 3.11 and 3.12 on Ubuntu and Windows, runs unit and HTTP tests, and produces a downloadable `enterprise_doc_ai_test.json` artifact. The **latest results must be read from the GitHub Actions artifact**, not inferred from README numbers. A good interview discussion compares retrieval success against the ability to abstain: a high Hit@3 cannot establish answer factuality, and aggressive abstention may reduce legitimate coverage.
+
+Optional LLM generation is available in `llm.py` through an explicitly configured server-side API key. Its tests use mocked responses to validate citation membership and failure behavior. CI does **not** call a remote LLM; model quality has not been measured here.
 
 ## Evaluation interpretation
 
