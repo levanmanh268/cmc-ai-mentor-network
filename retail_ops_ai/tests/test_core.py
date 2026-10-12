@@ -79,6 +79,12 @@ class RetailTests(unittest.TestCase):
                 self.assertEqual(result["status"],"abstained")
                 self.assertEqual(result["evidence"],[])
 
+    def test_foreign_store_question_abstains_even_if_shared_terms_overlap(self):
+        result=self.svc.policy_search(self.staff,"Hướng dẫn vệ sinh tủ mát HN02 tại HN01")
+        self.assertEqual(result["status"],"abstained")
+        self.assertEqual(result["reason"],"ambiguous_or_foreign_store")
+        self.assertFalse(result["evidence"])
+
     def test_handover_rejects_string_instead_of_issue_list(self):
         with self.assertRaises(ValueError):
             self.svc.handover_draft(self.staff,"không phải danh sách")
