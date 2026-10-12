@@ -1,0 +1,61 @@
+name: Enterprise Document AI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "enterprise_doc_ai/**"
+      - ".github/workflows/enterprise-doc-ai.yml"
+  push:
+    branches: [main]
+    paths:
+      - "enterprise_doc_ai/**"
+      - ".github/workflows/enterprise-doc-ai.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    runs-on: \${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: \${{ matrix.python-version }}
+      - name: Install optional HTTP and document parsers
+        run: python -m pip install -r enterprise_doc_ai/requirements-api.txt
+      - name: Compile project
+        run: python -m compileall -q enterprise_doc_ai
+      - name: Run offline regression and API tests
+        run: python -m unittest discover -s enterprise_doc_ai/tests -v
+      - name: Benchmark development and public test partitions
+        run: |
+          python -m enterprise_doc_ai.benchmark --split dev --method all --output enterprise_doc_ai_dev.json
+          python -m enterprise_doc_ai.benchmark --split test --method all --output enterprise_doc_ai_test.json
+      - name: Fail if simulated tenant/role exposure occurs
+        shell: python
+        run: |
+          import json
+          for name in ("enterprise_doc_ai_dev.json", "enterprise_doc_ai_test.json"):
+              report = json.load(open(name, encoding="utf-8"))
+              for method in report["metrics"]:
+                  assert method["access_leakage_count"] == 0, method
+                  assert method["future_document_exposure_count"] == 0, method
+          print("Access-filter regression checks passed.")
+      - name: Upload evaluation artifacts
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-doc-ai-evaluation
+          path: |
+            enterprise_doc_ai_dev.json
+            enterprise_doc_ai_test.json
