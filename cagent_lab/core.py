@@ -8,10 +8,11 @@ import re
 from typing import Protocol
 
 TOKEN = re.compile(r"[^\W_]+", flags=re.UNICODE)
+STOPWORDS = {"a", "an", "the", "is", "are", "of", "to", "in", "on", "and", "for", "where", "what", "when", "who", "which", "their", "with", "from", "at", "be", "as", "how", "many", "do", "does", "it", "that"}
 SUPPORTED = {".txt", ".md", ".pdf", ".docx"}
 
 def tokenize(text: str) -> list[str]:
-    return TOKEN.findall(text.lower())
+    return [term for term in TOKEN.findall(text.lower()) if term not in STOPWORDS]
 
 @dataclass(frozen=True)
 class Document:
