@@ -62,14 +62,30 @@ class Passage:
     def from_dict(cls, payload: dict) -> "Passage":
         mandatory = {"uid", "family", "title", "text", "tenant", "roles",
                      "source", "page", "version", "effective"}
+        if not isinstance(payload, dict):
+            raise ValueError("Passage must be a JSON object")
         missing = mandatory - set(payload)
         if missing:
             raise ValueError(f"Missing fields: {sorted(missing)}")
-        obj = cls(**payload)
-        date.fromisoformat(obj.effective)
-        if obj.page < 1 or obj.version < 1 or not obj.roles:
-            raise ValueError("Page/version must be positive; roles nonempty")
-        return obj
+        unknown = set(payload) - (mandatory | {"kind"})
+        if unknown:
+            raise ValueError(f"Unsupported metadata fields: {sorted(unknown)}")
+        for name in ("uid", "family", "title", "text", "tenant", "source", "effective"):
+            value = payload[name]
+            if not isinstance(value, str) or not value.strip() or len(value) > (20000 if name == "text" else 500):
+                raise ValueError(f"Invalid {name}")
+        for name in ("page", "version"):
+            if type(payload[name]) is not int or payload[name] < 1:
+                raise ValueError(f"{name} must be a positive integer")
+        roles = payload["roles"]
+        if not isinstance(roles, (list, tuple)) or not roles or any(
+            not isinstance(role, str) or not role.strip() or len(role) > 80 for role in roles
+        ) or len(set(roles)) != len(roles):
+            raise ValueError("roles must be a nonempty, duplicate-free string list")
+        if "kind" in payload and (not isinstance(payload["kind"], str) or not payload["kind"].strip()):
+            raise ValueError("Invalid document kind")
+        date.fromisoformat(payload["effective"])
+        return cls(**{**payload, "roles": tuple(roles)})
 
     def accessible(self, principal: Principal) -> bool:
         return self.tenant == principal.tenant and bool(principal.roles.intersection(self.roles))
@@ -77,7 +93,12 @@ class Passage:
 def load_corpus(path: str | Path | None = None) -> list[Passage]:
     if path is None:
         path = Path(__file__).parent / "data" / "corpus.jsonl"
-    passages = [Passage.from_dict(json.loads(line)) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    source = Path(path)
+    if not source.is_file() or source.is_symlink() or source.stat().st_size > 8_000_000:
+        raise ValueError("Missing or oversized corpus, or symlink rejected")
+    passages = [Passage.from_dict(json.loads(line)) for line in source.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if not passages or len(passages) > 10000:
+        raise ValueError("Corpus must contain 1 to 10,000 passages")
     ids = [p.uid for p in passages]
     if len(ids) != len(set(ids)):
         raise ValueError("Duplicate passage identifiers")
@@ -131,6 +152,12 @@ class EnterpriseIndex:
             self._dense_vectors = encoder.encode([p.text for p in passages])
             if len(self._dense_vectors) != len(passages):
                 raise ValueError("Embedding count mismatches corpus")
+            dimensions = {len(vec) for vec in self._dense_vectors}
+            if len(dimensions) != 1 or 0 in dimensions or any(
+                not math.isfinite(float(value))
+                for vec in self._dense_vectors for value in vec
+            ):
+                raise ValueError("Embedding dimensions and finite values required")
         self._tf = [Counter(tokens(p.title + " " + p.text)) for p in self.passages]
         self._grams = [Counter(char_ngrams(p.title + " " + p.text)) for p in self.passages]
 
