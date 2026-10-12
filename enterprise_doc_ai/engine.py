@@ -137,14 +137,15 @@ class EnterpriseIndex:
     def _visible(self, principal: Principal, as_of: str) -> list[int]:
         date.fromisoformat(as_of)
         eligible = [i for i, p in enumerate(self.passages) if p.accessible(principal) and p.effective <= as_of]
-        latest: dict[tuple[str, str], tuple[str, int, int]] = {}
+        latest: dict[tuple[str, str], tuple[str, int]] = {}
         for i in eligible:
             p = self.passages[i]
             key = (p.tenant, p.family)
-            candidate = (p.effective, p.version, i)
-            if candidate > latest.get(key, ("", 0, -1)):
-                latest[key] = candidate
-        return sorted(item[2] for item in latest.values())
+            latest[key] = max(latest.get(key, ("", 0)), (p.effective, p.version))
+        # All pages from active version remain independently citable.
+        return [i for i in eligible if
+                (self.passages[i].effective, self.passages[i].version) ==
+                latest[(self.passages[i].tenant, self.passages[i].family)]]
 
     @staticmethod
     def _bm25(query: list[str], documents: list[Counter], k1: float = 1.5, b: float = 0.75) -> list[float]:
@@ -222,6 +223,11 @@ class GroundedQA:
         if not hits:
             return {"status": "abstained", "answer": None, "citations": [], "reason": "no_evidence", "mode": "extractive"}
         top = hits[0].passage
+        qterms = set(tokens(question))
+        evidence_terms = set(tokens(top.title + " " + top.text))
+        if len(qterms.intersection(evidence_terms)) < min(2, len(qterms)):
+            return {"status": "abstained", "answer": None, "citations": [],
+                    "reason": "weak_lexical_support", "mode": "extractive"}
         if UNTRUSTED_INSTRUCTION.search(top.text):
             return {"status": "abstained", "answer": None, "citations": [hits[0].to_dict()],
                     "reason": "suspicious_document_content", "mode": "extractive"}
