@@ -42,15 +42,21 @@ class KnowledgeBase:
         self._matrix = None
 
         if self._chunks:
-            self._vectorizer = TfidfVectorizer(
+            candidate = TfidfVectorizer(
                 lowercase=True,
                 ngram_range=(1, 2),
                 sublinear_tf=True,
                 strip_accents=None,
             )
-            self._matrix = self._vectorizer.fit_transform(
-                [self._normalize(chunk.text) for chunk in self._chunks]
-            )
+            try:
+                matrix = candidate.fit_transform([self._normalize(chunk.text) for chunk in self._chunks])
+            except ValueError as error:
+                if "empty vocabulary" not in str(error).lower():
+                    raise
+                # A punctuation-only corpus must fail closed rather than crash startup.
+                self._chunks = []
+            else:
+                self._vectorizer, self._matrix = candidate, matrix
 
     @property
     def chunk_count(self) -> int:
@@ -71,10 +77,16 @@ class KnowledgeBase:
             return []
 
         chunks: list[RetrievedChunk] = []
+        root = self.root.resolve()
         for path in sorted(self.root.rglob("*.md")):
+            # Refuse symlinked files and escapes from the declared knowledge root.
+            if path.is_symlink() or not path.resolve().is_relative_to(root):
+                continue
             try:
+                if not path.is_file() or path.stat().st_size > 2_000_000:
+                    continue
                 text = path.read_text(encoding="utf-8")
-            except OSError:
+            except (OSError, UnicodeError):
                 continue
 
             relative = str(path.relative_to(self.root)).replace("\\", "/")
@@ -212,9 +224,14 @@ CONTEXT:
             max_tokens=900,
         )
         answer = completion.choices[0].message.content.strip()
-        if not answer:
-            raise ValueError("empty LLM response")
-        mode = "online-grounded"
+        if not answer or len(answer) > 6000:
+            raise ValueError("empty or oversized LLM response")
+        cited_ids = re.findall(r"\\[S([0-9]+)\\]", answer)
+        # Citation membership only: cannot establish semantic entailment.
+        # Reject missing or forged citation identifiers rather than labelling unverified text as grounded.
+        if not cited_ids or any(int(i) < 1 or int(i) > len(results) for i in cited_ids):
+            raise ValueError("missing or invented reference citations")
+        mode = "online-citations-unverified"
     except Exception:
         answer = _offline_answer(results)
         mode = "offline-fallback"
