@@ -83,7 +83,13 @@ def read_pages(path: str | Path, max_bytes: int = 5_000_000, max_pages: int = 30
     except ImportError as exc:
         raise RuntimeError("pip install python-docx") from exc
     document = DocxDocument(str(path))
-    return [(1, "\n".join(p.text for p in document.paragraphs))]
+    # DOCX has no reliable page count without rendering; page 1 means
+    # 'logical document', NOT an accurate original page coordinate.
+    content = [p.text for p in document.paragraphs]
+    for table in document.tables:
+        for row in table.rows:
+            content.append(" | ".join(cell.text for cell in row.cells))
+    return [(1, "\n".join(content))]
 
 def ocr_scanned_pdf(path: str | Path, languages: str = "vie+eng", max_pages: int = 10) -> list[tuple[int, str]]:
     """Optional OCR adapter using local Tesseract + PyMuPDF.
