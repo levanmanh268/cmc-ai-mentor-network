@@ -33,5 +33,5 @@ def evaluate():
             "limitations":"Public small fixture; keyword baseline; no blind NLP or real student evaluation",
             "cases_detail":results}
 def main():
-    print(json.dumps(evaluate(),indent=2,ensure_ascii=False))
+    print(json.dumps(evaluate(),indent=2,ensure_ascii=True))
 if __name__=="__main__":main()
