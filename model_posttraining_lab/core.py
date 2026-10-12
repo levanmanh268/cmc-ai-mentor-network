@@ -39,6 +39,8 @@ def load_pairs(path=None):
 
 def packed_response(tokenizer: Tokenizer, prompt: str, response: str):
     """Supervise assistant response tokens only, no loss on prompt tokens."""
+    if not isinstance(response, str) or not response.strip():
+        raise ValueError("Empty or invalid response")
     prefix = tokenizer.encode("Q:"+prompt+"\nA:", wrap=False)
     answer = tokenizer.encode(response, wrap=False)
     tokens = [0] + prefix + answer + [1]
