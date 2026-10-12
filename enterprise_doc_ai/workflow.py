@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import hashlib
 import itertools
-from .engine import EnterpriseIndex, Principal, UNTRUSTED_INSTRUCTION
+from .engine import EnterpriseIndex, Principal, GroundedQA, UNTRUSTED_INSTRUCTION
 
 @dataclass
 class Task:
@@ -28,9 +28,11 @@ class ReviewWorkflow:
         self._sequence = itertools.count(1)
 
     def prepare(self, question: str, principal: Principal, as_of: str = "2026-10-12") -> dict:
+        # Workflow cannot bypass the grounded QA evidence/abstention gate.
+        evidence = GroundedQA(self.index).answer(question, principal, as_of=as_of)
+        if evidence["status"] != "evidence_found":
+            return {"status": "blocked", "reason": evidence["reason"], "citations": []}
         hits = self.index.search(question, principal, as_of=as_of, k=3)
-        if not hits or UNTRUSTED_INSTRUCTION.search(hits[0].passage.text):
-            return {"status": "blocked", "reason": "insufficient_or_suspicious_evidence", "citations": []}
         first = hits[0].passage
         request_id = next(self._sequence)
         task_id = "review-" + hashlib.sha256(f"{principal.tenant}|{principal.subject}|{request_id}".encode()).hexdigest()[:14]
