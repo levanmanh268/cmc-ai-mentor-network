@@ -53,7 +53,7 @@ The multilingual model downloads on first use. Embedding scores are distinct fro
 - Corpus: 3 **synthetic** English Markdown documents, chunks ~150 words with overlap.
 - Eval set: 10 manually labelled questions, including one deliberately out-of-scope negative.
 - Train/eval split: there is **no learned retriever training** in the sparse baseline; this toy set tests deterministic functionality only, **not production generalization**.
-- Reported metrics: `hit_at_k`, `mrr_at_k`, `ndcg_at_k`, `negative_abstention_accuracy` and median retrieval latency.
+- Reported metrics: `hit_at_k`, `mrr_at_k`, `ndcg_at_k` on answerable queries only; `negative_abstention_accuracy` on out-of-scope questions; and median retrieval latency. Sparse retrieval filters common stopwords but can still be fooled by shared domain terms.
 - Reproduce on the same machine and Python version; tiny latency readings vary with hardware. Evaluation output is generated from live execution, not manually fabricated.
 - Important: keyword overlap can retrieve irrelevant passages for out-of-domain questions; zero hits does not guarantee semantic unanswerability. Retrieval metrics do not measure generated answer faithfulness. LLM outputs are marked `generated_unverified`.
 - Add adversarial data, claim-level attribution, hybrid reranking, systematic latency percentiles, dataset versioning, privacy assessment and human evaluation before production.
