@@ -80,7 +80,7 @@ Hit@3, Recall@3, MRR@3 and nDCG@3 rank labelled document FAMILIES, deduplicating
 
 The experiments report retrieval and evidence routing, not generated answer truthfulness. Neither 100% toy ranking nor zero synthetic leakage would imply production readiness. Review the generated evaluation JSON in the Enterprise Document AI GitHub Actions artifact, especially negative-case failures. The test split is public and not independently blinded.
 
-See docs/THREAT_MODEL.md for security gaps, and docs/INTERVIEW_GUIDE.md for interview explanations.
+See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for security gaps, [docs/CHIEF_ENGINEER_REVIEW.md](docs/CHIEF_ENGINEER_REVIEW.md) for findings and acceptance checks, and [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) for interview explanations.
 
 ## Architecture
 
