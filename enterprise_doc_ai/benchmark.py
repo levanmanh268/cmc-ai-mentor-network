@@ -90,14 +90,16 @@ def main() -> None:
     parser.add_argument("--split", choices=["dev", "test", "all"], default="test")
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--suite", choices=["baseline", "stress"], default="baseline")
     args = parser.parse_args()
-    all_cases = load_cases()
+    corpus_file = "adversarial.jsonl" if args.suite == "stress" else "evaluation.jsonl"
+    all_cases = load_cases(Path(__file__).parent / "data" / corpus_file)
     subset = all_cases if args.split == "all" else [q for q in all_cases if q["split"] == args.split]
     index = EnterpriseIndex(load_corpus())
     methods = ["bm25", "char", "hybrid"] if args.method == "all" else [args.method]
     rows = [evaluate(index, subset, method=m, k=args.k) for m in methods]
     artifact = {
-        "fixture": "synthetic-public-2026-10-12", "split": args.split, "corpus_passages": len(index.passages),
+        "fixture": "synthetic-public-2026-10-12", "suite": args.suite, "split": args.split, "corpus_passages": len(index.passages),
         "limitations": "Synthetic, openly labelled data; no blind test; not production performance; latency hardware-specific.",
         "metrics": rows,
     }
