@@ -88,3 +88,5 @@ class CitationCheckedRAG:
                     "warning":"Citation membership verified; answer claims NOT independently fact-checked."}
         except (ValueError, KeyError, TypeError, json.JSONDecodeError):
             return {"status":"rejected_invalid_model_output", "citations":[], "llm_called":True}
+        except OSError:
+            return {"status":"model_unavailable", "citations":[], "llm_called":True}
