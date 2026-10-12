@@ -10,7 +10,7 @@ This report records **actual GitHub Actions outputs**, not predicted performance
 - GroundedQA: extractive passage, not an LLM-generated answer, with conservative IDF-weighted query-term coverage gate set to 0.55. No API/network/GPU.
 - Definition: Hit@3, MRR@3, nDCG@3 consider document-family relevance, NOT factual entailment or page-level answer precision.
 - Negative abstention: fraction of explicitly labelled negative questions where the QA component declined to provide an excerpt.
-- Access leakage count: how often any returned passage failed the constructed test Principal's role+tenant predicate. **The HTTP API is not authenticated.**
+- Access leakage count: how often any returned passage failed the constructed test Principal's role+tenant predicate. **At the time of these baseline results, the HTTP API was not authenticated.** The subsequent local-demo hardening uses HMAC-signed bearer tokens; this benchmark itself tests constructed Principal objects, not an enterprise IAM system.
 
 ## Recorded test metrics (16 positives, 8 negatives)
 
