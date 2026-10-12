@@ -35,6 +35,12 @@ class APITests(unittest.TestCase):
         self.assertEqual(r.json()["llm_calls"], 0)
         self.assertEqual(r.headers.get("Cache-Control"), "no-store")
 
+    def test_readiness_requires_valid_signer_config(self):
+        self.assertEqual(client.get("/ready").status_code, 200)
+        self.assertEqual(client.get("/ready").json()["production_ready"], False)
+        with patch.dict(os.environ, {SECRET_ENV: ""}):
+            self.assertEqual(client.get("/ready").status_code, 503)
+
     def test_all_data_routes_require_auth(self):
         for method, path, body in [
             ("post", "/ask", {"question": "ServiceDesk"}),
