@@ -226,7 +226,7 @@ CONTEXT:
         answer = completion.choices[0].message.content.strip()
         if not answer or len(answer) > 6000:
             raise ValueError("empty or oversized LLM response")
-        cited_ids = re.findall(r"\\[S([0-9]+)\\]", answer)
+        cited_ids = re.findall(r"\[S([0-9]+)\]", answer)
         # Citation membership only: cannot establish semantic entailment.
         # Reject missing or forged citation identifiers rather than labelling unverified text as grounded.
         if not cited_ids or any(int(i) < 1 or int(i) > len(results) for i in cited_ids):
