@@ -7,6 +7,8 @@
 
 > 🔬 **Technical extension (2026):** [C-Agent Capability Lab](cagent_lab/README.md) explores BM25/TF-IDF retrieval, optional semantic embeddings, optional LLM generation, offline evaluation, a guarded tool router and FastAPI. Its small synthetic benchmark is a software-validation demonstration, not an enterprise accuracy claim.
 
+> **NEW independent AI engineering case study:** [Enterprise Document AI](enterprise_doc_ai/README.md) demonstrates permission-scoped RAG, BM25/character hybrid retrieval, document field extraction with provenance, 80 published synthetic QA cases, opt-in citation-checked LLM, approval-gated workflows and Linux/Windows regression CI. [Technical results](enterprise_doc_ai/docs/EVALUATION_REPORT.md). This is **not** CMC proprietary software and does not claim enterprise-level accuracy.
+
 > **Nhóm 6 · Môn Công nghệ phần mềm · CMC University**
 
 **CMC AI Mentor Network** là prototype hỗ trợ học tập AI cho sinh viên, kết hợp một trợ lý hỏi đáp có căn cứ theo tài liệu và hệ thống gợi ý mentor có thể giải thích được. Repository được tổ chức theo quy trình phát triển phần mềm có truy vết: **Issue → Branch → Commit → Pull Request → CI → Review → Merge**.
