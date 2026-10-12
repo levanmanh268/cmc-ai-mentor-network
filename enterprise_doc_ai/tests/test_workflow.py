@@ -6,7 +6,7 @@ class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.flow = ReviewWorkflow(EnterpriseIndex(load_corpus()))
         self.requester = Principal("alpha", frozenset({"sales"}), "sales-user")
-        self.approver = Principal("alpha", frozenset({"approver"}), "team-lead")
+        self.approver = Principal("alpha", frozenset({"approver", "sales"}), "team-lead")
 
     def test_segregation_of_duties(self):
         task = self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester)
