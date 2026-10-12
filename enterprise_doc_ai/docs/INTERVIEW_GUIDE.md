@@ -20,3 +20,8 @@ I built an independent, offline-first enterprise document AI prototype, focused 
 ## Demonstrate intellectual ownership
 
 Read and run every source module, reproduce the CI reports, then explain an observed failure and propose a measured change. The code was built with AI assistance; do not claim untested capabilities or take credit for work you cannot explain.
+
+11. Explain the evidence-gate tradeoff: test-set negative abstention improved while some answerable cases were refused. A cautious enterprise assistant must expose that precision/coverage compromise.
+12. If the LLM produces a made-up citation ID, the integration rejects its output. Why does valid citation membership still not guarantee factual correctness?
+
+Technical results and reproduction: docs/EVALUATION_REPORT.md.
