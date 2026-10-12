@@ -40,7 +40,7 @@ Chỉ sửa file liên quan issue. Trước commit:
 ```bash
 git status
 git diff
-python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+python -m py_compile app.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py
 python -m pytest -q
 ```
 

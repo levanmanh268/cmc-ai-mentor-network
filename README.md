@@ -188,7 +188,7 @@ Hệ thống tính hybrid score theo:
 Chạy toàn bộ kiểm tra local:
 
 ```bash
-python -m py_compile app.py llm_client.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+python -m py_compile app.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py
 python -m pytest -q
 ```
 
@@ -196,6 +196,12 @@ Chẩn đoán knowledge base:
 
 ```bash
 python ingest.py
+```
+
+Chẩn đoán chất lượng dữ liệu mentor (chạy offline):
+
+```bash
+python mentor_data_diagnostics.py
 ```
 
 GitHub Actions tự động chạy trên Pull Request và trên `main`:
@@ -214,6 +220,7 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
 ├── mentors_data.py            # Demo mentor dataset
+├── mentor_data_diagnostics.py # Offline mentor-data quality diagnostics
 ├── ingest.py                  # Knowledge-base diagnostics
 ├── knowledge_base/            # Markdown documents for RAG
 ├── tests/                     # Unit + smoke/regression tests
