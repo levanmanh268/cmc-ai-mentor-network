@@ -74,6 +74,41 @@ class PretrainingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_corpus(file)
 
+    def test_atomic_gradient_fail_closed(self):
+        model = BigramLM(5, seed=7)
+        before = [row[:] for row in model.weights]
+        invalid = [row[:] for row in model.gradient([0,3,4,1])]
+        cases = [invalid[:-1], [[0.0] * 5 for _ in range(4)] + [[0.0] * 4],
+                 [[float("nan")] + row[1:] for row in invalid]]
+        for gradients in cases:
+            with self.subTest(case=len(gradients)), self.assertRaises(ValueError):
+                model.step(gradients, 0.1)
+            self.assertEqual(model.weights, before)
+        with self.assertRaises(ValueError):
+            model.step(invalid, float("inf"))
+        self.assertEqual(model.weights, before)
+        with self.assertRaises(ValueError):
+            softmax([1.0, float("nan")])
+        with self.assertRaises(ValueError):
+            softmax([1.0, float("inf")])
+
+    def test_checkpoint_provenance_and_objective_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            train(folder, epochs=1)
+            checkpoint = Path(folder)/"tiny_pretrained.json"
+            original = json.loads(checkpoint.read_text(encoding="utf-8"))
+            for field, invalid in [("objective", "other_loss"),
+                                   ("train_corpus_sha256", "not-a-hash"),
+                                   ("seed", True)]:
+                with self.subTest(field=field):
+                    changed = {**original, field: invalid}
+                    checkpoint.write_text(json.dumps(changed), encoding="utf-8")
+                    with self.assertRaises(ValueError):
+                        load_checkpoint(checkpoint)
+            checkpoint.write_text(json.dumps(original), encoding="utf-8")
+            model, _, _ = load_checkpoint(checkpoint)
+            self.assertGreater(model.size, 4)
+
     def test_invalid_configuration_fails_closed(self):
         with self.assertRaises(ValueError):
             BigramLM(2)
