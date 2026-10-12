@@ -41,11 +41,12 @@ jobs:
         run: |
           python -m enterprise_doc_ai.benchmark --split dev --method all --output enterprise_doc_ai_dev.json
           python -m enterprise_doc_ai.benchmark --split test --method all --output enterprise_doc_ai_test.json
+          python -m enterprise_doc_ai.benchmark --suite stress --split test --method all --output enterprise_doc_ai_stress.json
       - name: Fail if simulated tenant/role exposure occurs
         shell: python
         run: |
           import json
-          for name in ("enterprise_doc_ai_dev.json", "enterprise_doc_ai_test.json"):
+          for name in ("enterprise_doc_ai_dev.json", "enterprise_doc_ai_test.json", "enterprise_doc_ai_stress.json"):
               report = json.load(open(name, encoding="utf-8"))
               for method in report["metrics"]:
                   assert method["access_leakage_count"] == 0, method
@@ -59,3 +60,4 @@ jobs:
           path: |
             enterprise_doc_ai_dev.json
             enterprise_doc_ai_test.json
+            enterprise_doc_ai_stress.json
