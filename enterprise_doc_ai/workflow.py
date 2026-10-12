@@ -1,13 +1,21 @@
-"""Auditable multi-step, approval-gated workflow simulator.
+"""Deterministic human-approval workflow simulator with bounded in-memory state.
 
-This intentionally NEVER sends messages, performs payments, changes an HR record,
-or reaches an external API. 'Approved' means ready for human execution.
+Never executes outbound API calls, payments, email or record mutations.
+Approvals are atomic within one process; restart loses ALL state. This is not
+a durable enterprise workflow or a replacement for real identity and auditing.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-import hashlib
-import itertools
-from .engine import EnterpriseIndex, Principal, GroundedQA, UNTRUSTED_INSTRUCTION
+from datetime import date
+from threading import RLock
+import secrets
+import time
+
+from .engine import EnterpriseIndex, Principal, GroundedQA
+
+MAX_TASKS = 200
+TASK_TTL_SECONDS = 3600
 
 @dataclass
 class Task:
@@ -20,58 +28,104 @@ class Task:
     draft: str
     approver: str | None = None
     history: list[dict] = field(default_factory=list)
+    created_at: float = field(default_factory=time.time)
 
 class ReviewWorkflow:
     def __init__(self, index: EnterpriseIndex):
         self.index = index
         self.tasks: dict[str, Task] = {}
-        self._sequence = itertools.count(1)
+        self._lock = RLock()
 
-    def prepare(self, question: str, principal: Principal, as_of: str = "2026-10-12") -> dict:
-        # Workflow cannot bypass the grounded QA evidence/abstention gate.
-        evidence = GroundedQA(self.index).answer(question, principal, as_of=as_of)
-        if evidence["status"] != "evidence_found":
-            return {"status": "blocked", "reason": evidence["reason"], "citations": []}
-        hits = self.index.search(question, principal, as_of=as_of, k=3)
-        first = hits[0].passage
-        request_id = next(self._sequence)
-        task_id = "review-" + hashlib.sha256(f"{principal.tenant}|{principal.subject}|{request_id}".encode()).hexdigest()[:14]
-        draft = (f"DRAFT FOR HUMAN REVIEW ONLY\nRequest: {question[:500]}\n"
-                 f"Evidence: {first.text[:500]}\nSource: {first.source} page {first.page}\n"
-                 "No external action has been executed.")
-        task = Task(task_id, principal.subject, principal.tenant, question, "pending_approval",
-                    [h.to_dict() for h in hits], draft)
-        task.history.append({"step": "retrieve", "sources": [h.passage.uid for h in hits]})
-        task.history.append({"step": "prepare_draft", "approval_required": True})
-        self.tasks[task_id] = task
-        return self.inspect(task_id, principal)
+    def _prune(self, now: float) -> None:
+        for key in list(self.tasks):
+            if now - self.tasks[key].created_at >= TASK_TTL_SECONDS:
+                del self.tasks[key]
 
     def _may_read_evidence(self, task: Task, principal: Principal) -> bool:
-        docs = {p.uid: p for p in self.index.passages}
-        return all(c["id"] in docs and docs[c["id"]].accessible(principal) for c in task.citations)
+        """Re-check active permissions/versions when reading or approving a task.
+
+        This is still a synthetic in-process policy, NOT real IAM/DB row security.
+        An old document that has since been replaced does not reappear.
+        """
+        current = date.today().isoformat()
+        visible = {self.index.passages[i].uid for i in self.index._visible(principal, current)}
+        return bool(task.citations) and all(c["id"] in visible for c in task.citations)
+
+    def prepare(self, question: str, principal: Principal, as_of: str | None = None) -> dict:
+        # Use current active policy for approval workflows, no caller-controlled historical time.
+        today = date.today().isoformat()
+        if as_of is not None and as_of != today:
+            return {"status": "blocked", "reason": "workflow_requires_current_policy", "citations": []}
+        gate = GroundedQA(self.index).answer(question, principal, as_of=today)
+        if gate["status"] != "evidence_found":
+            return {"status": "blocked", "reason": gate["reason"], "citations": []}
+        hits = self.index.search(question, principal, as_of=today, k=3)
+        top = hits[0].passage
+        if len(question) > 1000:
+            return {"status": "blocked", "reason": "question_too_long", "citations": []}
+        with self._lock:
+            now = time.time()
+            self._prune(now)
+            if len(self.tasks) >= MAX_TASKS:
+                return {"status": "blocked", "reason": "workflow_capacity_exceeded", "citations": []}
+            task_id = "review-" + secrets.token_urlsafe(18)
+            task = Task(
+                task_id=task_id,
+                requester=principal.subject,
+                tenant=principal.tenant,
+                question=question,
+                state="pending_approval",
+                citations=[h.to_dict() for h in hits],
+                draft=(
+                    f"DRAFT FOR HUMAN REVIEW ONLY\nRequest: {question[:500]}\n"
+                    f"Evidence: {top.text[:500]}\nSource: {top.source} page {top.page}\n"
+                    "No external action has been executed."
+                ),
+                created_at=now,
+            )
+            task.history.append({"step": "retrieve", "sources": [h.passage.uid for h in hits]})
+            task.history.append({"step": "prepare_draft", "approval_required": True})
+            self.tasks[task_id] = task
+            return self._serialize(task)
+
+    @staticmethod
+    def _serialize(task: Task) -> dict:
+        return {
+            "status": task.state,
+            "task_id": task.task_id,
+            "draft": task.draft,
+            "citations": list(task.citations),
+            "history": list(task.history),
+            "external_actions_executed": 0,
+        }
 
     def approve(self, task_id: str, principal: Principal) -> dict:
-        task = self.tasks.get(task_id)
-        if not task or task.tenant != principal.tenant:
-            return {"status": "not_found"}
-        if task.state != "pending_approval":
-            return {"status": "rejected", "reason": "invalid_state"}
-        if ("approver" not in principal.roles or principal.subject == task.requester
-                or not self._may_read_evidence(task, principal)):
-            return {"status": "rejected", "reason": "independent_approver_required"}
-        task.state = "approved_for_manual_execution"
-        task.approver = principal.subject
-        task.history.append({"step": "human_approval", "by": principal.subject})
-        return self.inspect(task_id, principal)
+        with self._lock:
+            self._prune(time.time())
+            task = self.tasks.get(task_id)
+            if task is None or task.tenant != principal.tenant:
+                return {"status": "not_found"}
+            if task.state != "pending_approval":
+                return {"status": "rejected", "reason": "invalid_state"}
+            if (
+                "approver" not in principal.roles
+                or principal.subject == task.requester
+                or not self._may_read_evidence(task, principal)
+            ):
+                return {"status": "rejected", "reason": "independent_authorized_approver_required"}
+            task.state = "approved_for_manual_execution"
+            task.approver = principal.subject
+            task.history.append({"step": "human_approval", "by": principal.subject})
+            return self._serialize(task)
 
     def inspect(self, task_id: str, principal: Principal) -> dict:
-        task = self.tasks.get(task_id)
-        if not task or task.tenant != principal.tenant:
-            return {"status": "not_found"}
-        if not self._may_read_evidence(task, principal):
-            return {"status": "not_found"}
-        if principal.subject not in {task.requester, task.approver} and "approver" not in principal.roles:
-            return {"status": "not_found"}
-        return {"status": task.state, "task_id": task.task_id, "draft": task.draft,
-                "citations": task.citations, "history": list(task.history),
-                "external_actions_executed": 0}
+        with self._lock:
+            self._prune(time.time())
+            task = self.tasks.get(task_id)
+            if task is None or task.tenant != principal.tenant:
+                return {"status": "not_found"}
+            if not self._may_read_evidence(task, principal):
+                return {"status": "not_found"}
+            if principal.subject not in {task.requester, task.approver} and "approver" not in principal.roles:
+                return {"status": "not_found"}
+            return self._serialize(task)

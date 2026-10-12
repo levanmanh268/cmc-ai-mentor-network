@@ -28,6 +28,20 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(report["answerable_cases"], 1)
         self.assertEqual(report["negative_cases"], 1)
 
+
+    def test_adversarial_suite_access_and_metric_ranges(self):
+        from pathlib import Path
+        challenge = load_cases(Path(__file__).parents[1] / "data" / "adversarial.jsonl")
+        self.assertEqual(len(challenge), 28)
+        self.assertEqual(sum(bool(c["gold_families"]) for c in challenge), 10)
+        for method in ("bm25", "char", "hybrid"):
+            report = evaluate(self.idx, challenge, method, k=3)
+            self.assertEqual(report["access_leakage_count"], 0)
+            self.assertEqual(report["future_document_exposure_count"], 0)
+            self.assertEqual(report["negative_cases"], 18)
+            self.assertTrue(0 <= report["negative_abstention_rate"] <= 1)
+            self.assertTrue(0 <= report["hit_at_k"] <= 1)
+
     def test_empty_eval_error(self):
         with self.assertRaises(ValueError): evaluate(self.idx, [])
 

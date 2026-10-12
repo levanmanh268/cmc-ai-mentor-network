@@ -30,5 +30,47 @@ class WorkflowTests(unittest.TestCase):
         it = Principal("alpha", frozenset({"it"}), "it-user")
         self.assertEqual(self.flow.prepare("mẫu nhận diện prompt injection", it)["status"], "blocked")
 
+
+    def test_approval_is_atomic_under_concurrency(self):
+        from concurrent.futures import ThreadPoolExecutor
+        task = self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester)
+        self.assertEqual(task["status"], "pending_approval")
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(
+                lambda _: self.flow.approve(task["task_id"], self.approver), range(16)
+            ))
+        self.assertEqual(sum(r["status"] == "approved_for_manual_execution" for r in results), 1)
+        record = self.flow.inspect(task["task_id"], self.approver)
+        self.assertEqual(sum(h["step"] == "human_approval" for h in record["history"]), 1)
+
+    def test_task_expiry_fails_closed(self):
+        from unittest.mock import patch
+        task = self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester)
+        self.assertEqual(task["status"], "pending_approval")
+        with patch("enterprise_doc_ai.workflow.TASK_TTL_SECONDS", 0):
+            self.assertEqual(self.flow.approve(task["task_id"], self.approver)["status"], "not_found")
+            self.assertEqual(self.flow.inspect(task["task_id"], self.requester)["status"], "not_found")
+
+    def test_capacity_control(self):
+        from unittest.mock import patch
+        with patch("enterprise_doc_ai.workflow.MAX_TASKS", 0):
+            result = self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester)
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["reason"], "workflow_capacity_exceeded")
+
+    def test_stale_evidence_cannot_be_approved(self):
+        from unittest.mock import patch
+        task = self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester)
+        self.assertEqual(task["status"], "pending_approval")
+        with patch.object(self.flow.index, "_visible", return_value=[]):
+            self.assertEqual(self.flow.approve(task["task_id"], self.approver)["status"], "rejected")
+            self.assertEqual(self.flow.inspect(task["task_id"], self.requester)["status"], "not_found")
+
+    def test_historical_policy_blocked_for_actions(self):
+        self.assertEqual(
+            self.flow.prepare("Duyệt chiết khấu hơn mười phần trăm?", self.requester, as_of="2025-01-01")["reason"],
+            "workflow_requires_current_policy",
+        )
+
 if __name__ == "__main__":
     unittest.main()

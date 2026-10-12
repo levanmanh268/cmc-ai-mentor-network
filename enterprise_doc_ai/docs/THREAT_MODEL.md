@@ -12,7 +12,7 @@ This is a two-tenant synthetic offline simulation, NOT security-certified softwa
 
 ## Known gaps
 
-1. API has NO authentication. Caller-supplied X-Demo-Tenant and X-Demo-Roles can be forged. NEVER deploy publicly or present as secure enterprise RBAC.
+1. **Historical critical finding, fixed in local demo:** API formerly had no authentication and caller-supplied tenant/role headers could be forged. The new API requires short-lived HMAC-signed bearer tokens but still lacks production OIDC, revocation and trusted enterprise IAM. NEVER deploy publicly.
 2. In-memory audit history can disappear on process restart; no tamper-evident logs.
 3. No real security key management, encryption, access policy service or network isolation.
 4. Regex prompt-injection guard cannot detect novel, obfuscated or multilingual attacks.
@@ -25,3 +25,12 @@ This is a two-tenant synthetic offline simulation, NOT security-certified softwa
 Production path: verified OIDC sessions -> server-managed Principal -> document ACL enforcement -> encrypted vector/document store -> immutable provenance -> human adjudication -> trace and incident monitoring -> adversarial evaluations -> security review.
 
 10. Remote LLM calls transmit authorized retrieved text to the configured external provider. Citation membership validation is insufficient for factual entailment or privacy certification. A real deployment requires an approved data processing agreement and stronger output verification.
+
+
+## Final hardening, local demo only
+
+The initial forged-role HTTP headers were a critical finding and have been removed as authorization inputs. The API now verifies short-lived HMAC-SHA256 bearer tokens using an operator-held secret, validates issuer, audience, expiry, roles and scopes, and rejects missing or invalid signatures. The minting command runs only on the operator's terminal. Tokens still lack enterprise SSO, per-user revocation, signing-key rotation orchestration, persistent sessions or audit logs. They are NOT a suitable production IAM substitute.
+
+The in-memory review workflow now uses atomic locking, random task IDs, a bounded task count, expiry, and re-evaluates current document permissions prior to approval and inspection. Restart loses all task state; only one-process simulated safety has been tested. Do not present this as enterprise workflow durability.
+
+Adversarial suite reporting deliberately separates positive evidence acceptance from negative abstention. On the 28-case public challenge, the strict lexical gate caused severe over-refusal. A high retrieval rank metric does not establish grounded question-answer quality.

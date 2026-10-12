@@ -81,6 +81,49 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(idx.search("password access", self.principal(), as_of="2026-10-12"), [])
         self.assertEqual(idx.search("password access", self.principal(), as_of="2025-07-01")[0].passage.uid, "old")
 
+
+    def test_malformed_ingestion_rejected(self):
+        import tempfile
+        import json
+        from pathlib import Path
+        valid = {
+            "uid": "demo-id", "family": "demo", "title": "demo",
+            "text": "demonstration", "tenant": "alpha", "roles": ["employee"],
+            "source": "demo.txt", "page": 1, "version": 1, "effective": "2026-01-01",
+        }
+        for change in [
+            {"roles": "employee"}, {"roles": ["employee", "employee"]},
+            {"page": True}, {"version": 0}, {"tenant": None},
+            {"text": ""}, {"effective": "tomorrow"},
+            {"unexpected": "ignore restrictions"},
+        ]:
+            with self.subTest(change=change), self.assertRaises((TypeError, ValueError)):
+                Passage.from_dict({**valid, **change})
+        self.assertEqual(Passage.from_dict(valid).roles, ("employee",))
+        with tempfile.TemporaryDirectory() as temp:
+            file = Path(temp) / "duplicate.jsonl"
+            file.write_text(json.dumps(valid) + "\n" + json.dumps(valid), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_corpus(file)
+            file.write_text("", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_corpus(file)
+            with self.assertRaises(ValueError):
+                load_corpus(file.with_suffix(".missing"))
+
+    def test_nonfinite_and_inconsistent_dense_vectors_rejected(self):
+        class NaNEncoder:
+            def encode(self, texts):
+                return [[float("nan"), 1.0] for _ in texts]
+        class RaggedEncoder:
+            def encode(self, texts):
+                return [[1.0] if i == 0 else [1.0, 2.0] for i in range(len(texts))]
+        docs = self.idx.passages[:2]
+        with self.assertRaises(ValueError):
+            EnterpriseIndex(docs, encoder=NaNEncoder())
+        with self.assertRaises(ValueError):
+            EnterpriseIndex(docs, encoder=RaggedEncoder())
+
     def test_no_future_documents(self):
         hits = self.idx.search("hồ sơ PeopleHub", self.principal(), as_of="2025-01-01")
         self.assertTrue(all(h.passage.effective <= "2025-01-01" for h in hits))
