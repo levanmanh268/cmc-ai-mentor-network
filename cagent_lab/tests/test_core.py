@@ -50,7 +50,9 @@ class CoreTests(unittest.TestCase):
     def test_evaluator(self):
         cases = [{"id": "1", "question": "portal", "relevant_sources": ["a"]}, {"id": "2", "question": "unseenegg", "relevant_sources": []}]
         result = evaluate(BM25Index(DOCS), cases, 2)
-        self.assertEqual(result["hit_at_k"], 0.5)
+        self.assertEqual(result["hit_at_k"], 1.0)
+        self.assertEqual(result["answerable_cases"], 1)
+        self.assertEqual(result["negative_cases"], 1)
         self.assertEqual(result["negative_abstention_accuracy"], 1.0)
 
     def test_document_loader(self):
