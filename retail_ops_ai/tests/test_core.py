@@ -70,6 +70,31 @@ class RetailTests(unittest.TestCase):
         self.assertEqual(draft["external_mutations"],0)
         self.assertTrue(draft["requires_manager_review"])
 
+    def test_irrelevant_or_sensitive_question_requires_evidence(self):
+        cases=["Giá Bitcoin hôm nay là bao nhiêu?",
+               "Mật khẩu tài khoản thu ngân cửa hàng là gì?"]
+        for question in cases:
+            with self.subTest(question=question):
+                result=self.svc.policy_search(self.staff,question)
+                self.assertEqual(result["status"],"abstained")
+                self.assertEqual(result["evidence"],[])
+
+    def test_manager_only_sales_report_is_not_staff_evidence(self):
+        response=self.svc.policy_search(self.staff,"Ai xem được báo cáo chênh lệch doanh thu ca?")
+        self.assertEqual(response["status"],"abstained")
+        self.assertEqual(response["reason"],"manager_only_report")
+        self.assertFalse(response["evidence"])
+
+    def test_foreign_store_question_abstains_even_if_shared_terms_overlap(self):
+        result=self.svc.policy_search(self.staff,"Hướng dẫn vệ sinh tủ mát HN02 tại HN01")
+        self.assertEqual(result["status"],"abstained")
+        self.assertEqual(result["reason"],"ambiguous_or_foreign_store")
+        self.assertFalse(result["evidence"])
+
+    def test_handover_rejects_string_instead_of_issue_list(self):
+        with self.assertRaises(ValueError):
+            self.svc.handover_draft(self.staff,"không phải danh sách")
+
     def test_evaluation_access_isolation(self):
         from retail_ops_ai.evaluate import evaluate
         report=evaluate()

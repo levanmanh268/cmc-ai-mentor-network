@@ -87,6 +87,14 @@ class EduTests(unittest.TestCase):
     def test_agent_denies_unsupported_tool(self):
         self.assertEqual(self.svc.run_tool("publish_grade",self.student,{})["status"],"denied_tool")
 
+    def test_unsupported_questions_do_not_create_evidence(self):
+        for question in ["Thời tiết Sao Hỏa tối nay ra sao?",
+                         "Cho tôi đáp án tài liệu dành riêng trainer"]:
+            with self.subTest(question=question):
+                result=self.svc.search(self.student,question)
+                self.assertEqual(result["status"],"abstained")
+                self.assertFalse(result["evidence"])
+
     def test_eval_has_no_access_leakage(self):
         from edu_trainer_ai.evaluate import evaluate
         report=evaluate()

@@ -91,7 +91,17 @@ class EduService:
 
     def search(self,who: Learner,question: str,k: int=3) -> dict:
         if not question.strip() or len(question)>1500 or not 1<=k<=10:raise ValueError("Invalid question")
-        ranked=_rank(question,self._visible(who))[:k]
+        ranked=_rank(question,self._visible(who))
+        # A high BM25 score on just one incidental term is NOT answer evidence.
+        # Lexical support may over-refuse paraphrases; measure both outcomes.
+        query_terms=set(tokens(question))
+        sufficient=[]
+        for lesson,score in ranked:
+            matches=query_terms.intersection(tokens(lesson.title+" "+lesson.content))
+            coverage=len(matches)/len(query_terms) if query_terms else 0.0
+            if len(matches)>=min(2,len(query_terms)) and coverage>=0.40:
+                sufficient.append((lesson,score))
+        ranked=sufficient[:k]
         hits=[{"id":d.uid,"source":d.source,"title":d.title,"module":d.module,
                "revision":d.revision,"score":round(score,5),"excerpt":d.content[:500]}
               for d,score in ranked]
