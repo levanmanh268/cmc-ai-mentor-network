@@ -15,6 +15,7 @@ Audited modules: `model_pretraining_lab`, `model_posttraining_lab`, `cagent_lab`
 | Training stability | SFT/DPO could accept NaN or invalid hyperparameters and invalid prompt sizes | Validate finite LR/beta, integer epoch counts, text bounds; numerical tests |
 | Dense retrieval | C-Agent embedding vectors could have missing/ragged dimensions and silently score truncated vectors | Count/dimension/zero-norm/nonfinite fail-closed validation, regression tests |
 | Enterprise RAG | Dense query encoder could emit NaN, Inf, missing or malformed vector | Validate query vector before cosine score, regression tests on authorized passages |
+| Retail/Education tool APIs | A tool with valid allowlisted name could crash on `null`, list, string or oversized object payload | Explicit small-object validation and graceful `invalid_input` response; input-fuzz regression tests |
 
 ## Measured limitations that remain
 
