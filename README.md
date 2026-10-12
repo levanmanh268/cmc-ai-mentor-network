@@ -5,6 +5,8 @@
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> 🚀 **Featured AI Engineer Portfolio (2026):** [Enterprise Document AI](enterprise_doc_ai/README.md). Independent case study implementing access-scoped enterprise retrieval, document versioning, BM25 and hybrid RRF, invoice field extraction with provenance, review-gated workflows, optional LLM generation, FastAPI, and an **80-question transparent synthetic evaluation**. [Runnable tests and evaluation CI](.github/workflows/enterprise-doc-ai.yml). Not affiliated with the proprietary CMC C-Agent implementation.
+
 > 🔬 **Technical extension (2026):** [C-Agent Capability Lab](cagent_lab/README.md) explores BM25/TF-IDF retrieval, optional semantic embeddings, optional LLM generation, offline evaluation, a guarded tool router and FastAPI. Its small synthetic benchmark is a software-validation demonstration, not an enterprise accuracy claim.
 
 > **NEW independent AI engineering case study:** [Enterprise Document AI](enterprise_doc_ai/README.md) demonstrates permission-scoped RAG, BM25/character hybrid retrieval, document field extraction with provenance, 80 published synthetic QA cases, opt-in citation-checked LLM, approval-gated workflows and Linux/Windows regression CI. [Technical results](enterprise_doc_ai/docs/EVALUATION_REPORT.md). This is **not** CMC proprietary software and does not claim enterprise-level accuracy.
