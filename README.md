@@ -8,6 +8,10 @@
 > 🏪 **RetailOps AI Lab:** [synthetic convenience-store operations](retail_ops_ai/README.md) with versioned store-policy retrieval, price and inventory tools, source-linked receipt extraction, FastAPI and CI.
 > 🎓 **EduTrainer AI Lab:** [synthetic education AI and trainer evaluation](edu_trainer_ai/README.md) with course RAG, quiz bank, rubric review, allowlisted tools, optional mocked LLM and CI.
 > **Both are independently developed portfolio case studies, NOT official 7-Eleven or FUNiX products or employment deliverables.**
+> 🔬 **Model training capability labs (independent portfolios; NOT FUNiX deliverables):**
+> [Pre-training from scratch](model_pretraining_lab/README.md): split-safe causal bigram language modeling, cross-entropy/SGD, numerical gradient tests.
+> [Post-training SFT + DPO](model_posttraining_lab/README.md): response-only supervised fine-tuning, frozen reference, analytical preference-optimization gradients and transparent validation failures.
+> Both use fictional datasets, run offline on CPU, and demonstrate training mechanics rather than large-scale LLM capability.
 > 🚀 **Featured AI Engineer Portfolio (2026):** [Enterprise Document AI](enterprise_doc_ai/README.md). Independent case study implementing access-scoped enterprise retrieval, document versioning, BM25 and hybrid RRF, invoice field extraction with provenance, review-gated workflows, optional LLM generation, FastAPI, and an **80-question transparent synthetic evaluation**. [Runnable tests and evaluation CI](.github/workflows/enterprise-doc-ai.yml). Not affiliated with the proprietary CMC C-Agent implementation.
 
 > 🔬 **Technical extension (2026):** [C-Agent Capability Lab](cagent_lab/README.md) explores BM25/TF-IDF retrieval, optional semantic embeddings, optional LLM generation, offline evaluation, a guarded tool router and FastAPI. Its small synthetic benchmark is a software-validation demonstration, not an enterprise accuracy claim.
