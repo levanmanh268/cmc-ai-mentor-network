@@ -50,6 +50,14 @@ class LLMTests(unittest.TestCase):
         result = CitationCheckedRAG(self.index, client).ask("Secret Manager lưu API key ra sao?", self.principal)
         self.assertEqual(result["status"], "abstained")
 
+    def test_provider_network_failure_is_safe(self):
+        class BrokenModel:
+            def complete(self, messages):
+                raise TimeoutError("network unavailable")
+        result = CitationCheckedRAG(self.index, BrokenModel()).ask("Secret Manager lưu API key ra sao?", self.principal)
+        self.assertEqual(result["status"], "model_unavailable")
+        self.assertEqual(result["citations"], [])
+
     def test_remote_provider_is_opt_in(self):
         with self.assertRaises(ValueError):
             OpenAIChatClient(api_key="dummy", endpoint="http://localhost:9999/unsafe")
