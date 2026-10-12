@@ -113,7 +113,17 @@ class EngineTests(unittest.TestCase):
 
     def test_dense_query_poisoning_rejected(self):
         def corpus():
-            return self.idx.passages[:2]
+            rows = [
+                {"uid": "qa-1", "family": "a", "title": "employee alpha",
+                 "text": "employee alpha onboarding", "tenant": "alpha",
+                 "roles": ["employee"], "source": "qa", "page": 1,
+                 "version": 1, "effective": "2026-01-01"},
+                {"uid": "qa-2", "family": "b", "title": "employee alpha",
+                 "text": "employee alpha security", "tenant": "alpha",
+                 "roles": ["employee"], "source": "qa", "page": 1,
+                 "version": 1, "effective": "2026-01-01"},
+            ]
+            return [Passage.from_dict(x) for x in rows]
         class QueryEncoder:
             def __init__(self, bad):
                 self.bad = bad
