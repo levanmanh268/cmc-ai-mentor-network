@@ -136,7 +136,9 @@ class EnterpriseIndex:
 
     def _visible(self, principal: Principal, as_of: str) -> list[int]:
         date.fromisoformat(as_of)
-        eligible = [i for i, p in enumerate(self.passages) if p.accessible(principal) and p.effective <= as_of]
+        # Select active version BEFORE permission filtering: a revoked policy
+        # must not make an outdated, more permissive version reappear.
+        eligible = [i for i, p in enumerate(self.passages) if p.tenant == principal.tenant and p.effective <= as_of]
         latest: dict[tuple[str, str], tuple[str, int]] = {}
         for i in eligible:
             p = self.passages[i]
@@ -145,7 +147,8 @@ class EnterpriseIndex:
         # All pages from active version remain independently citable.
         return [i for i in eligible if
                 (self.passages[i].effective, self.passages[i].version) ==
-                latest[(self.passages[i].tenant, self.passages[i].family)]]
+                latest[(self.passages[i].tenant, self.passages[i].family)]
+                and self.passages[i].accessible(principal)]
 
     @staticmethod
     def _bm25(query: list[str], documents: list[Counter], k1: float = 1.5, b: float = 0.75) -> list[float]:
