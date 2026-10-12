@@ -79,7 +79,7 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
           LLM client được app.py tạo một lần rồi inject vào các engine.
 ```
 
-Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu kiến trúc đầy đủ: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu chuẩn: [Kiến trúc hệ thống](docs/architecture.md) và [Yêu cầu phi chức năng NFR-01 đến NFR-10](docs/non-functional-requirements.md). Các tài liệu phân biệt rõ chức năng đang có và tính năng đề xuất.
 
 ## Cách chạy nhanh
 
@@ -157,7 +157,7 @@ Mặc định Streamlit mở tại `http://localhost:8501`.
 
 ### Hồ sơ cá nhân
 
-Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching.
+Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching, **chỉ lưu trong phiên Streamlit**, không có đăng nhập hoặc cơ sở dữ liệu người dùng.
 
 ### Grounded AI Assistant
 
@@ -211,13 +211,13 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ```text
 .
 ├── app.py                     # Streamlit presentation layer
-├── rag_engine.py              # Retrieval + grounded answering
+├── llm_client.py              # Optional Groq infrastructure\n├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
-├── mentors_data.py            # Demo mentor dataset
+├── mentors_data.py            # Validated in-memory MentorRepository + dataset
 ├── ingest.py                  # Knowledge-base diagnostics
 ├── knowledge_base/            # Markdown documents for RAG
 ├── tests/                     # Unit + smoke/regression tests
-├── docs/                      # Project/process documentation
+├── docs/                      # Canonical architecture.md + NFRs + process docs
 ├── .github/
 │   ├── ISSUE_TEMPLATE/        # Customer request + bug report
 │   ├── workflows/ci.yml       # CI quality gate
@@ -282,7 +282,7 @@ Grounded AI Assistant áp dụng các cơ chế phòng thủ cơ bản:
 - temperature thấp;
 - fallback khi API lỗi hoặc thiếu key.
 
-Đây là prototype học tập, vì vậy người dùng vẫn nên kiểm chứng thông tin quan trọng bằng nguồn gốc.
+Đây là prototype học tập, vì vậy người dùng vẫn nên kiểm chứng thông tin quan trọng bằng nguồn gốc. **Chưa có kiểm định tự động citation/claim-level faithfulness**; các nguồn hiển thị là tài liệu được retrieval lấy ra, không phải chứng nhận mọi khẳng định đúng. Khi cấu hình Groq, nội dung chat và hồ sơ dùng để giải thích matching có thể được gửi tới dịch vụ bên ngoài; không nhập dữ liệu riêng tư khi chưa được khách hàng phê duyệt xử lý.
 
 ## Nhóm phát triển
 
