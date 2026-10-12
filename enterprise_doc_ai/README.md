@@ -42,6 +42,18 @@ Visit http://127.0.0.1:8000/docs. Operations: /health, /ask, /invoice/extract, /
 
 IMPORTANT: X-Demo-Tenant, X-Demo-Roles, X-Demo-Subject are untrusted caller-supplied TEST headers. No real login is implemented. Do not expose this demo to a public network or use real confidential information.
 
+## Opt-in LLM generation with citation membership checking
+
+The module enterprise_doc_ai/llm.py provides OpenAIChatClient and CitationCheckedRAG. It first applies the same tenant/role and weak-evidence gates as offline retrieval, then sends only allowed retrieved evidence to the external model. It rejects responses claiming citation IDs outside that evidence set. It deliberately reports status generated_unverified, because citation membership is NOT proof that the answer is true. Network/model failures fail closed. Mock-LLM integration tests run without an API key; actual remote calls require OPENAI_API_KEY.
+
+To try it only with explicitly permitted synthetic data and a configured API key:
+
+    python -c "from enterprise_doc_ai.engine import *; from enterprise_doc_ai.llm import *; x=EnterpriseIndex(load_corpus()); print(CitationCheckedRAG(x,OpenAIChatClient()).ask('lưu trữ API key Secret Manager', Principal('alpha',frozenset({'employee'}))))"
+
+Do not send sensitive real documents to an external service without data-processing authorization.
+
+Read the [reproducible evaluation report](docs/EVALUATION_REPORT.md) for measured results and failure analysis.
+
 ## Optional true semantic embedding and OCR adapters
 
     python -m pip install -r enterprise_doc_ai/requirements-semantic.txt
