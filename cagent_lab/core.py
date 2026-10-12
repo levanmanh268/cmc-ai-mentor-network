@@ -124,14 +124,29 @@ class DenseIndex:
     def __init__(self, documents: list[Document], encoder: Encoder):
         self.documents = list(documents)
         self.encoder = encoder
-        self.vectors = self._normalized(encoder.encode([d.text for d in documents]))
+        encoded = encoder.encode([d.text for d in documents]) if documents else []
+        if len(encoded) != len(self.documents):
+            raise ValueError("Embedding count does not match document count")
+        self.vectors = self._normalized(encoded)
 
     @staticmethod
     def _normalized(vectors: list[list[float]]) -> list[list[float]]:
         out = []
+        dimension = None
         for vec in vectors:
-            norm = math.sqrt(sum(float(x) ** 2 for x in vec)) or 1.0
-            out.append([float(x) / norm for x in vec])
+            if not isinstance(vec, (list, tuple)) or not vec:
+                raise ValueError("Empty or malformed embedding")
+            values = [float(v) for v in vec]
+            if any(not math.isfinite(v) for v in values):
+                raise ValueError("Nonfinite embedding")
+            if dimension is None:
+                dimension = len(values)
+            if len(values) != dimension:
+                raise ValueError("Ragged embedding dimensions")
+            norm = math.hypot(*values)
+            if not math.isfinite(norm) or norm == 0:
+                raise ValueError("Invalid zero-norm or overflowing embedding")
+            out.append([v / norm for v in values])
         return out
 
     def search(self, question: str, k: int = 3) -> list[Hit]:
