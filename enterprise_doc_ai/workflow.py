@@ -44,13 +44,18 @@ class ReviewWorkflow:
         self.tasks[task_id] = task
         return self.inspect(task_id, principal)
 
+    def _may_read_evidence(self, task: Task, principal: Principal) -> bool:
+        docs = {p.uid: p for p in self.index.passages}
+        return all(c["id"] in docs and docs[c["id"]].accessible(principal) for c in task.citations)
+
     def approve(self, task_id: str, principal: Principal) -> dict:
         task = self.tasks.get(task_id)
         if not task or task.tenant != principal.tenant:
             return {"status": "not_found"}
         if task.state != "pending_approval":
             return {"status": "rejected", "reason": "invalid_state"}
-        if "approver" not in principal.roles or principal.subject == task.requester:
+        if ("approver" not in principal.roles or principal.subject == task.requester
+                or not self._may_read_evidence(task, principal)):
             return {"status": "rejected", "reason": "independent_approver_required"}
         task.state = "approved_for_manual_execution"
         task.approver = principal.subject
@@ -60,6 +65,8 @@ class ReviewWorkflow:
     def inspect(self, task_id: str, principal: Principal) -> dict:
         task = self.tasks.get(task_id)
         if not task or task.tenant != principal.tenant:
+            return {"status": "not_found"}
+        if not self._may_read_evidence(task, principal):
             return {"status": "not_found"}
         if principal.subject not in {task.requester, task.approver} and "approver" not in principal.roles:
             return {"status": "not_found"}
