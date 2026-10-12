@@ -126,6 +126,15 @@ class RetailService:
 
     def policy_search(self, who: Principal, question: str, as_of: str="2026-10-12", k: int=3) -> dict:
         if not question.strip() or len(question)>1000 or not 1<=k<=10: raise ValueError("Invalid query")
+        # Sensitive credential requests and cross-store ambiguous questions
+        # must not fall through to loosely matched operational SOPs.
+        if re.search(r"(?i)(mật khẩu|password|\\botp\\b|api[ -]?key|access[ -]?token)", question):
+            return {"status":"abstained","evidence":[],"reason":"sensitive_credentials_not_in_knowledge_base",
+                    "mode":"extractive_search_not_llm_answer"}
+        requested_stores=set(re.findall(r"(?i)\\bHN[0-9]{2}\\b",question))
+        if requested_stores and requested_stores!={who.store}:
+            return {"status":"abstained","evidence":[],"reason":"ambiguous_or_foreign_store",
+                    "mode":"extractive_search_not_llm_answer"}
         docs=self._visible(who,as_of)
         scores=_bm25(tokenize(question),[tokenize(d.title+" "+d.body) for d in docs])
         ranked=sorted(((docs[i],score) for i,score in enumerate(scores) if score>0),key=lambda x:(-x[1],x[0].uid))
@@ -136,7 +145,7 @@ class RetailService:
         for doc,score in ranked:
             matched=query_terms.intersection(tokenize(doc.title+" "+doc.body))
             coverage=len(matched)/len(query_terms) if query_terms else 0.0
-            if len(matched)>=min(2,len(query_terms)) and coverage>=0.60:
+            if len(matched)>=min(2,len(query_terms)) and coverage>=0.40:
                 sufficient.append((doc,score))
         ranked=sufficient[:k]
         evidence=[{"id":doc.uid,"family":doc.family,"title":doc.title,
