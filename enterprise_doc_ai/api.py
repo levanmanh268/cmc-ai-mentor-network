@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from .auth import (
     AuthenticationError, SecurityConfigurationError, VerifiedIdentity,
-    verify_local_token,
+    verify_local_token, _secret_bytes,
 )
 from .engine import EnterpriseIndex, GroundedQA, load_corpus
 from .extract import extract_invoice
@@ -72,6 +72,15 @@ def health():
         "auth": "HMAC_SIGNED_LOCAL_DEMO_TOKENS_NOT_OIDC",
         "llm_calls": 0,
     }
+
+@app.get("/ready")
+def readiness():
+    """Strict readiness: an unconfigured signer is not ready to accept data."""
+    try:
+        _secret_bytes()
+    except SecurityConfigurationError:
+        raise HTTPException(503, "Signing secret missing or too short") from None
+    return {"status": "ready", "identity": "signed_local_demo", "production_ready": False}
 
 @app.post("/ask")
 def answer(payload: Question, identity: Annotated[VerifiedIdentity, Depends(signed_identity)]):
