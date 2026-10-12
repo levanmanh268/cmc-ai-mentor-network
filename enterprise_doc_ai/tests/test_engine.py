@@ -111,6 +111,24 @@ class EngineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_corpus(file.with_suffix(".missing"))
 
+    def test_dense_query_poisoning_rejected(self):
+        def corpus():
+            return self.idx.passages[:2]
+        class QueryEncoder:
+            def __init__(self, bad):
+                self.bad = bad
+            def encode(self, texts):
+                if len(texts) > 1:
+                    return [[1.0, 0.0] for _ in texts]
+                return self.bad
+        bad_queries = [[], [[float("nan"),1.0]],
+                       [[float("inf"),1.0]], [[1.0]], [[1.0,0.0,1.0]]]
+        for bad in bad_queries:
+            with self.subTest(bad=bad):
+                idx = EnterpriseIndex(corpus(), encoder=QueryEncoder(bad))
+                with self.assertRaises(ValueError):
+                    idx.search("employee", self.principal(), method="dense")
+
     def test_nonfinite_and_inconsistent_dense_vectors_rejected(self):
         class NaNEncoder:
             def encode(self, texts):
