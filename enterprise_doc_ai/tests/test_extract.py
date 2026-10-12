@@ -33,6 +33,36 @@ class ExtractionTests(unittest.TestCase):
         zero = extract_invoice(GOOD.replace("12.500.000", "0"), "fixture")
         self.assertIn("nonpositive_total", zero["errors"])
 
+    def test_docx_table_text_is_preserved(self):
+        try:
+            from docx import Document
+        except ImportError:
+            self.skipTest("python-docx not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "invoice.docx"
+            doc = Document()
+            doc.add_paragraph("Hóa đơn đầu vào")
+            row = doc.add_table(rows=1, cols=2).rows[0]
+            row.cells[0].text = "Số hóa đơn"
+            row.cells[1].text = "HD-2026-0042"
+            doc.save(str(f))
+            page = read_pages(f)
+            self.assertEqual(len(page), 1)
+            self.assertIn("HD-2026-0042", page[0][1])
+
+    def test_pdf_blank_page_returns_no_fake_text(self):
+        try:
+            from pypdf import PdfWriter
+        except ImportError:
+            self.skipTest("pypdf not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "scanned.pdf"
+            writer = PdfWriter()
+            writer.add_blank_page(width=200, height=300)
+            with f.open("wb") as fp:
+                writer.write(fp)
+            self.assertEqual(read_pages(f), [(1, "")])
+
     def test_file_loader_limits(self):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "invoice.txt"
