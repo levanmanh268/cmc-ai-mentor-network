@@ -26,19 +26,20 @@ def evaluate(index, cases: list[dict], k: int = 3) -> dict:
         relevant = set(case["relevant_sources"])
         positions = [rank + 1 for rank, source in enumerate(ranked) if source in relevant]
         hit = bool(positions)
-        hit_scores.append(float(hit))
-        rr_scores.append(1 / min(positions) if positions else 0.0)
-        dcg = sum(1 / math.log2(i + 1) for i in positions)
-        ideal = sum(1 / math.log2(i + 2) for i in range(min(k, len(relevant))))
-        ndcg_scores.append(dcg / ideal if ideal else float(not hits))
-        if not relevant:
+        if relevant:
+            hit_scores.append(float(hit))
+            rr_scores.append(1 / min(positions) if positions else 0.0)
+            dcg = sum(1 / math.log2(i + 1) for i in positions)
+            ideal = sum(1 / math.log2(i + 2) for i in range(min(k, len(relevant))))
+            ndcg_scores.append(dcg / ideal)
+        else:
             negative_ok.append(float(not hits))
         details.append({"id": case["id"], "expected": sorted(relevant), "retrieved": ranked, "hit": hit})
     return {
-        "count": len(cases), "k": k,
-        "hit_at_k": round(statistics.mean(hit_scores), 4),
-        "mrr_at_k": round(statistics.mean(rr_scores), 4),
-        "ndcg_at_k": round(statistics.mean(ndcg_scores), 4),
+        "count": len(cases), "answerable_cases": len(hit_scores), "negative_cases": len(negative_ok), "k": k,
+        "hit_at_k": round(statistics.mean(hit_scores), 4) if hit_scores else None,
+        "mrr_at_k": round(statistics.mean(rr_scores), 4) if rr_scores else None,
+        "ndcg_at_k": round(statistics.mean(ndcg_scores), 4) if ndcg_scores else None,
         "negative_abstention_accuracy": round(statistics.mean(negative_ok), 4) if negative_ok else None,
         "latency_ms_median": round(statistics.median(latencies), 3),
         "per_case": details,
