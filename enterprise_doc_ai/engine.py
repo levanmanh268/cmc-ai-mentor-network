@@ -225,9 +225,18 @@ class GroundedQA:
         top = hits[0].passage
         qterms = set(tokens(question))
         evidence_terms = set(tokens(top.title + " " + top.text))
-        if len(qterms.intersection(evidence_terms)) < min(2, len(qterms)):
+        # Support is a lexical coverage heuristic, NEVER calibrated probability.
+        # Compute IDF on only documents this trusted principal can read.
+        authorized = [self.index.passages[i] for i in self.index._visible(principal, as_of)]
+        df = Counter(t for p in authorized for t in set(tokens(p.title + " " + p.text)))
+        n = len(authorized)
+        weight = lambda term: math.log((n + 1) / (df.get(term, 0) + 1)) + 1.0
+        total = sum(weight(t) for t in qterms)
+        coverage = sum(weight(t) for t in qterms.intersection(evidence_terms)) / total if total else 0
+        # Fixed engineering baseline threshold: analyze errors on the dev split.
+        if len(qterms.intersection(evidence_terms)) < min(2, len(qterms)) or coverage < 0.55:
             return {"status": "abstained", "answer": None, "citations": [],
-                    "reason": "weak_lexical_support", "mode": "extractive"}
+                    "reason": "weak_lexical_support", "lexical_coverage": round(coverage, 4), "mode": "extractive"}
         if UNTRUSTED_INSTRUCTION.search(top.text):
             return {"status": "abstained", "answer": None, "citations": [hits[0].to_dict()],
                     "reason": "suspicious_document_content", "mode": "extractive"}
@@ -235,4 +244,4 @@ class GroundedQA:
         excerpt = top.text[:700]
         return {"status": "evidence_found", "answer": excerpt, "citations": [h.to_dict() for h in hits],
                 "reason": "extracted_snippet_not_entailed", "mode": "extractive",
-                "verbatim_source": top.uid}
+                "verbatim_source": top.uid, "lexical_coverage": round(coverage, 4)}
