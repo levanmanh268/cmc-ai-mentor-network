@@ -1,0 +1,119 @@
+[
+  {
+    "uid": "PY-001",
+    "track": "python-foundations",
+    "module": "01-intro",
+    "title": "Biến và kiểu dữ liệu Python",
+    "content": "Trong Python, biến gán bằng dấu bằng =. Các kiểu dữ liệu cơ bản gồm int, float, str và bool. Hàm type() trả về kiểu của một đối tượng. Để nhập dữ liệu dùng input() rồi chuyển đổi kiểu khi cần.",
+    "source": "synthetic://python/lesson-01",
+    "revision": "2026-10-01",
+    "level": 1,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "PY-002",
+    "track": "python-foundations",
+    "module": "02-control",
+    "title": "Điều kiện và vòng lặp",
+    "content": "Lệnh if elif else giúp lựa chọn nhánh. Vòng lặp for duyệt iterable; while lặp khi điều kiện đúng. break thoát vòng lặp, continue chuyển sang lượt tiếp theo. Tránh vòng lặp vô hạn khi điều kiện không được cập nhật.",
+    "source": "synthetic://python/lesson-02",
+    "revision": "2026-10-01",
+    "level": 2,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "PY-003",
+    "track": "python-foundations",
+    "module": "03-functions",
+    "title": "Hàm và tham số",
+    "content": "Định nghĩa hàm bằng def, các tham số truyền vào và giá trị trả về qua return. Nên chia code thành hàm thuần có đầu vào và đầu ra rõ ràng. Kiểm thử trường hợp thường và trường hợp biên.",
+    "source": "synthetic://python/lesson-03",
+    "revision": "2026-10-01",
+    "level": 2,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "PY-004",
+    "track": "python-foundations",
+    "module": "04-oop",
+    "title": "Lớp và đối tượng trong Python",
+    "content": "class định nghĩa lớp, __init__ thiết lập trạng thái đối tượng, self tham chiếu instance. Đóng gói dữ liệu giúp quản lý trạng thái và phương thức. Unit test nên kiểm tra hành vi công khai thay vì chi tiết triển khai.",
+    "source": "synthetic://python/lesson-04",
+    "revision": "2026-10-01",
+    "level": 3,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "PY-005",
+    "track": "python-foundations",
+    "module": "05-testing",
+    "title": "Kiểm thử phần mềm Python",
+    "content": "unittest hỗ trợ test case, assertion và test runner. Để đảm bảo tái lập, dùng đầu vào cố định, tránh gọi API mạng trong unit test. Với chức năng AI cần đo cả trường hợp dữ liệu thiếu, lỗi định dạng và từ chối khi không đủ căn cứ.",
+    "source": "synthetic://python/lesson-05",
+    "revision": "2026-10-01",
+    "level": 3,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "PY-SECRET",
+    "track": "python-foundations",
+    "module": "99-trainer",
+    "title": "Đề thi và đáp án chỉ dành cho trainer",
+    "content": "Tài liệu đáp án minh họa được phân quyền trainer. Sinh viên thường không được phép xem đề thi chưa công bố hoặc đáp án đánh giá riêng.",
+    "source": "synthetic://python/trainer-only",
+    "revision": "2026-10-01",
+    "level": 5,
+    "roles": [
+      "trainer"
+    ]
+  },
+  {
+    "uid": "ML-001",
+    "track": "ml-fundamentals",
+    "module": "01-data",
+    "title": "Chia dữ liệu train validation test",
+    "content": "Tập train dùng học tham số, validation dùng chọn mô hình hoặc siêu tham số, test chỉ dùng một lần sau khi khóa phương pháp. Data leakage làm kết quả đánh giá lạc quan. Không chọn hyperparameter theo test.",
+    "source": "synthetic://ml/data",
+    "revision": "2026-10-01",
+    "level": 1,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "ML-002",
+    "track": "ml-fundamentals",
+    "module": "02-metrics",
+    "title": "Precision recall và F1",
+    "content": "Precision là TP/(TP+FP), recall là TP/(TP+FN), F1 là trung bình điều hòa. Chọn metric tùy chi phí false positives và false negatives. Accuracy có thể gây hiểu lầm với nhãn mất cân bằng.",
+    "source": "synthetic://ml/metrics",
+    "revision": "2026-10-01",
+    "level": 2,
+    "roles": [
+      "student"
+    ]
+  },
+  {
+    "uid": "ML-003",
+    "track": "ml-fundamentals",
+    "module": "03-eval",
+    "title": "Đánh giá hệ thống RAG",
+    "content": "RAG evaluation nên đo retrieval metrics như Hit@k, Recall@k, MRR và nDCG tách biệt khỏi faithfulness của câu trả lời. Citation membership không chứng minh câu trả lời đã được hỗ trợ bởi nguồn. Cần tập câu hỏi khó và điều kiện abstention.",
+    "source": "synthetic://ml/rag-eval",
+    "revision": "2026-10-01",
+    "level": 3,
+    "roles": [
+      "student"
+    ]
+  }
+]

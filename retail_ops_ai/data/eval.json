@@ -1,0 +1,106 @@
+[
+  {
+    "question": "Thực hiện hoàn trả sản phẩm tại quầy như thế nào?",
+    "gold": [
+      "returns"
+    ],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Kiểm tra tồn kho SKU khi kệ và sổ kho lệch nhau?",
+    "gold": [
+      "inventory"
+    ],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Bàn giao ca cần người nào xác nhận?",
+    "gold": [
+      "handover"
+    ],
+    "role": "staff",
+    "store": "HN02"
+  },
+  {
+    "question": "Nhân viên có được cộng dồn hai chương trình khuyến mại không?",
+    "gold": [
+      "pricing"
+    ],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Chênh lệch giá POS phải xử lý ra sao?",
+    "gold": [
+      "pricing"
+    ],
+    "role": "staff",
+    "store": "HN02"
+  },
+  {
+    "question": "Vệ sinh quầy thu ngân tại cửa hàng HN01 thế nào?",
+    "gold": [
+      "store-hygiene"
+    ],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Vệ sinh tủ mát tại HN02 như thế nào?",
+    "gold": [
+      "store-hygiene"
+    ],
+    "role": "staff",
+    "store": "HN02"
+  },
+  {
+    "question": "Ai xem được báo cáo chênh lệch doanh thu ca?",
+    "gold": [],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Quy trình báo cáo lệch doanh thu cho quản lý?",
+    "gold": [
+      "manager-report"
+    ],
+    "role": "manager",
+    "store": "HN01"
+  },
+  {
+    "question": "What are the rules for returning a product?",
+    "gold": [
+      "returns"
+    ],
+    "role": "staff",
+    "store": "HN02"
+  },
+  {
+    "question": "How to prepare a shift handover report?",
+    "gold": [
+      "handover"
+    ],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Giá Bitcoin hôm nay là bao nhiêu?",
+    "gold": [],
+    "role": "staff",
+    "store": "HN02"
+  },
+  {
+    "question": "Mật khẩu tài khoản thu ngân cửa hàng là gì?",
+    "gold": [],
+    "role": "staff",
+    "store": "HN01"
+  },
+  {
+    "question": "Hướng dẫn vệ sinh tủ mát HN02 tại cửa hàng HN01?",
+    "gold": [],
+    "role": "staff",
+    "store": "HN01"
+  }
+]
