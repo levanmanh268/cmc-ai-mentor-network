@@ -128,7 +128,17 @@ class RetailService:
         if not question.strip() or len(question)>1000 or not 1<=k<=10: raise ValueError("Invalid query")
         docs=self._visible(who,as_of)
         scores=_bm25(tokenize(question),[tokenize(d.title+" "+d.body) for d in docs])
-        ranked=sorted(((docs[i],score) for i,score in enumerate(scores) if score>0),key=lambda x:(-x[1],x[0].uid))[:k]
+        ranked=sorted(((docs[i],score) for i,score in enumerate(scores) if score>0),key=lambda x:(-x[1],x[0].uid))
+        # Fail-closed relevance gate: shared generic words alone are not evidence.
+        # Lexical coverage is a heuristic, NOT an entailment or calibrated confidence.
+        query_terms=set(tokenize(question))
+        sufficient=[]
+        for doc,score in ranked:
+            matched=query_terms.intersection(tokenize(doc.title+" "+doc.body))
+            coverage=len(matched)/len(query_terms) if query_terms else 0.0
+            if len(matched)>=min(2,len(query_terms)) and coverage>=0.60:
+                sufficient.append((doc,score))
+        ranked=sufficient[:k]
         evidence=[{"id":doc.uid,"family":doc.family,"title":doc.title,
                    "page":doc.page,"version":doc.version,"score":round(score,6),
                    "excerpt":doc.body[:450]} for doc,score in ranked]
@@ -173,7 +183,7 @@ class RetailService:
 
     def handover_draft(self, who: Principal, issues: list[str]) -> dict:
         if who.role not in ("staff","manager"):return {"status":"denied"}
-        if len(issues)>12 or any(not isinstance(x,str) or len(x)>300 for x in issues):
+        if not isinstance(issues,list) or len(issues)>12 or any(not isinstance(x,str) or len(x)>300 for x in issues):
             raise ValueError("Invalid handover")
         return {"status":"draft_only","store":who.store,"issues":[x.strip() for x in issues if x.strip()],
                 "requires_manager_review":True,"external_mutations":0}
