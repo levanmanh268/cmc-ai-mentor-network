@@ -61,3 +61,51 @@ def test_all_ten_nfrs_have_one_row_and_acknowledge_unverified_targets():
     assert "Chưa xác minh" in content
     assert "Chưa đáp ứng" in content
     assert "P95" in content
+
+
+def test_mermaid_diagrams_stay_in_conservative_github_compatible_subset():
+    """Avoid punctuation-heavy edge labels that differ across Mermaid builds."""
+    body = (DOCS / "architecture.md").read_text(encoding="utf-8")
+    diagrams = re.findall(r"^[\x60]{3}mermaid\s*\n([\s\S]*?)^[\x60]{3}\s*$", body, re.MULTILINE)
+    assert len(diagrams) == 5, f"Expected 5 architecture diagrams, got {len(diagrams)}"
+    for index, diagram in enumerate(diagrams):
+        expected_header = "flowchart " if index < 3 else "sequenceDiagram"
+        assert diagram.strip().startswith(expected_header), f"Diagram {index + 1}: incorrect type"
+        assert diagram.isascii(), f"Diagram {index + 1}: keep short ASCII labels for compatibility"
+        assert not re.search(r'\|".+?"\|', diagram), (
+            f"Diagram {index + 1}: use plain connections and explain rich labels in prose"
+        )
+
+
+def test_readme_architecture_tree_uses_real_newline():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "Optional Groq infrastructure\n├── rag_engine.py" in readme
+    assert "TF-IDF cosine similarity" in readme
+
+
+def test_architecture_matches_current_rag_mode_contract():
+    rag_source = (ROOT / "rag_engine.py").read_text(encoding="utf-8")
+    architecture = (DOCS / "architecture.md").read_text(encoding="utf-8")
+    assert 'mode = "online-citations-unverified"' in rag_source
+    for state in ("no-evidence", "offline-grounded", "online-citations-unverified", "offline-fallback"):
+        assert state in architecture
+    assert "chỉ số citation" in architecture
+    assert "entailment" in architecture
+
+
+def test_independent_portfolio_labs_documented_but_not_in_streamlit_runtime():
+    architecture = (DOCS / "architecture.md").read_text(encoding="utf-8")
+    root_app = (ROOT / "app.py").read_text(encoding="utf-8")
+    labs = (
+        "cagent_lab",
+        "enterprise_doc_ai",
+        "retail_ops_ai",
+        "edu_trainer_ai",
+        "model_pretraining_lab",
+        "model_posttraining_lab",
+    )
+    for lab in labs:
+        assert (ROOT / lab / "README.md").is_file()
+        assert lab in architecture
+        assert f"from {lab}" not in root_app
+        assert f"import {lab}" not in root_app

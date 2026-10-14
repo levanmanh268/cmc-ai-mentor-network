@@ -137,3 +137,28 @@ jobs:
           } finally {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
           }
+
+  mermaid-render:
+    name: Render Mermaid with CLI ${{ matrix.mermaid_cli }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        mermaid_cli: ["10.9.1", "11.17.0"]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install pinned Mermaid CLI
+        run: npm install --no-save --no-package-lock --no-audit --no-fund @mermaid-js/mermaid-cli@${{ matrix.mermaid_cli }}
+
+      - name: Validate and render all Mermaid fences to SVG
+        run: node scripts/validate_mermaid.mjs

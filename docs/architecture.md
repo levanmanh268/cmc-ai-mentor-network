@@ -1,9 +1,9 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.0, 12/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.1, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
-> **Phạm vi:** Prototype ứng dụng Streamlit cho hỏi đáp tài liệu có căn cứ và đề xuất mentor trên dữ liệu mô phỏng. Không được giới thiệu như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
+> **Phạm vi:** Kiến trúc runtime của **ứng dụng môn học** ở thư mục gốc (Streamlit + RAG + mentor demo). Repo còn chứa các *portfolio labs độc lập* với entrypoint và CI riêng, được liệt kê ở Mục 2.1, không được coi là microservices của ứng dụng môn học. Không được giới thiệu ứng dụng môn học như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
 
 ## 1. Phạm vi, tác nhân và chức năng có thật
 
@@ -21,7 +21,7 @@
 
 ## 2. Quyết định kiến trúc tổng thể
 
-**Modular monolith** chạy trong **một tiến trình Python/Streamlit**, phân tách theo trách nhiệm (không phải microservices, không có REST backend độc lập). Giao diện điều phối các hàm domain; AI bên ngoài chỉ được dùng nếu có cấu hình, không phải điều kiện để ứng dụng khởi động.
+**Riêng ứng dụng môn học ở root** dùng modular monolith chạy trong **một tiến trình Python/Streamlit**, phân tách theo trách nhiệm (không phải microservices, không có REST backend độc lập). Giao diện điều phối các hàm domain; AI bên ngoài chỉ được dùng nếu có cấu hình, không phải điều kiện để ứng dụng khởi động.
 
 Quy tắc dependency:
 - `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval.
@@ -33,21 +33,31 @@ Quy tắc dependency:
 - `ingest.py` chỉ kiểm tra/diagnostic kho tài liệu, không upload hay ingest database.
 - GitHub Actions chạy độc lập lúc commit/PR, không xử lý yêu cầu người dùng tại runtime.
 
+### 2.1. Ranh giới monorepo với các AI labs độc lập
+
+Tính đến 14/10/2026, các thư mục dưới đây là **dự án portfolio/demo độc lập** được bổ sung trong cùng repository, không phải thành phần được gọi trực tiếp bởi `app.py`. Các lab này có lệnh chạy, dữ liệu giả lập, giới hạn riêng và workflow CI riêng. Việc cùng nằm trong Git repo **không** tạo ra quan hệ runtime giữa các dịch vụ.
+
+| Thư mục | Chức năng độc lập theo code/README | Điểm chạy và CI |
+| --- | --- | --- |
+| `cagent_lab/` | Retrieval BM25/TF-IDF, tools allowlist, optional embeddings và FastAPI | `python -m cagent_lab.evaluate`, `cagent-lab.yml` |
+| `enterprise_doc_ai/` | Document retrieval có scope, trích xuất, workflow demo, API tùy chọn | `python -m enterprise_doc_ai.cli`, `enterprise-doc-ai.yml` |
+| `retail_ops_ai/` | Demo retail retrieval, price quotes và tool workflow trên dữ liệu giả lập | `python -m retail_ops_ai.evaluate`, `industry-ai-labs.yml` |
+| `edu_trainer_ai/` | Demo retrieval bài học, quiz/rubric và learning path | `python -m edu_trainer_ai.evaluate`, `industry-ai-labs.yml` |
+| `model_pretraining_lab/` | Huấn luyện character bigram model từ đầu (không phải Transformer) | `python -m model_pretraining_lab.core`, `model-training-labs.yml` |
+| `model_posttraining_lab/` | SFT/DPO thử nghiệm trên checkpoint bigram, dữ liệu synthetic | `python -m model_posttraining_lab.core`, `model-training-labs.yml` |
+
+Các API FastAPI (nếu cài dependency và chạy riêng) chỉ thuộc lab tương ứng. **Không có API gateway/service orchestration tích hợp các lab với Streamlit root**, không có luồng user của ứng dụng môn học sang các lab này. Các tuyên bố về benchmark, tenant isolation và security của từng lab chỉ áp dụng trong phạm vi lab đó; không chuyển sang FR/NFR của sản phẩm môn học. Tài liệu hướng dẫn nằm trong `<lab>/README.md` và [bản adversarial audit](FINAL_ADVERSARIAL_AUDIT.md).
+
 ## 3. C4 Level 1: System Context
 
 ```mermaid
 flowchart LR
-    Student["Sinh viên (người dùng)"]
-    Lecturer["Giảng viên / khách hàng"]
-    Developer["Thành viên nhóm 6"]
-    App["CMC AI Mentor Network (Streamlit prototype)"]
-    GH["GitHub Issues, Pull Requests, Actions"]
-    Provider["Groq LLM API (tùy chọn)"]
-    Student -->|"Tạo hồ sơ trong phiên; hỏi tài liệu; tìm mentor"| App
-    App -.->|"Yêu cầu sinh câu trả lời/giải thích nếu có key"| Provider
-    Lecturer -->|"Nêu yêu cầu/đánh giá qua Issues"| GH
-    Developer -->|"Code, PR, review, CI"| GH
+    Student[Student] --> App[CMC AI Mentor Network]
+    App -.-> Provider[Optional Groq API]
+    Lecturer[Lecturer] --> GitHub[GitHub Issues and Actions]
+    Developer[Development Team] --> GitHub
 ```
+**Chú giải:** Sinh viên sử dụng ứng dụng Streamlit; giảng viên và nhóm phát triển trao đổi qua GitHub; Groq chỉ được gọi khi có client được cấu hình. Các nhãn sơ đồ dùng tiếng Anh ngắn gọn để tương thích trình render Mermaid, phần diễn giải tiếng Việt nằm trong tài liệu.
 
 **Lưu ý:** GitHub Issues là công cụ quản lý dự án riêng biệt, **không tự động tạo dữ liệu hoặc gọi API trong ứng dụng**. Không vẽ luồng `GitHub → App` vì hiện không có webhook/integration.
 
@@ -57,21 +67,19 @@ Một container logic ứng dụng, một kho dữ liệu file cục bộ, một
 
 ```mermaid
 flowchart LR
-    Browser["Trình duyệt người dùng"]
-    subgraph Host["Máy chạy ứng dụng (Windows/Linux, Python 3.11+)"]
-        Streamlit["Streamlit app.py / Python process"]
-        Docs["knowledge_base/*.md (read-only nội dung tại runtime)"]
-        Demo["mentors_data.py (mentor demo in-memory)"]
-        Session["st.session_state (theo phiên WebSocket)"]
-        Streamlit <--> Session
-        Streamlit --> Docs
-        Streamlit --> Demo
+    Browser[Web Browser]
+    subgraph Host
+        App[Streamlit Python Process]
+        Docs[Local Markdown Documents]
+        Demo[In Memory Mentor Records]
+        Session[Streamlit Session State]
+        App --> Docs
+        App --> Demo
+        App --> Session
     end
-    API["Groq API (ngoài máy, tùy chọn)"]
-    Browser <-->|"HTTP + WebSocket qua localhost:8501"| Streamlit
-    Streamlit -.->|"HTTPS qua Groq SDK nếu cấu hình"| API
+    Browser <--> App
+    App -.-> API[Optional Groq API]
 ```
-
 - **Persistence:** file Markdown là nguồn tĩnh trong repo; mentor demo load vào RAM; hồ sơ, lịch sử chat, mentor yêu thích **không được ghi vào DB**. Session State có thể mất khi WebSocket/server/session kết thúc, refresh/restart không được bảo đảm giữ dữ liệu.
 - **Secrets:** `GROQ_API_KEY` lấy từ môi trường hoặc `.env` local, không hard-code; `.env` thuộc `.gitignore`. Key cũ có thể còn trong Git history và cần revoke thủ công.
 - **Triển khai:** `streamlit run app.py` hoặc `run_windows.bat`. Không có bằng chứng multi-tenant, RBAC, production hosting hay backup.
@@ -81,25 +89,22 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    UI["app.py: trang, sự kiện, Session State"]
-    CONFIG["llm_client.py: cấu hình và dựng client"]
-    KB["rag_engine.py: KnowledgeBase TF-IDF, answer_with_rag"]
-    MATCH["matching_engine.py: scoring, ranking, explanation"]
-    MR["mentors_data.py: MentorRepository + validate_mentor"]
-    MARKDOWN["knowledge_base/*.md"]
-    RAW["RAW_MENTORS (demo)"]
-    SDK["Groq Python SDK / API"]
+    UI[Streamlit app.py]
+    CONFIG[llm_client.py]
+    KB[rag_engine.py]
+    MATCH[matching_engine.py]
+    MR[mentors_data.py]
+    MARKDOWN[Markdown Documents]
+    RAW[RAW_MENTORS]
+    API[Groq API]
     UI --> CONFIG
     UI --> KB
     UI --> MATCH
-    MATCH -->|"get_mentor_repository().list()"| MR
+    MATCH --> MR
     MR --> RAW
     KB --> MARKDOWN
-    CONFIG -.-> SDK
-    UI -.->|"inject optional client"| KB
-    UI -.->|"inject optional client"| MATCH
+    CONFIG -.-> API
 ```
-
 | Thành phần | Vai trò được kiểm tra từ code | Contract chính |
 | --- | --- | --- |
 | `app.py` | Streamlit UI, chọn trang, `session_state`, gọi AI & matching | `get_top_matches`, `answer_with_rag` |
@@ -111,63 +116,67 @@ flowchart TD
 | `tests/` | Unit tests/Streamlit AppTest, không thay thế kiểm thử khách hàng | `python -m pytest -q` |
 | `.github/workflows/ci.yml` | Lint-like compile, pytest, CI HTTP smoke, secret pattern guard | Workflow khi PR/push |
 
+**Luồng phụ thuộc:** `app.py` tạo client (nếu có) qua `llm_client.py`, sau đó inject vào `rag_engine.py` và `matching_engine.py`. `get_mentor_repository().list()` được gọi bên trong matching. Không có đường truyền API trực tiếp từ trình duyệt tới Groq.
+
 **Giới hạn của MentorRepository hiện tại:** đây là abstraction trong bộ nhớ, không phải PostgreSQL/SQLite; nhãn “repository” không đồng nghĩa dữ liệu được lưu bền vững.
 
 ## 6. Runtime sequence: RAG
 
 ```mermaid
 sequenceDiagram
-    actor Student as Sinh viên
-    participant UI as Streamlit app.py
+    actor Student as Student
+    participant UI as Streamlit
+    participant RAG as RAG Engine
     participant KB as KnowledgeBase
-    participant Engine as answer_with_rag
-    participant LLM as Groq (optional)
-    Student->>UI: Gửi câu hỏi
-    UI->>Engine: answer_with_rag(question,kb,client)
-    Engine->>KB: search(question,k,min_score)
-    KB-->>Engine: danh sách chunks + scores
-    alt Không có chunk vượt ngưỡng
-        Engine-->>UI: mode=no-evidence, không sinh câu trả lời
-    else Có context, client=None
-        Engine-->>UI: mode=offline-grounded, trích đoạn nguồn
-    else Có context, client tồn tại
-        Engine->>LLM: câu hỏi + context đánh nhãn S1...Sn
-        alt API trả kết quả không rỗng
-            LLM-->>Engine: câu trả lời
-            Engine-->>UI: mode=online-grounded + danh sách chunks
-        else API lỗi/response rỗng
-            Engine-->>UI: mode=offline-fallback + trích đoạn nguồn
+    participant LLM as Optional Groq
+    Student->>UI: Submit question
+    UI->>RAG: answer_with_rag
+    RAG->>KB: search
+    KB-->>RAG: Scored chunks
+    alt No sufficient evidence
+        RAG-->>UI: no-evidence response
+    else Offline mode
+        RAG-->>UI: Retrieved excerpts and sources
+    else Online mode
+        RAG->>LLM: Question and retrieved context
+        alt Provider success
+            LLM-->>RAG: Generated answer
+            RAG-->>UI: unverified cited answer and sources
+        else Provider failure
+            RAG-->>UI: offline-fallback excerpts
         end
     end
-    UI-->>Student: văn bản, mode, nguồn + relevance
+    UI-->>Student: Display answer and sources
 ```
+**Các trạng thái RAG (đúng theo nhánh `main` hiện tại):** `no-evidence` khi không có chunk vượt ngưỡng; `offline-grounded` khi client chưa cấu hình; `online-citations-unverified` khi API trả lời có ít nhất một citation hợp lệ về **chỉ số nguồn**; `offline-fallback` khi API lỗi hoặc trả về rỗng. Trong sơ đồ, các nhãn ngắn gọn đại diện cho bốn nhánh xử lý này.
 
-**Không tuyên bố bảo đảm không hallucination:** hiện có prompt ràng buộc nguồn nhưng **chưa có lớp xác thực citation tự động / kiểm chứng từng claim**. Việc trả về `sources` là nguồn *được truy xuất*, không phải bằng chứng rằng LLM đã trích dẫn và suy luận đúng toàn bộ.
+**Không tuyên bố bảo đảm không hallucination:** prompt ràng buộc nguồn và `rag_engine.py` hiện có **kiểm tra sự tồn tại của chỉ số citation** (`[S1]` đến `[Sk]`) trong các kết quả retrieval, từ chối câu trả lời thiếu citation hoặc có chỉ số ngoài phạm vi, đồng thời chặn câu trả lời rỗng hoặc quá dài. **Chưa có kiểm chứng ngữ nghĩa từng claim (entailment/faithfulness)**: citation tồn tại không chứng minh nội dung thực sự được nguồn hỗ trợ. `sources` chỉ phản ánh các đoạn được truy xuất.
 
 ## 7. Runtime sequence: Mentor Matching
 
 ```mermaid
 sequenceDiagram
-    actor Student as Sinh viên
+    actor Student as Student
     participant UI as Streamlit
-    participant Match as matching_engine
-    participant Repo as MentorRepository in memory
-    participant LLM as Groq (optional)
-    Student->>UI: nhập hồ sơ / bấm Tìm Mentor
-    UI->>Match: get_top_matches(profile,3)
-    Match->>Repo: list() validated mentor demos
-    Repo-->>Match: danh sách mentor
-    Match->>Match: TF-IDF + overlap + experience -> sort
-    Match-->>UI: top-3 + hybrid_score
-    UI->>Match: generate_match_explanation(...,client)
-    opt LLM cấu hình và hoạt động
-        Match->>LLM: chỉ dữ liệu profile/mentor
-        LLM-->>Match: explanation
+    participant Match as Matching Engine
+    participant Repo as MentorRepository
+    participant LLM as Optional Groq
+    Student->>UI: Search for mentors
+    UI->>Match: get_top_matches
+    Match->>Repo: list
+    Repo-->>Match: Validated demo mentors
+    Match->>Match: TFIDF and hybrid ranking
+    Match-->>UI: Ranked mentor list
+    UI->>Match: generate_match_explanation
+    opt Client available
+        Match->>LLM: Profile and mentor facts
+        LLM-->>Match: Explanation or error
     end
-    Match-->>UI: giải thích (hoặc deterministic fallback)
-    Student->>UI: Lưu mentor
-    UI->>UI: st.session_state.favorite_mentors
+    Match-->>UI: Explanation or fallback
+    Student->>UI: Save mentor
+    UI->>UI: Update Session State
 ```
+**Chi tiết luồng matching:** Khi API lỗi, `generate_match_explanation` trả về giải thích deterministic. Khi bấm lưu mentor, ứng dụng cập nhật `st.session_state.favorite_mentors` mà không ghi xuống cơ sở dữ liệu.
 
 Công thức đang triển khai:
 `score = 0.65 × TF-IDF cosine + 0.25 × domain keyword overlap + 0.10 × experience fit`.
@@ -178,7 +187,7 @@ Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score �
 - **Profile:** `{name, year, field_interest, goals, bio}` lưu theo phiên Streamlit, chưa có user ID/server database.
 - **Mentor:** `{id, name, title, company, field, experience_years, bio, strengths[], available_for[]}`; `validate_mentor` thực hiện kiểm tra/chuẩn hóa đầu vào.
 - **Retriever output:** `RetrievedChunk(source, text, score)`, score bằng cosine TF-IDF, ngưỡng mặc định `0.06`.
-- **RAG output:** `RAGAnswer(answer, sources, mode, top_score)`, mode thuộc `no-evidence`, `offline-grounded`, `online-grounded`, `offline-fallback`.
+- **RAG output:** `RAGAnswer(answer, sources, mode, top_score)`, mode thuộc `no-evidence`, `offline-grounded`, `online-citations-unverified`, `offline-fallback`.
 - **Session state:** `user_profile`, `messages`, `top_matches`, `match_explanations`, `favorite_mentors`. Không phải database hay bộ nhớ lâu dài.
 
 ## 9. An toàn, giới hạn tin cậy và lỗi
@@ -186,12 +195,12 @@ Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score �
 | Trust boundary / failure | Kiểm soát đã có | Giới hạn còn tồn tại |
 | --- | --- | --- |
 | Credentials local → Groq | `.env` ignored, `llm_client.py` khởi tạo client có điều kiện | Secret cũ trong lịch sử Git phải revoke; pattern scan không phải secret scanner toàn diện |
-| Markdown không tin cậy → Prompt LLM | prompt tuyên bố nội dung nguồn chỉ là dữ liệu | Prompt injection và citation hallucination chưa được chứng minh loại bỏ |
+| Markdown không tin cậy → Prompt LLM | prompt xem nguồn là dữ liệu; citation ID phải thuộc các đoạn retrieval; bỏ qua symlink/đường dẫn thoát root và Markdown file >2 MB | Prompt injection và hallucination ngữ nghĩa chưa được chứng minh loại bỏ; threshold là heuristic |
 | API network lỗi / thiếu key | offline deterministic snippets/explanation | Không có provider dự phòng tự động hay SLA online |
-| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` là heuristic, chưa có benchmark hiệu chỉnh trên bộ dữ liệu lớn |
+| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` là heuristic, chưa có benchmark hiệu chỉnh trên bộ dữ liệu lớn; guard corpus chỉ dấu câu để không crash |
 | Session bị ngắt/restart | Streamlit quản lý phiên hiện tại | Không có bảo đảm phục hồi lịch sử chat/profile |
 | Dataset lỗi | `MentorRepository` kiểm tra các field | Cần tiếp tục kiểm thử trùng ID, giá trị bất thường và đầu vào ác ý |
-| Github CI | pytest, startup health Windows/Linux | Không đo tải đồng thời, RAG factual accuracy, xác thực phân quyền ứng dụng |
+| GitHub CI | pytest và health Windows/Linux của ứng dụng gốc; Mermaid render v10/v11; các lab có workflow theo path riêng | Không đo tải đồng thời hay RAG claim accuracy; green ở một workflow không chứng minh lab khác đạt |
 
 ## 10. NFR và phương án nghiệm thu
 
@@ -222,6 +231,6 @@ Chất lượng cần kiểm tra từ ít nhất ba lớp: `Unit/Integration`, `
 
 - **Tài liệu chuẩn:** `docs/architecture.md` (file này) và `docs/non-functional-requirements.md`.
 - **Code source-of-truth:** `app.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`.
-- **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml`.
+- **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml` cho root, các workflow `.github/workflows/*lab*.yml` hoặc `industry-ai-labs.yml` cho module độc lập. Mermaid được kiểm tra từ `scripts/validate_mermaid.mjs` trên Chromium.
 - **Lịch sử contributor:** commit gốc `6439cdeb`, `a991dbaf` do Dương Tuấn Dũng (`@TuanDungir`) thực hiện; bản hợp nhất là một lần review, không xóa lịch sử tác giả.
 - **Change control:** tạo Issue → branch riêng → kiểm tra mã nguồn/tài liệu → CI → PR review → merge. Mỗi lần thêm chức năng phải cập nhật bảng FR, diagram, NFR và bằng chứng liên quan.
