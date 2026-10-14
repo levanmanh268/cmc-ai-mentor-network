@@ -237,7 +237,9 @@ Viết tối đa 4 câu tiếng Việt, cụ thể, không phóng đại.
             messages=[{"role": "user", "content": prompt}],
             model=model,
             temperature=0.2,
-            max_tokens=260,
+            max_completion_tokens=650,
+            reasoning_effort="low",
+            include_reasoning=False,
         )
         text = completion.choices[0].message.content.strip()
         return text or _fallback_explanation(student_profile, mentor, hybrid_score)
