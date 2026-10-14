@@ -3,7 +3,7 @@ import streamlit as st
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
 from rag_engine import KnowledgeBase, answer_with_rag
-from ui_helpers import normalize_saved_source, rag_mode_label, source_history_payload
+from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
@@ -133,7 +133,7 @@ elif page == "💬 AI Assistant":
         )
         confirm = st.checkbox("Tôi hiểu và muốn xóa lịch sử hội thoại", key="confirm_clear_chat")
         if st.button("Xóa lịch sử", type="primary", disabled=not confirm):
-            st.session_state.messages = []
+            clear_chat_history(st.session_state)
             st.rerun()
 
     clear_col, _ = st.columns([1, 4])
