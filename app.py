@@ -39,8 +39,21 @@ with st.sidebar:
     )
     if llm_enabled():
         st.info("LLM: đã cấu hình; kết nối và nội dung từng câu trả lời chưa được xác minh đầy đủ.")
+        online_consent = st.checkbox(
+            "Cho phép gửi câu hỏi và dữ liệu matching tới Groq",
+            value=False,
+            help=(
+                "Khi bật, câu hỏi và tài liệu retrieval hoặc lĩnh vực/mục tiêu của hồ sơ "
+                "cùng thông tin mentor có thể được gửi tới Groq để tạo câu trả lời. "
+                "Mặc định tắt; tắt lại để ngừng gửi yêu cầu mới."
+            ),
+        )
+        st.caption("Chỉ gọi dịch vụ ngoài khi bạn chủ động đồng ý. Nội dung đã gửi trước đó không được xóa khỏi dịch vụ ngoài bởi thao tác này.")
     else:
+        online_consent = False
         st.info("LLM: chế độ ngoại tuyến")
+
+authorized_client = client if online_consent else None
 
 
 if "favorite_mentors" not in st.session_state:
@@ -69,7 +82,7 @@ if page == "🏠 Dashboard":
     with col2:
         st.metric("Chunks đã index", knowledge_base.chunk_count)
     with col3:
-        st.metric("LLM", "Đã cấu hình" if client else "Ngoại tuyến")
+        st.metric("LLM", "Cho phép trực tuyến" if authorized_client else "Ngoại tuyến")
 
     st.subheader("Luồng sử dụng")
     st.markdown(
@@ -214,7 +227,7 @@ elif page == "💬 AI Assistant":
 
         with st.chat_message("assistant"):
             with st.spinner("Đang truy xuất tài liệu và kiểm tra bằng chứng..."):
-                result = answer_with_rag(prompt, knowledge_base, client=client)
+                result = answer_with_rag(prompt, knowledge_base, client=authorized_client)
             st.markdown(result.answer)
 
             source_payload = [source_history_payload(item) for item in result.sources]
@@ -252,10 +265,31 @@ elif page == "👥 Tìm Mentor":
     with st.expander("Hồ sơ dùng để matching"):
         st.json(student_profile)
 
+    from mentors_data import get_mentor_repository
+
+    mentor_pool = get_mentor_repository().list()
+    field_choices = ["Tất cả", *sorted({mentor["field"] for mentor in mentor_pool})]
+    support_choices = ["Tất cả", *sorted({
+        support for mentor in mentor_pool for support in mentor["available_for"]
+    })]
+    field_filter = st.selectbox("Lọc theo lĩnh vực", field_choices)
+    support_filter = st.selectbox("Lọc theo loại hỗ trợ", support_choices)
+    active_filters = (field_filter, support_filter)
+    if st.session_state.get("active_mentor_filters") != active_filters:
+        st.session_state.top_matches = []
+        st.session_state.match_explanations = {}
+        st.session_state.active_mentor_filters = active_filters
+
     if st.button("🔍 Tìm Mentor", type="primary"):
         with st.spinner("Đang xếp hạng mentor..."):
-            st.session_state.top_matches = get_top_matches(student_profile, top_k=3)
+            st.session_state.top_matches = get_top_matches(
+                student_profile, top_k=3,
+                field_filter=None if field_filter == "Tất cả" else field_filter,
+                support_filter=None if support_filter == "Tất cả" else support_filter,
+            )
             st.session_state.match_explanations = {}
+            if not st.session_state.top_matches:
+                st.info("Không tìm thấy mentor phù hợp với bộ lọc đã chọn.")
 
     # Keep results independent of the search button rerun state.
     for rank, match in enumerate(st.session_state.top_matches, start=1):
@@ -276,7 +310,7 @@ elif page == "👥 Tìm Mentor":
 
             if mentor_id not in st.session_state.match_explanations:
                 st.session_state.match_explanations[mentor_id] = generate_match_explanation(
-                    student_profile, mentor, match["hybrid_score"], client=client
+                    student_profile, mentor, match["hybrid_score"], client=authorized_client
                 )
             st.markdown("**Vì sao phù hợp**")
             st.write(st.session_state.match_explanations[mentor_id])

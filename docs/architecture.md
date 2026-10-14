@@ -1,6 +1,6 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.1, 14/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.2, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
 > **Phạm vi:** Kiến trúc runtime của **ứng dụng môn học** ở thư mục gốc (Streamlit + RAG + mentor demo). Repo còn chứa các *portfolio labs độc lập* với entrypoint và CI riêng, được liệt kê ở Mục 2.1, không được coi là microservices của ứng dụng môn học. Không được giới thiệu ứng dụng môn học như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
@@ -16,6 +16,9 @@
 | FR-05 | Tính điểm mentor bằng hybrid scoring; xem top-k | `matching_engine.py` | dữ liệu demo qua `mentors_data.py` | Có |
 | FR-06 | Lưu/bỏ lưu mentor trong phiên hiện tại | `app.py` | `st.session_state` | Có |
 | FR-07 | Tiếp nhận yêu cầu khách hàng và lỗi qua GitHub Issues | `.github/ISSUE_TEMPLATE` | GitHub (không thuộc ứng dụng Streamlit) | Có ở quy trình phát triển |
+| FR-08 | Lọc mentor theo lĩnh vực và loại hỗ trợ trước khi xếp hạng | `app.py` + `matching_engine.py` | demo records trong RAM | Có, theo Issue #18 |
+| FR-09 | Validate, đặt lại hồ sơ và xóa chat trong phiên | `app.py` + `ui_helpers.py` + `profile_helpers.py` | `st.session_state` | Có, theo Issues #50/#51 |
+| FR-10 | Chẩn đoán độc lập chất lượng dữ liệu mentor | `mentor_data_diagnostics.py` | đọc demo records, không ghi DB | Có dưới dạng CLI, không phải màn hình app |
 
 **Không triển khai trong phiên bản này:** đăng ký/đăng nhập, phân quyền ứng dụng, cơ sở dữ liệu tài khoản, hồ sơ lưu vĩnh viễn, lịch hẹn/nhắn tin mentor, gửi yêu cầu ghép đôi đến mentor, web search trực tuyến, tải và lập chỉ mục tài liệu qua giao diện, báo cáo SLA production. Những mục này chỉ có thể là backlog sau khi khách hàng phê duyệt.
 
@@ -24,11 +27,11 @@
 **Riêng ứng dụng môn học ở root** dùng modular monolith chạy trong **một tiến trình Python/Streamlit**, phân tách theo trách nhiệm (không phải microservices, không có REST backend độc lập). Giao diện điều phối các hàm domain; AI bên ngoài chỉ được dùng nếu có cấu hình, không phải điều kiện để ứng dụng khởi động.
 
 Quy tắc dependency:
-- `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval.
+- `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval; `ui_helpers.py` chuẩn hóa lịch sử nguồn và nhãn trạng thái chat, còn `profile_helpers.py` kiểm tra/đặt lại hồ sơ.
 - `rag_engine.py` và `matching_engine.py` nhận client LLM tùy chọn qua tham số; không tự đọc credential.
-- `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client.
+- `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client. Streamlit sidebar **yêu cầu opt-in rõ ràng mỗi phiên** trước khi chuyển client vào RAG hoặc matching; cấu hình credential **không** tự cho phép truyền nội dung ra ngoài.
 - `matching_engine.py` hiện phụ thuộc **`get_mentor_repository()` trong `mentors_data.py`**, không truy vấn DB.
-- `mentors_data.py` chứa dữ liệu demo, `validate_mentor` và `MentorRepository` trong bộ nhớ.
+- `mentors_data.py` chứa dữ liệu demo, `validate_mentor` và `MentorRepository` trong bộ nhớ; `mentor_data_diagnostics.py` là công cụ CLI chạy offline kiểm tra riêng, không được gọi từ UI.
 - `rag_engine.py` đọc Markdown trực tiếp từ thư mục `knowledge_base/` (không dùng Chroma/vector database trong bản này).
 - `ingest.py` chỉ kiểm tra/diagnostic kho tài liệu, không upload hay ingest database.
 - GitHub Actions chạy độc lập lúc commit/PR, không xử lý yêu cầu người dùng tại runtime.
@@ -93,6 +96,8 @@ flowchart TD
     CONFIG[llm_client.py]
     KB[rag_engine.py]
     MATCH[matching_engine.py]
+    HELPER[ui_helpers.py]
+    PROFILE[profile_helpers.py]
     MR[mentors_data.py]
     MARKDOWN[Markdown Documents]
     RAW[RAW_MENTORS]
@@ -100,6 +105,8 @@ flowchart TD
     UI --> CONFIG
     UI --> KB
     UI --> MATCH
+    UI --> HELPER
+    UI --> PROFILE
     MATCH --> MR
     MR --> RAW
     KB --> MARKDOWN
@@ -107,11 +114,14 @@ flowchart TD
 ```
 | Thành phần | Vai trò được kiểm tra từ code | Contract chính |
 | --- | --- | --- |
-| `app.py` | Streamlit UI, chọn trang, `session_state`, gọi AI & matching | `get_top_matches`, `answer_with_rag` |
+| `app.py` | Streamlit UI, chọn trang, `session_state`, gọi AI & matching, bộ lọc, chat clear | `get_top_matches`, `answer_with_rag` |
+| `ui_helpers.py` | Chuẩn hóa nguồn trong lịch sử chat, nhãn mode và xóa riêng chat trong session | `normalize_saved_source`, `source_history_payload`, `rag_mode_label`, `clear_chat_history` |
+| `profile_helpers.py` | Validation hồ sơ, năm học cũ, lưu và reset dữ liệu phiên | `validate_profile_fields`, `safe_student_year`, `save_profile_state`, `reset_profile_state` |
 | `llm_client.py` | Cấu hình `GROQ_API_KEY`, tạo `Groq` hoặc trả `None` | `build_llm_client()`, `llm_enabled()` |
 | `rag_engine.py` | Markdown chunking, TF-IDF, cosine retrieval, fallback khi thiếu nguồn/API lỗi | `KnowledgeBase.search`, `answer_with_rag` |
 | `matching_engine.py` | TF-IDF trên mentor, tính hybrid score, tạo giải thích offline/online | `get_top_matches`, `generate_match_explanation` |
 | `mentors_data.py` | Danh sách demo, normalize/validate mentor, repository trong RAM | `get_mentor_repository`, `validate_mentor` |
+| `mentor_data_diagnostics.py` | Công cụ báo lỗi trùng ID, thiếu field, sai kiểu trong dữ liệu mentor (chạy CLI độc lập) | `diagnose_mentors`, `format_diagnostic_report` |
 | `ingest.py` | In thống kê số file/chunk và mẫu retrieval | `main()` diagnostic |
 | `tests/` | Unit tests/Streamlit AppTest, không thay thế kiểm thử khách hàng | `python -m pytest -q` |
 | `.github/workflows/ci.yml` | Lint-like compile, pytest, CI HTTP smoke, secret pattern guard | Workflow khi PR/push |
@@ -162,10 +172,10 @@ sequenceDiagram
     participant Repo as MentorRepository
     participant LLM as Optional Groq
     Student->>UI: Search for mentors
-    UI->>Match: get_top_matches
+    UI->>Match: get_top_matches with optional filters
     Match->>Repo: list
     Repo-->>Match: Validated demo mentors
-    Match->>Match: TFIDF and hybrid ranking
+    Match->>Match: Filter and TFIDF hybrid ranking
     Match-->>UI: Ranked mentor list
     UI->>Match: generate_match_explanation
     opt Client available
@@ -180,7 +190,7 @@ sequenceDiagram
 
 Công thức đang triển khai:
 `score = 0.65 × TF-IDF cosine + 0.25 × domain keyword overlap + 0.10 × experience fit`.
-Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score để xếp hạng**, không phải xác suất dự đoán thành công, không phải nhãn được huấn luyện từ phản hồi người dùng.
+Bộ lọc theo field/available_for được áp dụng **trước** tính TF-IDF; nếu không có mentor phù hợp thì trả danh sách rỗng. Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score để xếp hạng**, không phải xác suất dự đoán thành công, không phải nhãn được huấn luyện từ phản hồi người dùng.
 
 ## 8. Dòng dữ liệu và hợp đồng tối thiểu
 
@@ -188,7 +198,7 @@ Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score �
 - **Mentor:** `{id, name, title, company, field, experience_years, bio, strengths[], available_for[]}`; `validate_mentor` thực hiện kiểm tra/chuẩn hóa đầu vào.
 - **Retriever output:** `RetrievedChunk(source, text, score)`, score bằng cosine TF-IDF, ngưỡng mặc định `0.06`.
 - **RAG output:** `RAGAnswer(answer, sources, mode, top_score)`, mode thuộc `no-evidence`, `offline-grounded`, `online-citations-unverified`, `offline-fallback`.
-- **Session state:** `user_profile`, `messages`, `top_matches`, `match_explanations`, `favorite_mentors`. Không phải database hay bộ nhớ lâu dài.
+- **Session state:** `user_profile`, `messages`, `top_matches`, `match_explanations`, `favorite_mentors`, `active_mentor_filters`. Không phải database hay bộ nhớ lâu dài. Chức năng xóa chat chỉ xóa `messages`, đặt lại hồ sơ xóa kết quả matching cũ và giữ nguyên favorites.
 
 ## 9. An toàn, giới hạn tin cậy và lỗi
 
@@ -197,9 +207,9 @@ Mỗi thành phần được chặn trong `[0,1]`. Đây là **heuristic score �
 | Credentials local → Groq | `.env` ignored, `llm_client.py` khởi tạo client có điều kiện | Secret cũ trong lịch sử Git phải revoke; pattern scan không phải secret scanner toàn diện |
 | Markdown không tin cậy → Prompt LLM | prompt xem nguồn là dữ liệu; citation ID phải thuộc các đoạn retrieval; bỏ qua symlink/đường dẫn thoát root và Markdown file >2 MB | Prompt injection và hallucination ngữ nghĩa chưa được chứng minh loại bỏ; threshold là heuristic |
 | API network lỗi / thiếu key | offline deterministic snippets/explanation | Không có provider dự phòng tự động hay SLA online |
-| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` là heuristic, chưa có benchmark hiệu chỉnh trên bộ dữ liệu lớn; guard corpus chỉ dấu câu để không crash |
+| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` và ngưỡng OOV/query-term coverage tối thiểu `0.55` là heuristic trên corpus demo nhỏ; có nguy cơ false refusal với từ mới/đồng nghĩa, chưa có benchmark ngoài phân phối |
 | Session bị ngắt/restart | Streamlit quản lý phiên hiện tại | Không có bảo đảm phục hồi lịch sử chat/profile |
-| Dataset lỗi | `MentorRepository` kiểm tra các field | Cần tiếp tục kiểm thử trùng ID, giá trị bất thường và đầu vào ác ý |
+| Dataset lỗi | `MentorRepository` kiểm tra các field; CLI `mentor_data_diagnostics.py` kiểm tra trùng ID và sai định dạng | Bản CLI là chẩn đoán độc lập, không tự sửa dữ liệu; validator và CLI có chính sách chuẩn hóa/strict khác nhau cần tiếp tục đối chiếu |
 | GitHub CI | pytest và health Windows/Linux của ứng dụng gốc; Mermaid render v10/v11; các lab có workflow theo path riêng | Không đo tải đồng thời hay RAG claim accuracy; green ở một workflow không chứng minh lab khác đạt |
 
 ## 10. NFR và phương án nghiệm thu
@@ -230,7 +240,14 @@ Chất lượng cần kiểm tra từ ít nhất ba lớp: `Unit/Integration`, `
 ## 13. Đồng bộ tài liệu, bằng chứng & trách nhiệm
 
 - **Tài liệu chuẩn:** `docs/architecture.md` (file này) và `docs/non-functional-requirements.md`.
-- **Code source-of-truth:** `app.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`.
+- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
 - **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml` cho root, các workflow `.github/workflows/*lab*.yml` hoặc `industry-ai-labs.yml` cho module độc lập. Mermaid được kiểm tra từ `scripts/validate_mermaid.mjs` trên Chromium.
 - **Lịch sử contributor:** commit gốc `6439cdeb`, `a991dbaf` do Dương Tuấn Dũng (`@TuanDungir`) thực hiện; bản hợp nhất là một lần review, không xóa lịch sử tác giả.
 - **Change control:** tạo Issue → branch riêng → kiểm tra mã nguồn/tài liệu → CI → PR review → merge. Mỗi lần thêm chức năng phải cập nhật bảng FR, diagram, NFR và bằng chứng liên quan.
+
+### 13.1. Regression, benchmark và giới hạn của bản tích hợp
+
+- `tests/test_issue_batch.py`: UI/session/filter/citation membership. `tests/test_mentor_data_diagnostics.py`: mentor data CLI.
+- `scripts/evaluate_rag.py` và `docs/RAG_EVALUATION.md`: tập smoke benchmark offline, không đo LLM faithfulness hay tổng quát hóa.
+- `docs/TEST_PLAN.md`, `docs/UAT_CHECKLIST.md`, `docs/PRIVACY_DATAFLOW.md` mô tả kiểm thử và xử lý dữ liệu. UAT chưa có kết quả từ người tham gia thì không được tuyên bố PASS.
+- Ứng dụng chỉ giữ dữ liệu trong session, không được coi là xử lý deletion bên provider bên ngoài hoặc lưu bền vững.

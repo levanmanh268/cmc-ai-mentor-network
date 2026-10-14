@@ -58,6 +58,9 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
 | Offline-safe mode | Không có Groq API key vẫn dùng được retrieval và fallback |
 | Mentor Matching | Xếp hạng mentor bằng TF-IDF cosine similarity + domain overlap + experience fit |
 | Explainable ranking | Hiển thị match score và lý do phù hợp |
+| Mentor filters | Lọc theo lĩnh vực và loại hỗ trợ trước khi xếp hạng |
+| Session UX | Validate hồ sơ, xóa chat, đặt lại hồ sơ và hiển thị rõ trạng thái/citations |
+| Data quality CLI | Chẩn đoán dữ liệu mentor với báo cáo lỗi deterministic, chạy offline |
 | Customer workflow | Có Issue Forms cho customer request và bug report |
 | CI quality gate | Secret guard, compile check, pytest và Streamlit runtime health check |
 
@@ -167,7 +170,7 @@ Sau đó điền key riêng vào `.env`:
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**.
+Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**. Khi có key, ứng dụng **vẫn giữ offline mặc định** cho đến khi người dùng bật đồng ý gửi câu hỏi và dữ liệu matching tới Groq trong sidebar; tắt lại để ngăn gửi yêu cầu mới.
 
 ### 5. Khởi động
 
@@ -181,19 +184,19 @@ Mặc định Streamlit mở tại `http://localhost:8501`.
 
 ### Hồ sơ cá nhân
 
-Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching, **chỉ lưu trong phiên Streamlit**, không có đăng nhập hoặc cơ sở dữ liệu người dùng.
+Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching, **chỉ lưu trong phiên Streamlit**, không có đăng nhập hoặc cơ sở dữ liệu người dùng. Trường lĩnh vực và mục tiêu bắt buộc có nội dung; có nút đặt lại hồ sơ.
 
 ### Grounded AI Assistant
 
 Hỏi câu liên quan đến tài liệu trong `knowledge_base/`. Hệ thống:
 
 1. chuẩn hóa câu hỏi;
-2. truy xuất top-k chunks;
+2. truy xuất top-k chunks với kiểm tra lexical coverage nhằm giảm câu hỏi ngoài miền bị match do từ quá chung;
 3. áp dụng relevance threshold;
 4. chỉ gửi context đã truy xuất cho LLM;
 5. hiển thị nguồn đã dùng.
 
-Nếu retrieval không đủ bằng chứng, hệ thống trả về trạng thái `no-evidence` thay vì tự bịa.
+Nếu retrieval không đủ bằng chứng, hệ thống trả về trạng thái `no-evidence` thay vì tự bịa. Nguồn được giữ trong lịch sử chat của phiên, và có thể xóa lịch sử mà không xóa hồ sơ/mentor yêu thích. Trạng thái online có trích dẫn **không chứng minh mức độ đúng ngữ nghĩa của mọi claim**.
 
 ### Tìm Mentor
 
@@ -205,14 +208,14 @@ Hệ thống tính hybrid score theo:
 10% experience fit
 ```
 
-Điểm được chặn trong khoảng 0–100 và ranking dùng tie-break ổn định để kết quả có tính tái lập.
+Điểm được chặn trong khoảng 0–100 và ranking dùng tie-break ổn định để kết quả có tính tái lập. Có thể lọc theo lĩnh vực/loại hỗ trợ trước khi ranking; lọc không có kết quả sẽ hiển thị thông báo.
 
 ## Kiểm thử và chất lượng
 
 Chạy toàn bộ kiểm tra local:
 
 ```bash
-python -m py_compile app.py llm_client.py rag_engine.py matching_engine.py mentors_data.py ingest.py
+python -m py_compile app.py ui_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py
 python -m pytest -q
 ```
 
@@ -221,6 +224,16 @@ Chẩn đoán knowledge base:
 ```bash
 python ingest.py
 ```
+
+Chẩn đoán dữ liệu mentor và đánh giá retrieval offline:
+
+```bash
+python mentor_data_diagnostics.py
+python -m scripts.evaluate_rag
+```
+
+Các tài liệu kiểm thử: [Test Plan](docs/TEST_PLAN.md), [UAT Checklist](docs/UAT_CHECKLIST.md), [RAG Evaluation](docs/RAG_EVALUATION.md), [Privacy & Dataflow](docs/PRIVACY_DATAFLOW.md).
+
 
 GitHub Actions tự động chạy trên Pull Request và trên `main`:
 
@@ -236,11 +249,15 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ```text
 .
 ├── app.py                     # Streamlit presentation layer
+├── ui_helpers.py              # Chat source + RAG mode helpers
+├── profile_helpers.py         # Student profile validation and reset
 ├── llm_client.py              # Optional Groq infrastructure
 ├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
 ├── mentors_data.py            # Validated in-memory MentorRepository + dataset
+├── mentor_data_diagnostics.py # Offline mentor data diagnostics
 ├── ingest.py                  # Knowledge-base diagnostics
+├── scripts/evaluate_rag.py    # Offline retrieval/refusal benchmark
 ├── knowledge_base/            # Markdown documents for RAG
 ├── tests/                     # Unit + smoke/regression tests
 ├── docs/                      # Canonical architecture.md + NFRs + process docs
@@ -319,6 +336,8 @@ Grounded AI Assistant áp dụng các cơ chế phòng thủ cơ bản:
 | Lê Hải Đăng | BAI250012 | Testing, CI/CD |
 | Dương Tuấn Dũng | BIT250099 | Backend, data |
 | Nguyễn Văn Phúc | BCS252351 | AI/RAG, QA |
+| Hà Văn Dương | Chưa xác nhận | Frontend, Streamlit UX, Issues #50/#51 |
+| Duy Anh | Chưa xác nhận | UAT scenarios, Issue #22 |
 
 Bảng phân công mô tả workstream, không thay thế lịch sử commit/PR làm bằng chứng đóng góp cá nhân.
 

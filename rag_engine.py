@@ -122,6 +122,17 @@ class KnowledgeBase:
         if not query or self._vectorizer is None or self._matrix is None:
             return []
 
+        # Avoid accepting irrelevant questions solely because generic words
+        # overlap with the corpus (e.g. "công thức ... và ..." on AI docs).
+        # This is a conservative OOV-coverage heuristic calibrated only on
+        # the small demonstration corpus, not a guarantee of semantic relevance.
+        terms = set(re.findall(r"(?u)\b\w\w+\b", query))
+        if not terms:
+            return []
+        coverage = sum(term in self._vectorizer.vocabulary_ for term in terms) / len(terms)
+        if coverage < 0.55:
+            return []
+
         query_vector = self._vectorizer.transform([query])
         scores = cosine_similarity(query_vector, self._matrix)[0]
 
@@ -165,6 +176,17 @@ def _offline_answer(results: list[RetrievedChunk]) -> str:
         "AI sinh ngôn ngữ đang ở chế độ offline, nên mình không tự suy diễn ngoài tài liệu. "
         "Các đoạn liên quan nhất là:\n\n" + "\n\n".join(snippets)
     )
+
+
+def validate_citation_ids(answer: str, num_sources: int) -> bool:
+    """Validate reference ID membership, not semantic faithfulness.
+
+    Reject responses without bracketed [S<number>] citations or with any
+    referenced index outside the retrieval set. This is not entailment checking.
+    """
+    ids = re.findall(r"\[S([0-9]+)\]", answer)
+    return bool(ids) and all(1 <= int(index) <= num_sources for index in ids)
+
 
 
 def answer_with_rag(
@@ -226,10 +248,8 @@ CONTEXT:
         answer = completion.choices[0].message.content.strip()
         if not answer or len(answer) > 6000:
             raise ValueError("empty or oversized LLM response")
-        cited_ids = re.findall(r"\[S([0-9]+)\]", answer)
-        # Citation membership only: cannot establish semantic entailment.
-        # Reject missing or forged citation identifiers rather than labelling unverified text as grounded.
-        if not cited_ids or any(int(i) < 1 or int(i) > len(results) for i in cited_ids):
+        # Citation membership only: never assert claim-level semantic faithfulness.
+        if not validate_citation_ids(answer, len(results)):
             raise ValueError("missing or invented reference citations")
         mode = "online-citations-unverified"
     except Exception:

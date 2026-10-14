@@ -104,8 +104,7 @@ def calculate_hybrid_score(
     return max(0.0, min(score, 1.0))
 
 
-def _semantic_scores(student_profile: dict) -> list[float]:
-    mentor_pool = get_mentor_repository().list()
+def _semantic_scores(student_profile: dict, mentor_pool: list[dict]) -> list[float]:
     student_text = _profile_text(student_profile)
     mentor_texts = [_mentor_text(mentor) for mentor in mentor_pool]
 
@@ -122,9 +121,30 @@ def _semantic_scores(student_profile: dict) -> list[float]:
     return [max(0.0, min(float(score), 1.0)) for score in scores]
 
 
-def get_top_matches(student_profile: dict, top_k: int = 3) -> list[dict]:
+def get_top_matches(
+    student_profile: dict,
+    top_k: int = 3,
+    *,
+    field_filter: str | None = None,
+    support_filter: str | None = None,
+) -> list[dict]:
+    """Rank only mentors matching the selected filters, without mutating repository."""
     mentor_pool = get_mentor_repository().list()
-    semantic_scores = _semantic_scores(student_profile)
+    if field_filter:
+        chosen_field = field_filter.strip().casefold()
+        mentor_pool = [
+            mentor for mentor in mentor_pool
+            if mentor["field"].strip().casefold() == chosen_field
+        ]
+    if support_filter:
+        chosen_support = support_filter.strip().casefold()
+        mentor_pool = [
+            mentor for mentor in mentor_pool
+            if any(x.strip().casefold() == chosen_support for x in mentor["available_for"])
+        ]
+    if not mentor_pool:
+        return []
+    semantic_scores = _semantic_scores(student_profile, mentor_pool)
 
     scored: list[dict] = []
     for mentor, semantic in zip(mentor_pool, semantic_scores):
