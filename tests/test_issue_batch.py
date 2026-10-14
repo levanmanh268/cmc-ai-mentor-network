@@ -100,7 +100,7 @@ def test_streamlit_profile_and_chat_controls_survive_rerun(monkeypatch):
 
     app.sidebar.radio[0].set_value("👤 Hồ sơ cá nhân").run()
     assert not app.exception
-    assert any("phiên Streamlit" in x.message for x in app.info)
+    assert any("phiên Streamlit" in x.value for x in app.info)
     assert len(app.button) >= 2
 
     app.sidebar.radio[0].set_value("💬 AI Assistant").run()
