@@ -191,7 +191,7 @@ Mặc định Streamlit mở tại `http://localhost:8501`.
 Hỏi câu liên quan đến tài liệu trong `knowledge_base/`. Hệ thống:
 
 1. chuẩn hóa câu hỏi;
-2. truy xuất top-k chunks;
+2. truy xuất top-k chunks với kiểm tra lexical coverage nhằm giảm câu hỏi ngoài miền bị match do từ quá chung;
 3. áp dụng relevance threshold;
 4. chỉ gửi context đã truy xuất cho LLM;
 5. hiển thị nguồn đã dùng.
