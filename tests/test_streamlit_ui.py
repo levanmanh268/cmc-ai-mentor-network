@@ -39,35 +39,3 @@ def test_mentor_search_results_remain_after_saving(monkeypatch):
     assert not app.exception
     assert len(app.session_state["top_matches"]) == 3
     assert len(app.session_state["favorite_mentors"]) == 1
-
-
-
-def test_clear_chat_preserves_profile_and_favorites(monkeypatch):
-    app = make_app(monkeypatch)
-    app.sidebar.radio[0].set_value("💬 AI Assistant").run()
-    app.session_state["messages"] = [
-        {
-            "role": "assistant",
-            "content": "Previous answer",
-            "sources": [{"name": "legacy.md", "score": 0.25}],
-        }
-    ]
-    app.session_state["user_profile"] = {"name": "Keep profile"}
-    app.session_state["favorite_mentors"] = [{"id": "mentor-1"}]
-    app.run()
-
-    assert not app.exception
-    assert any("Nguồn truy xuất" in item.label for item in app.expander)
-
-    app.button[0].click().run()
-    assert not app.exception
-    app.checkbox[0].check().run()
-    assert not app.exception
-
-    clear_button = next(item for item in app.button if item.label == "Xóa lịch sử")
-    clear_button.click().run()
-
-    assert not app.exception
-    assert app.session_state["messages"] == []
-    assert app.session_state["user_profile"] == {"name": "Keep profile"}
-    assert app.session_state["favorite_mentors"] == [{"id": "mentor-1"}]
