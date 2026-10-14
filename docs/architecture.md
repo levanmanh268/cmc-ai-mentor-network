@@ -204,7 +204,7 @@ Bộ lọc theo field/available_for được áp dụng **trước** tính TF-ID
 | Credentials local → Groq | `.env` ignored, `llm_client.py` khởi tạo client có điều kiện | Secret cũ trong lịch sử Git phải revoke; pattern scan không phải secret scanner toàn diện |
 | Markdown không tin cậy → Prompt LLM | prompt xem nguồn là dữ liệu; citation ID phải thuộc các đoạn retrieval; bỏ qua symlink/đường dẫn thoát root và Markdown file >2 MB | Prompt injection và hallucination ngữ nghĩa chưa được chứng minh loại bỏ; threshold là heuristic |
 | API network lỗi / thiếu key | offline deterministic snippets/explanation | Không có provider dự phòng tự động hay SLA online |
-| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` là heuristic, chưa có benchmark hiệu chỉnh trên bộ dữ liệu lớn; guard corpus chỉ dấu câu để không crash |
+| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` và ngưỡng OOV/query-term coverage tối thiểu `0.55` là heuristic trên corpus demo nhỏ; có nguy cơ false refusal với từ mới/đồng nghĩa, chưa có benchmark ngoài phân phối |
 | Session bị ngắt/restart | Streamlit quản lý phiên hiện tại | Không có bảo đảm phục hồi lịch sử chat/profile |
 | Dataset lỗi | `MentorRepository` kiểm tra các field; CLI `mentor_data_diagnostics.py` kiểm tra trùng ID và sai định dạng | Bản CLI là chẩn đoán độc lập, không tự sửa dữ liệu; validator và CLI có chính sách chuẩn hóa/strict khác nhau cần tiếp tục đối chiếu |
 | GitHub CI | pytest và health Windows/Linux của ứng dụng gốc; Mermaid render v10/v11; các lab có workflow theo path riêng | Không đo tải đồng thời hay RAG claim accuracy; green ở một workflow không chứng minh lab khác đạt |
