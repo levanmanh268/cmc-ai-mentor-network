@@ -173,7 +173,7 @@ def validate_citation_ids(answer: str, num_sources: int) -> bool:
     Reject responses without bracketed [S<number>] citations or with any
     referenced index outside the retrieval set. This is not entailment checking.
     """
-    ids = re.findall(r"\\[S([0-9]+)\\]", answer)
+    ids = re.findall(r"\[S([0-9]+)\]", answer)
     return bool(ids) and all(1 <= int(index) <= num_sources for index in ids)
 
 
