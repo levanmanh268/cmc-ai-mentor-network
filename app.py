@@ -2,6 +2,12 @@ import streamlit as st
 
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
+from profile_helpers import (
+    reset_profile_state,
+    safe_student_year,
+    save_profile_state,
+    validate_profile_fields,
+)
 from rag_engine import KnowledgeBase, answer_with_rag
 from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
 
@@ -75,41 +81,79 @@ if page == "🏠 Dashboard":
 
 elif page == "👤 Hồ sơ cá nhân":
     st.title("👤 Hồ sơ cá nhân")
+    st.info(
+        "Hồ sơ chỉ được lưu trong phiên Streamlit hiện tại. Ứng dụng chưa có tài khoản "
+        "hay cơ sở dữ liệu để lưu bền vững; dữ liệu có thể mất khi phiên kết thúc."
+    )
     profile = st.session_state.user_profile
-
-    name = st.text_input("Họ và tên", value=profile.get("name", ""))
     years = ["Năm 1", "Năm 2", "Năm 3", "Năm 4"]
-    current_year = profile.get("year", "Năm 1")
+    current_year = safe_student_year(profile.get("year", "Năm 1"), years)
+    form_version = st.session_state.get("profile_form_version", 0)
+
+    name = st.text_input(
+        "Họ và tên (không bắt buộc)",
+        value=profile.get("name", ""),
+        key=f"profile_name_{form_version}",
+        max_chars=100,
+    )
     year = st.selectbox(
         "Bạn là sinh viên năm mấy?",
         years,
-        index=years.index(current_year) if current_year in years else 0,
+        index=years.index(current_year),
+        key=f"profile_year_{form_version}",
     )
     field_interest = st.text_input(
-        "Lĩnh vực quan tâm",
+        "Lĩnh vực quan tâm *",
         value=profile.get("field_interest", "NLP, LLM, RAG"),
+        key=f"profile_interest_{form_version}",
+        max_chars=120,
+        help="Bắt buộc, tối đa 120 ký tự.",
     )
     goals = st.text_input(
-        "Mục tiêu",
+        "Mục tiêu *",
         value=profile.get("goals", "Làm project AI và chuẩn bị thực tập"),
+        key=f"profile_goals_{form_version}",
+        max_chars=240,
+        help="Bắt buộc, tối đa 240 ký tự.",
     )
     bio = st.text_area(
-        "Giới thiệu ngắn",
+        "Giới thiệu ngắn (không bắt buộc)",
         value=profile.get("bio", "Em muốn cải thiện kỹ năng xây dựng hệ thống AI."),
+        key=f"profile_bio_{form_version}",
+        max_chars=500,
+        help="Tối đa 500 ký tự.",
     )
 
-    if st.button("💾 Lưu hồ sơ", type="primary"):
-        st.session_state.user_profile = {
-            "name": name.strip(),
-            "year": year,
-            "field_interest": field_interest.strip(),
-            "goals": goals.strip(),
-            "bio": bio.strip(),
-        }
-        st.session_state.top_matches = []
-        st.session_state.match_explanations = {}
-        st.success("Đã lưu hồ sơ.")
-        
+    if st.button("💾 Lưu hồ sơ trong phiên", type="primary"):
+        cleaned, errors = validate_profile_fields(
+            name, year, field_interest, goals, bio, years
+        )
+        if errors:
+            for field in ("name", "field_interest", "goals", "bio"):
+                if field in errors:
+                    st.error(errors[field])
+            st.warning("Hồ sơ chưa được lưu; dữ liệu hồ sơ trước đó vẫn được giữ nguyên.")
+        else:
+            save_profile_state(st.session_state, cleaned)
+            st.success("Đã lưu hồ sơ trong phiên Streamlit hiện tại.")
+
+    @st.dialog("Đặt lại hồ sơ trong phiên?")
+    def confirm_reset_profile():
+        st.write(
+            "Hồ sơ sẽ được xóa khỏi phiên hiện tại và kết quả matching cũ sẽ bị xóa. "
+            "Danh sách mentor yêu thích và lịch sử chat không bị xóa."
+        )
+        confirm_reset = st.checkbox(
+            "Tôi xác nhận đặt lại hồ sơ", key="confirm_reset_profile"
+        )
+        if st.button("Xóa hồ sơ và kết quả matching", type="primary", disabled=not confirm_reset):
+            reset_profile_state(st.session_state)
+            st.session_state.profile_form_version = form_version + 1
+            st.rerun()
+
+    if st.button("Đặt lại / xóa hồ sơ trong phiên"):
+        confirm_reset_profile()
+
 elif page == "💬 AI Assistant":
     st.title("💬 Grounded AI Assistant")
     st.caption(
