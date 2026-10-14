@@ -29,7 +29,7 @@
 Quy tắc dependency:
 - `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval; `ui_helpers.py` chuẩn hóa lịch sử nguồn và nhãn trạng thái chat, còn `profile_helpers.py` kiểm tra/đặt lại hồ sơ.
 - `rag_engine.py` và `matching_engine.py` nhận client LLM tùy chọn qua tham số; không tự đọc credential.
-- `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client.
+- `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client. Streamlit sidebar **yêu cầu opt-in rõ ràng mỗi phiên** trước khi chuyển client vào RAG hoặc matching; cấu hình credential **không** tự cho phép truyền nội dung ra ngoài.
 - `matching_engine.py` hiện phụ thuộc **`get_mentor_repository()` trong `mentors_data.py`**, không truy vấn DB.
 - `mentors_data.py` chứa dữ liệu demo, `validate_mentor` và `MentorRepository` trong bộ nhớ; `mentor_data_diagnostics.py` là công cụ CLI chạy offline kiểm tra riêng, không được gọi từ UI.
 - `rag_engine.py` đọc Markdown trực tiếp từ thư mục `knowledge_base/` (không dùng Chroma/vector database trong bản này).
