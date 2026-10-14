@@ -73,6 +73,8 @@ def test_streamlit_navigation_and_filters(monkeypatch):
     assert any("phiên Streamlit" in x.value for x in app.info)
     app.sidebar.radio[0].set_value("💬 AI Assistant").run()
     assert not app.exception
+    app.selectbox[0].set_value("📚 Hỏi đáp tài liệu").run()
+    assert not app.exception
     app.session_state["messages"] = [{
         "role": "assistant", "content": "Tham khảo",
         "sources": [{"name": "legacy.md", "score": 0.3}],
