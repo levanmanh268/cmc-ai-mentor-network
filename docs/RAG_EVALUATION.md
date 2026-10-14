@@ -18,6 +18,6 @@ Bộ [14 trường hợp](../scripts/evaluate_rag.py) gồm 9 câu hỏi có exp
 
 **Kết quả:** Cần đọc dòng `Hit@3: X/9; No-evidence: Y/5` từ GitHub CI hoặc chạy local. Nếu test fail, báo cáo PASS/FAIL theo thực tế và xem chi tiết từng query. Không sửa câu hỏi chỉ để tối đa hóa điểm mà không ghi nhận thay đổi protocol.
 
-**Known limitations:** từ đồng nghĩa, query đảo ngữ cảnh, ngôn ngữ khác và prompt injection chưa có benchmark đại diện. Score TF-IDF `0.06` là heuristic. Citation hợp lệ theo ID không chứng minh mọi khẳng định được nguồn hỗ trợ.
+**Known limitations:** từ đồng nghĩa, query đảo ngữ cảnh, ngôn ngữ khác và prompt injection chưa có benchmark đại diện. Score TF-IDF `0.06` kết hợp OOV/query-term coverage `0.55` là heuristic hiệu chỉnh sơ bộ trên corpus demo; cần benchmark ngoài phân phối để đo false-refusal và false-grounding. Citation hợp lệ theo ID không chứng minh mọi khẳng định được nguồn hỗ trợ.
 
 Tracking: [Issue #17](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/17).
