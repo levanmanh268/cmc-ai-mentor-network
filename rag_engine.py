@@ -8,6 +8,8 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from chat_intents import local_social_reply
+
 
 @dataclass(frozen=True)
 class RetrievedChunk:
@@ -197,6 +199,17 @@ def answer_with_rag(
     model: str = "llama-3.3-70b-versatile",
     k: int = 4,
 ) -> RAGAnswer:
+    # A greeting is not a document question. Short, strictly allowlisted
+    # social turns never call the online provider or invent citations.
+    social_reply = local_social_reply(question)
+    if social_reply is not None:
+        return RAGAnswer(
+            answer=social_reply,
+            sources=(),
+            mode="local-social",
+            top_score=0.0,
+        )
+
     results = knowledge_base.search(question, k=k)
     top_score = results[0].score if results else 0.0
 

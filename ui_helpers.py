@@ -6,6 +6,7 @@ from typing import Any, MutableMapping
 
 
 RAG_MODE_LABELS = {
+    "local-social": "Phản hồi chào hỏi cục bộ (không truy xuất tài liệu và không gọi mô hình AI).",
     "no-evidence": "Chưa tìm thấy bằng chứng phù hợp",
     "offline-grounded": "Trả lời ngoại tuyến dựa trên tài liệu truy xuất",
     "online-citations-unverified": (

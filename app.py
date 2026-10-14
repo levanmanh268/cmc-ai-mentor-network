@@ -173,6 +173,13 @@ elif page == "💬 AI Assistant":
         "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
         "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
     )
+    if authorized_client is None:
+        st.info(
+            "🧪 **Bản demo offline:** Tớ nhận diện vài lời chào cơ bản; còn với câu hỏi kiến thức, "
+            "tớ chỉ truy xuất **3 tài liệu mẫu** và hiển thị nguồn, chưa có LLM để trò chuyện tự do. "
+            "Hãy thử: **Quy trình xử lý một Issue GitHub như thế nào?** "
+            "hoặc **Làm sao giảm hallucination trong RAG?**"
+        )
 
     if knowledge_base.document_count == 0:
         st.warning(

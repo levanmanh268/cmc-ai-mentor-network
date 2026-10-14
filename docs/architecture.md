@@ -1,6 +1,6 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.3, 14/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.4, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
 > **Phạm vi:** Kiến trúc runtime của **ứng dụng môn học** ở thư mục gốc (Streamlit + RAG + mentor demo). Repo còn chứa các *portfolio labs độc lập* với entrypoint và CI riêng, được liệt kê ở Mục 2.1, không được coi là microservices của ứng dụng môn học. Không được giới thiệu ứng dụng môn học như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
@@ -19,6 +19,7 @@
 | FR-08 | Lọc mentor theo lĩnh vực và loại hỗ trợ trước khi xếp hạng | `app.py` + `matching_engine.py` | demo records trong RAM | Có, theo Issue #18 |
 | FR-09 | Validate, đặt lại hồ sơ và xóa chat trong phiên | `app.py` + `ui_helpers.py` + `profile_helpers.py` | `st.session_state` | Có, theo Issues #50/#51 |
 | FR-10 | Chẩn đoán độc lập chất lượng dữ liệu mentor | `mentor_data_diagnostics.py` | đọc demo records, không ghi DB | Có dưới dạng CLI, không phải màn hình app |
+| FR-11 | Chào hỏi ngắn không cần tài liệu, không mạo nhận LLM | `chat_intents.py` + `rag_engine.py` | không lưu riêng, chỉ tin nhắn trong session | Template cục bộ, giới hạn allowlist |
 
 **Không triển khai trong phiên bản này:** đăng ký/đăng nhập, phân quyền ứng dụng, cơ sở dữ liệu tài khoản, hồ sơ lưu vĩnh viễn, lịch hẹn/nhắn tin mentor, gửi yêu cầu ghép đôi đến mentor, web search trực tuyến, tải và lập chỉ mục tài liệu qua giao diện, báo cáo SLA production. Những mục này chỉ có thể là backlog sau khi khách hàng phê duyệt.
 
@@ -33,6 +34,7 @@ Quy tắc dependency:
 - `matching_engine.py` hiện phụ thuộc **`get_mentor_repository()` trong `mentors_data.py`**, không truy vấn DB.
 - `mentors_data.py` chứa dữ liệu demo, `validate_mentor` và `MentorRepository` trong bộ nhớ; `mentor_data_diagnostics.py` là công cụ CLI chạy offline kiểm tra riêng, không được gọi từ UI.
 - `rag_engine.py` đọc Markdown trực tiếp từ thư mục `knowledge_base/` (không dùng Chroma/vector database trong bản này).
+- `chat_intents.py` là bộ phân loại lời chào/cảm ơn/câu hỏi năng lực rất hẹp, không gọi LLM; mọi truy vấn khác vẫn qua `KnowledgeBase.search` và chốt nguồn trước khi trả lời.
 - `ingest.py` chỉ kiểm tra/diagnostic kho tài liệu, không upload hay ingest database.
 - GitHub Actions chạy độc lập lúc commit/PR, không xử lý yêu cầu người dùng tại runtime.
 
@@ -95,6 +97,7 @@ flowchart TD
     UI[Streamlit app.py]
     CONFIG[llm_client.py]
     KB[rag_engine.py]
+    SOCIAL[chat_intents.py]
     MATCH[matching_engine.py]
     HELPER[ui_helpers.py]
     PROFILE[profile_helpers.py]
@@ -104,6 +107,7 @@ flowchart TD
     API[Groq API]
     UI --> CONFIG
     UI --> KB
+    KB --> SOCIAL
     UI --> MATCH
     UI --> HELPER
     UI --> PROFILE
@@ -119,6 +123,7 @@ flowchart TD
 | `profile_helpers.py` | Validation hồ sơ, năm học cũ, lưu và reset dữ liệu phiên | `validate_profile_fields`, `safe_student_year`, `save_profile_state`, `reset_profile_state` |
 | `llm_client.py` | Cấu hình `GROQ_API_KEY`, tạo `Groq` hoặc trả `None` | `build_llm_client()`, `llm_enabled()` |
 | `rag_engine.py` | Markdown chunking, TF-IDF, cosine retrieval, fallback khi thiếu nguồn/API lỗi | `KnowledgeBase.search`, `answer_with_rag` |
+| `chat_intents.py` | Cho phép chào hỏi/cảm ơn độc lập bằng template, không truy xuất hay giả vờ là AI online | `local_social_reply` |
 | `matching_engine.py` | TF-IDF trên mentor, tính hybrid score, tạo giải thích offline/online | `get_top_matches`, `generate_match_explanation` |
 | `mentors_data.py` | Danh sách demo, normalize/validate mentor, repository trong RAM | `get_mentor_repository`, `validate_mentor` |
 | `mentor_data_diagnostics.py` | Công cụ báo lỗi trùng ID, thiếu field, sai kiểu trong dữ liệu mentor (chạy CLI độc lập) | `diagnose_mentors`, `format_diagnostic_report` |
@@ -139,26 +144,30 @@ sequenceDiagram
     participant RAG as RAG Engine
     participant KB as KnowledgeBase
     participant LLM as Optional Groq
-    Student->>UI: Submit question
+    Student->>UI: Submit message
     UI->>RAG: answer_with_rag
-    RAG->>KB: search
-    KB-->>RAG: Scored chunks
-    alt No sufficient evidence
-        RAG-->>UI: no-evidence response
-    else Offline mode
-        RAG-->>UI: Retrieved excerpts and sources
-    else Online mode
-        RAG->>LLM: Question and retrieved context
-        alt Provider success
-            LLM-->>RAG: Generated answer
-            RAG-->>UI: unverified cited answer and sources
-        else Provider failure
-            RAG-->>UI: offline-fallback excerpts
+    alt Standalone short social message
+        RAG-->>UI: local-social template, no citations or LLM
+    else Knowledge question
+        RAG->>KB: search
+        KB-->>RAG: Scored chunks
+        alt No sufficient evidence
+            RAG-->>UI: no-evidence response
+        else Offline mode
+            RAG-->>UI: Retrieved excerpts and sources
+        else Online mode with consent
+            RAG->>LLM: Question and retrieved context
+            alt Provider success
+                LLM-->>RAG: Generated answer
+                RAG-->>UI: unverified cited answer and sources
+            else Provider failure
+                RAG-->>UI: offline-fallback excerpts
+            end
         end
     end
-    UI-->>Student: Display answer and sources
+    UI-->>Student: Display response and source status
 ```
-**Các trạng thái RAG (đúng theo nhánh `main` hiện tại):** `no-evidence` khi không có chunk vượt ngưỡng; `offline-grounded` khi client chưa cấu hình; `online-citations-unverified` khi API trả lời có ít nhất một citation hợp lệ về **chỉ số nguồn**; `offline-fallback` khi API lỗi hoặc trả về rỗng. Trong sơ đồ, các nhãn ngắn gọn đại diện cho bốn nhánh xử lý này.
+**Các trạng thái phản hồi của ứng dụng:** `local-social` dành cho lời chào đơn giản được trả bằng template cục bộ, **không có nguồn hay lời gọi Groq**. Các câu hỏi ngoài allowlist tiếp tục đi qua retrieval. **Các trạng thái RAG (đúng theo nhánh `main` hiện tại):** `no-evidence` khi không có chunk vượt ngưỡng; `offline-grounded` khi client chưa cấu hình; `online-citations-unverified` khi API trả lời có ít nhất một citation hợp lệ về **chỉ số nguồn**; `offline-fallback` khi API lỗi hoặc trả về rỗng. Trong sơ đồ, các nhãn ngắn gọn đại diện cho bốn nhánh xử lý này.
 
 **Không tuyên bố bảo đảm không hallucination:** prompt ràng buộc nguồn và `rag_engine.py` hiện có **kiểm tra sự tồn tại của chỉ số citation** (`[S1]` đến `[Sk]`) trong các kết quả retrieval, từ chối câu trả lời thiếu citation hoặc có chỉ số ngoài phạm vi, đồng thời chặn câu trả lời rỗng hoặc quá dài. **Chưa có kiểm chứng ngữ nghĩa từng claim (entailment/faithfulness)**: citation tồn tại không chứng minh nội dung thực sự được nguồn hỗ trợ. `sources` chỉ phản ánh các đoạn được truy xuất.
 
@@ -240,7 +249,7 @@ Chất lượng cần kiểm tra từ ít nhất ba lớp: `Unit/Integration`, `
 ## 13. Đồng bộ tài liệu, bằng chứng & trách nhiệm
 
 - **Tài liệu chuẩn:** `docs/architecture.md` (file này) và `docs/non-functional-requirements.md`.
-- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
+- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `chat_intents.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
 - **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml` cho root, các workflow `.github/workflows/*lab*.yml` hoặc `industry-ai-labs.yml` cho module độc lập. Mermaid được kiểm tra từ `scripts/validate_mermaid.mjs` trên Chromium.
 - **Lịch sử contributor:** commit gốc `6439cdeb`, `a991dbaf` do Dương Tuấn Dũng (`@TuanDungir`) thực hiện; bản hợp nhất là một lần review, không xóa lịch sử tác giả.
 - **Change control:** tạo Issue → branch riêng → kiểm tra mã nguồn/tài liệu → CI → PR review → merge. Mỗi lần thêm chức năng phải cập nhật bảng FR, diagram, NFR và bằng chứng liên quan.

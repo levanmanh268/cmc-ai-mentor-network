@@ -56,6 +56,7 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
 | Citation | Hiển thị nguồn và relevance score để người dùng kiểm chứng |
 | No-evidence refusal | Từ chối suy diễn khi không tìm được bằng chứng đủ liên quan |
 | Offline-safe mode | Không có Groq API key vẫn dùng được retrieval và fallback |
+| Local small-talk | Nhận diện lời chào/cảm ơn ngắn bằng template cục bộ; không biến thành câu hỏi truy xuất hoặc tự nhận là LLM |
 | Mentor Matching | Xếp hạng mentor bằng TF-IDF cosine similarity + domain overlap + experience fit |
 | Explainable ranking | Hiển thị match score và lý do phù hợp |
 | Mentor filters | Lọc theo lĩnh vực và loại hỗ trợ trước khi xếp hạng |
@@ -106,6 +107,7 @@ Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository 
 🌐 **Ứng dụng:** https://cmc-ai-mentor-network-group6.onrender.com
 
 - Chạy Streamlit trên Render (Singapore, Free), mặc định dùng **offline RAG và mentor matching**; không cần Groq API key.
+- Ở cloud, lời chào như **“hello cậu”** được phản hồi cục bộ; câu hỏi kiến thức chỉ trả lời dựa trên 3 tài liệu mẫu. **Không có AI trò chuyện tổng quát khi chưa cấu hình Groq API key** và chưa đồng ý gửi dữ liệu.
 - Cloud có thể khởi động chậm do gói Free. Hồ sơ, lịch sử chat và mentor yêu thích **chỉ nằm trong phiên**; không có tài khoản/database.
 - Theo dõi [hướng dẫn cloud và bằng chứng deploy](docs/CLOUD_DEPLOYMENT.md). [Release mới v0.2.0](docs/RELEASE_NOTES_v0.2.0.md) có changelog và các giới hạn còn cần nghiệm thu.
 
