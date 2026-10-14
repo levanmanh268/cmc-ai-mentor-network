@@ -83,3 +83,21 @@ def test_streamlit_navigation_and_filters(monkeypatch):
     app.sidebar.radio[0].set_value("👥 Tìm Mentor").run()
     assert not app.exception
     assert len(app.selectbox) >= 2
+
+
+def test_online_provider_requires_explicit_user_consent(monkeypatch):
+    """Configured credentials alone must never imply authorized API calls."""
+    monkeypatch.setenv("GROQ_API_KEY", "unit-test-not-a-real-key")
+    app = AppTest.from_file(
+        Path(__file__).resolve().parents[1] / "app.py", default_timeout=45
+    ).run()
+    assert not app.exception
+    assert len(app.sidebar.checkbox) >= 1
+    assert app.sidebar.checkbox[0].value is False
+    assert any(x.value == "Ngoại tuyến" for x in app.metric)
+    app.sidebar.checkbox[0].set_value(True).run()
+    assert not app.exception
+    assert any(x.value == "Cho phép trực tuyến" for x in app.metric)
+    app.sidebar.checkbox[0].set_value(False).run()
+    assert not app.exception
+    assert any(x.value == "Ngoại tuyến" for x in app.metric)
