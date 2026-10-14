@@ -16,6 +16,6 @@
 
 **Deletion:** Chat clear resets `messages`; profile reset clears `user_profile` and matching state; favorite mentors removed via their Delete UI. Streamlit session state expires when session/server closes; no guaranteed durability or immediate third-party data deletion after Groq API requests.
 
-**Controls:** `.env` ignored by Git, secret pattern guard in CI, no app-level logging of raw prompts. This is a code-level dataflow inventory, not independent network capture, privacy impact assessment or provider retention audit. For real personal data, require consent, privacy policy and storage threat model before deployment.
+**Controls:** `.env` ignored by Git, secret pattern guard in CI, no app-level logging of raw prompts. **Explicit per-session opt-in:** sidebar checkbox defaults off even if Groq key configured; both RAG and mentor explanations receive `authorized_client=None` until opted in. Revocation stops *new* requests; earlier provider copies are not deleted. No independent network capture or provider privacy audit has yet been completed. This is a code-level dataflow inventory, not independent network capture, privacy impact assessment or provider retention audit. For real personal data, require consent, privacy policy and storage threat model before deployment.
 
 Tracking: [NFR-03 #32](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/32), [NFR-04 #33](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/33).
