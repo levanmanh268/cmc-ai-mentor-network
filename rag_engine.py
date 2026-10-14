@@ -256,7 +256,9 @@ CONTEXT:
             ],
             model=model,
             temperature=0.1,
-            max_tokens=900,
+            max_completion_tokens=1400,
+            reasoning_effort="low",
+            include_reasoning=False,
         )
         answer = completion.choices[0].message.content.strip()
         if not answer or len(answer) > 6000:
