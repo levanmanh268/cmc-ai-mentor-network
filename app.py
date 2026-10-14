@@ -1,6 +1,7 @@
 import streamlit as st
 
-from llm_client import build_llm_client, llm_enabled
+from llm_client import DEFAULT_GROQ_MODEL, build_llm_client, llm_enabled
+from general_chat import generate_general_reply
 from matching_engine import get_top_matches, generate_match_explanation
 from profile_helpers import (
     reset_profile_state,
@@ -37,21 +38,33 @@ with st.sidebar:
         f"Knowledge base: {knowledge_base.document_count} tài liệu • "
         f"{knowledge_base.chunk_count} chunks"
     )
-    if llm_enabled():
-        st.info("LLM: đã cấu hình; kết nối và nội dung từng câu trả lời chưa được xác minh đầy đủ.")
+    st.subheader("🧠 Kết nối AI thực")
+    st.caption(f"Model: `{DEFAULT_GROQ_MODEL}` qua Groq.")
+    session_key = st.text_input(
+        "Groq API key (chỉ trong phiên này)",
+        type="password",
+        key="session_groq_api_key",
+        help="API key gửi đến máy chủ Render trong kết nối Streamlit của phiên; không đưa vào lịch sử chat, GitHub hay logs.",
+        placeholder="Dán API key của cậu tại đây",
+    )
+    if session_key.strip():
+        client = build_llm_client(api_key=session_key)
+    if client is not None:
+        st.info("Đã có cấu hình kết nối mô hình. Chỉ gửi yêu cầu khi cậu cho phép.")
         online_consent = st.checkbox(
-            "Cho phép gửi câu hỏi và dữ liệu matching tới Groq",
+            "Đồng ý gửi câu hỏi, lịch sử chat và ngữ cảnh đến Groq",
             value=False,
             help=(
-                "Khi bật, câu hỏi và tài liệu retrieval hoặc lĩnh vực/mục tiêu của hồ sơ "
-                "cùng thông tin mentor có thể được gửi tới Groq để tạo câu trả lời. "
-                "Mặc định tắt; tắt lại để ngừng gửi yêu cầu mới."
+                "Bắt buộc trước khi gọi AI. Groq sẽ xử lý nội dung gửi đi theo "
+                "điều khoản và chính sách riêng; tắt để dừng các yêu cầu mới."
             ),
         )
-        st.caption("Chỉ gọi dịch vụ ngoài khi bạn chủ động đồng ý. Nội dung đã gửi trước đó không được xóa khỏi dịch vụ ngoài bởi thao tác này.")
+        st.caption("Tắt đồng ý sẽ ngăn lệnh gọi mới, không thu hồi dữ liệu đã gửi tới nhà cung cấp.")
     else:
         online_consent = False
-        st.info("LLM: chế độ ngoại tuyến")
+        st.warning("Chưa kết nối mô hình. Cậu cần Groq API key để trò chuyện với AI thực.")
+        st.markdown("[Tạo API key tại Groq Console](https://console.groq.com/keys)")
+        st.caption("Nếu quản trị viên cấu hình GROQ_API_KEY trong Render, người dùng vẫn phải đồng ý trước khi gọi API.")
 
 authorized_client = client if online_consent else None
 
@@ -168,95 +181,161 @@ elif page == "👤 Hồ sơ cá nhân":
         confirm_reset_profile()
 
 elif page == "💬 AI Assistant":
-    st.title("💬 Grounded AI Assistant")
-    st.caption(
-        "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
-        "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
+    st.title("🤖 CMC AI Assistant")
+    st.caption("Hai chế độ độc lập: hội thoại bằng mô hình ngôn ngữ thực và tra cứu tài liệu có trích nguồn.")
+    mode = st.selectbox(
+        "Chọn chế độ AI",
+        ["🤖 Trò chuyện AI", "📚 Hỏi đáp tài liệu"],
+        key="assistant_mode",
+        help="Trò chuyện AI không có citation tài liệu. Hỏi đáp tài liệu ưu tiên bằng chứng và có thể từ chối khi thiếu nguồn.",
     )
-    if authorized_client is None:
-        st.info(
-            "🧪 **Bản demo offline:** Tớ nhận diện vài lời chào cơ bản; còn với câu hỏi kiến thức, "
-            "tớ chỉ truy xuất **3 tài liệu mẫu** và hiển thị nguồn, chưa có LLM để trò chuyện tự do. "
-            "Hãy thử: **Quy trình xử lý một Issue GitHub như thế nào?** "
-            "hoặc **Làm sao giảm hallucination trong RAG?**"
+
+    if mode == "🤖 Trò chuyện AI":
+        st.subheader("Trò chuyện với AI")
+        st.caption(
+            f"Powered by Groq · {DEFAULT_GROQ_MODEL}. Đây là mô hình ngôn ngữ thực; "
+            "không phải chính ChatGPT, Gemini hay Claude. Có thể nhầm lẫn, không có web search trong ứng dụng."
         )
+        if authorized_client is None:
+            st.warning(
+                "🔑 **Chưa bật AI thực.** Nhập Groq API key trong thanh bên "
+                "và bật ô đồng ý gửi nội dung đến Groq. "
+                "Hệ thống sẽ không giả lập câu trả lời từ một mô hình chưa kết nối."
+            )
+        else:
+            st.success("Đã bật kết nối mô hình ngôn ngữ; có thể hội thoại nhiều lượt trong phiên.")
+        if "general_messages" not in st.session_state:
+            st.session_state.general_messages = []
 
-    if knowledge_base.document_count == 0:
-        st.warning(
-            "Chưa có tài liệu trong knowledge_base. Hãy thêm file .md rồi khởi động lại ứng dụng."
-        )
+        @st.dialog("Xóa lịch sử Trò chuyện AI?")
+        def confirm_clear_general_chat():
+            st.write("Chỉ xóa hội thoại AI trong phiên này. Hỏi đáp tài liệu, hồ sơ và Mentor yêu thích được giữ nguyên.")
+            confirm = st.checkbox("Tôi xác nhận", key="confirm_clear_general")
+            if st.button("Xóa hội thoại AI", type="primary", disabled=not confirm):
+                st.session_state.general_messages = []
+                st.rerun()
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        if st.button("🗑️ Xóa cuộc trò chuyện AI", disabled=not st.session_state.general_messages):
+            confirm_clear_general_chat()
 
-    @st.dialog("Xóa lịch sử hội thoại?")
-    def confirm_clear_chat():
-        st.write(
-            "Thao tác này chỉ xóa tin nhắn trong phiên Streamlit hiện tại. "
-            "Hồ sơ cá nhân và danh sách mentor đã lưu sẽ được giữ nguyên."
-        )
-        confirm = st.checkbox("Tôi hiểu và muốn xóa lịch sử hội thoại", key="confirm_clear_chat")
-        if st.button("Xóa lịch sử", type="primary", disabled=not confirm):
-            clear_chat_history(st.session_state)
-            st.rerun()
+        for item in st.session_state.general_messages:
+            with st.chat_message(item.get("role", "assistant")):
+                st.markdown(item.get("content", ""))
+                if item.get("role") == "assistant" and item.get("status") == "online":
+                    st.caption(f"Phản hồi mô hình · {DEFAULT_GROQ_MODEL} · Chưa được kiểm chứng bằng tài liệu")
 
-    clear_col, _ = st.columns([1, 4])
-    with clear_col:
-        if st.button("🗑️ Xóa lịch sử hội thoại", disabled=not st.session_state.messages):
-            confirm_clear_chat()
-
-    for message in st.session_state.messages:
-        role = message.get("role", "assistant")
-        with st.chat_message(role):
-            st.markdown(message.get("content", ""))
-            sources = [
-                normalized
-                for normalized in (
-                    normalize_saved_source(item) for item in message.get("sources", [])
-                )
-                if normalized is not None
-            ]
-            if sources:
-                with st.expander("Nguồn truy xuất"):
-                    for source in sources:
-                        st.markdown(
-                            f"**{source['name']}** • relevance={source['score']:.3f}"
-                        )
-                        if source["excerpt"]:
-                            st.caption(source["excerpt"])
-            if role == "assistant" and message.get("mode"):
-                st.caption(f"Trạng thái: {rag_mode_label(message.get('mode'))}")
-
-    if prompt := st.chat_input("Ví dụ: Quy trình xử lý một issue GitHub là gì?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("Đang truy xuất tài liệu và kiểm tra bằng chứng..."):
-                result = answer_with_rag(prompt, knowledge_base, client=authorized_client)
-            st.markdown(result.answer)
-
-            source_payload = [source_history_payload(item) for item in result.sources]
-            if source_payload:
-                with st.expander("Nguồn truy xuất", expanded=True):
-                    for source in source_payload:
-                        st.markdown(
-                            f"**{source['name']}** • relevance={source['score']:.3f}"
-                        )
-                        if source["excerpt"]:
-                            st.caption(source["excerpt"])
-
-            st.caption(f"Trạng thái: {rag_mode_label(result.mode)}")
-
-        st.session_state.messages.append(
-            {
+        if general_prompt := st.chat_input(
+            "Hỏi AI bất kỳ điều gì: code Python, toán, AI, ý tưởng dự án...",
+            disabled=authorized_client is None,
+            max_chars=3000,
+            key="general_ai_prompt",
+        ):
+            st.session_state.general_messages.append({"role": "user", "content": general_prompt})
+            with st.chat_message("user"):
+                st.markdown(general_prompt)
+            with st.chat_message("assistant"):
+                with st.spinner("AI đang suy luận và soạn câu trả lời..."):
+                    completion = generate_general_reply(st.session_state.general_messages, client=authorized_client)
+                if completion.status == "online":
+                    st.markdown(completion.answer)
+                    st.caption(f"Phản hồi mô hình · {completion.model} · Không kèm nguồn truy xuất")
+                else:
+                    st.error(completion.answer)
+            st.session_state.general_messages.append({
                 "role": "assistant",
-                "content": result.answer,
-                "sources": source_payload,
-                "mode": result.mode,
-            }
+                "content": completion.answer,
+                "status": completion.status,
+            })
+    else:
+        st.title("💬 Grounded AI Assistant")
+        st.caption(
+            "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
+            "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
         )
+        if authorized_client is None:
+            st.info(
+                "🧪 **Bản demo offline:** Tớ nhận diện vài lời chào cơ bản; còn với câu hỏi kiến thức, "
+                "tớ chỉ truy xuất **3 tài liệu mẫu** và hiển thị nguồn, chưa có LLM để trò chuyện tự do. "
+                "Hãy thử: **Quy trình xử lý một Issue GitHub như thế nào?** "
+                "hoặc **Làm sao giảm hallucination trong RAG?**"
+            )
+
+        if knowledge_base.document_count == 0:
+            st.warning(
+                "Chưa có tài liệu trong knowledge_base. Hãy thêm file .md rồi khởi động lại ứng dụng."
+            )
+
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        @st.dialog("Xóa lịch sử hội thoại?")
+        def confirm_clear_chat():
+            st.write(
+                "Thao tác này chỉ xóa tin nhắn trong phiên Streamlit hiện tại. "
+                "Hồ sơ cá nhân và danh sách mentor đã lưu sẽ được giữ nguyên."
+            )
+            confirm = st.checkbox("Tôi hiểu và muốn xóa lịch sử hội thoại", key="confirm_clear_chat")
+            if st.button("Xóa lịch sử", type="primary", disabled=not confirm):
+                clear_chat_history(st.session_state)
+                st.rerun()
+
+        clear_col, _ = st.columns([1, 4])
+        with clear_col:
+            if st.button("🗑️ Xóa lịch sử hội thoại", disabled=not st.session_state.messages):
+                confirm_clear_chat()
+
+        for message in st.session_state.messages:
+            role = message.get("role", "assistant")
+            with st.chat_message(role):
+                st.markdown(message.get("content", ""))
+                sources = [
+                    normalized
+                    for normalized in (
+                        normalize_saved_source(item) for item in message.get("sources", [])
+                    )
+                    if normalized is not None
+                ]
+                if sources:
+                    with st.expander("Nguồn truy xuất"):
+                        for source in sources:
+                            st.markdown(
+                                f"**{source['name']}** • relevance={source['score']:.3f}"
+                            )
+                            if source["excerpt"]:
+                                st.caption(source["excerpt"])
+                if role == "assistant" and message.get("mode"):
+                    st.caption(f"Trạng thái: {rag_mode_label(message.get('mode'))}")
+
+        if prompt := st.chat_input("Ví dụ: Quy trình xử lý một issue GitHub là gì?"):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Đang truy xuất tài liệu và kiểm tra bằng chứng..."):
+                    result = answer_with_rag(prompt, knowledge_base, client=authorized_client)
+                st.markdown(result.answer)
+
+                source_payload = [source_history_payload(item) for item in result.sources]
+                if source_payload:
+                    with st.expander("Nguồn truy xuất", expanded=True):
+                        for source in source_payload:
+                            st.markdown(
+                                f"**{source['name']}** • relevance={source['score']:.3f}"
+                            )
+                            if source["excerpt"]:
+                                st.caption(source["excerpt"])
+
+                st.caption(f"Trạng thái: {rag_mode_label(result.mode)}")
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": result.answer,
+                    "sources": source_payload,
+                    "mode": result.mode,
+                }
+            )
 
 elif page == "👥 Tìm Mentor":
     st.title("👥 Tìm Mentor phù hợp")
