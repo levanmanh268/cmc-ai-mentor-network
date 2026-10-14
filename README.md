@@ -81,6 +81,10 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
 
 Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu chuẩn: [Kiến trúc hệ thống, gồm 5 sơ đồ đã kiểm thử render](docs/architecture.md) và [Yêu cầu phi chức năng NFR-01 đến NFR-10](docs/non-functional-requirements.md). Các tài liệu phân biệt rõ chức năng đang có và tính năng đề xuất.
 
+## Các AI lab độc lập cùng repository
+
+Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository còn chứa các demo/portfolio **độc lập**, có README và CI riêng: [C-Agent Lab](cagent_lab/README.md), [Enterprise Document AI](enterprise_doc_ai/README.md), [RetailOps AI](retail_ops_ai/README.md), [EduTrainer AI](edu_trainer_ai/README.md), [Pre-training Lab](model_pretraining_lab/README.md) và [Post-training Lab](model_posttraining_lab/README.md). Các lab này **không phải microservices hoặc plugin được tích hợp vào CMC AI Mentor Network**. Xem phần 2.1 của [kiến trúc chuẩn](docs/architecture.md) để phân biệt ranh giới và trách nhiệm từng hệ thống.
+
 ## Cách chạy nhanh
 
 Yêu cầu: **Python 3.11+**.
