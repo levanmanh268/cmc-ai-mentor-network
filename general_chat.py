@@ -110,7 +110,7 @@ def generate_general_reply(
             temperature=0.55,
             max_completion_tokens=1800,
             reasoning_effort="medium",
-            reasoning_format="hidden",
+            include_reasoning=False,
         )
         answer = completion.choices[0].message.content
         if not isinstance(answer, str) or not answer.strip():
