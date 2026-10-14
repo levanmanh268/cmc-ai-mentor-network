@@ -135,7 +135,7 @@ def test_ui_general_default_and_offline_explicit(monkeypatch):
     app.sidebar.radio[0].set_value("💬 AI Assistant").run()
     assert not app.exception
     assert app.selectbox[0].value == "🤖 Trò chuyện AI"
-    assert any("Chưa bật AI thực" in x.message for x in app.warning)
+    assert any("Chưa bật AI thực" in x.value for x in app.warning)
     assert any("Groq API key" in x.label for x in app.sidebar.text_input)
     assert len(app.chat_input) >= 1
     assert app.chat_input[0].disabled is True
