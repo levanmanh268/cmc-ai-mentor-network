@@ -1,6 +1,6 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.2, 14/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.3, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
 > **Phạm vi:** Kiến trúc runtime của **ứng dụng môn học** ở thư mục gốc (Streamlit + RAG + mentor demo). Repo còn chứa các *portfolio labs độc lập* với entrypoint và CI riêng, được liệt kê ở Mục 2.1, không được coi là microservices của ứng dụng môn học. Không được giới thiệu ứng dụng môn học như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
@@ -85,7 +85,7 @@ flowchart LR
 ```
 - **Persistence:** file Markdown là nguồn tĩnh trong repo; mentor demo load vào RAM; hồ sơ, lịch sử chat, mentor yêu thích **không được ghi vào DB**. Session State có thể mất khi WebSocket/server/session kết thúc, refresh/restart không được bảo đảm giữ dữ liệu.
 - **Secrets:** `GROQ_API_KEY` lấy từ môi trường hoặc `.env` local, không hard-code; `.env` thuộc `.gitignore`. Key cũ có thể còn trong Git history và cần revoke thủ công.
-- **Triển khai:** `streamlit run app.py` hoặc `run_windows.bat`. Không có bằng chứng multi-tenant, RBAC, production hosting hay backup.
+- **Triển khai:** local qua `streamlit run app.py` / `run_windows.bat`, hoặc **Cloud Render** tại `https://cmc-ai-mentor-network-group6.onrender.com` với một Streamlit Python process (chi tiết trong [CLOUD_DEPLOYMENT.md](CLOUD_DEPLOYMENT.md)). Render Free có thể cold-start và không có tính bền vững dữ liệu session; không có bằng chứng multi-tenant, RBAC, backup hay production-grade SLA.
 - **DevOps:** `GitHub Actions` kiểm thử riêng trên Windows và Linux; một HTTP health check chỉ chứng minh máy chủ khởi động, không chứng minh mọi UI path hay độ chính xác câu trả lời.
 
 ## 5. C4 Level 3: Component map đối chiếu mã nguồn
