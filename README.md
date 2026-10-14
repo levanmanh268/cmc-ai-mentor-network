@@ -52,7 +52,8 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
 
 | Tính năng | Mô tả |
 | --- | --- |
-| Grounded AI Assistant | Truy xuất tài liệu Markdown bằng TF-IDF + cosine similarity trước khi sinh câu trả lời |
+| Trò chuyện AI thực | GPT-OSS 120B qua Groq, đa lượt, nhớ ngữ cảnh gần đây trong phiên, cần API key + opt-in |
+| Grounded AI Assistant | Chế độ riêng: truy xuất tài liệu Markdown bằng TF-IDF + cosine similarity và hiển thị citation |
 | Citation | Hiển thị nguồn và relevance score để người dùng kiểm chứng |
 | No-evidence refusal | Từ chối suy diễn khi không tìm được bằng chứng đủ liên quan |
 | Offline-safe mode | Không có Groq API key vẫn dùng được retrieval và fallback |
@@ -106,8 +107,8 @@ Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository 
 
 🌐 **Ứng dụng:** https://cmc-ai-mentor-network-group6.onrender.com
 
-- Chạy Streamlit trên Render (Singapore, Free), mặc định dùng **offline RAG và mentor matching**; không cần Groq API key.
-- Ở cloud, lời chào như **“hello cậu”** được phản hồi cục bộ; câu hỏi kiến thức chỉ trả lời dựa trên 3 tài liệu mẫu. **Không có AI trò chuyện tổng quát khi chưa cấu hình Groq API key** và chưa đồng ý gửi dữ liệu.
+- Chạy Streamlit trên Render (Singapore, Free). **Trò chuyện AI** dùng GPT-OSS 120B thực qua Groq sau khi có key và người dùng đồng ý; không cấu hình key thì **chỉ RAG offline và Mentor matching** hoạt động.
+- Có thể nhập Groq API key **ngay trong sidebar (ô mật khẩu, chỉ trong phiên)** và bật đồng ý để kích hoạt mô hình mà không cần sửa code. Hoặc quản trị viên đặt `GROQ_API_KEY` dưới Render Environment (các phiên vẫn phải opt-in). **Không nhập khóa thật vào chat hay GitHub**.
 - Cloud có thể khởi động chậm do gói Free. Hồ sơ, lịch sử chat và mentor yêu thích **chỉ nằm trong phiên**; không có tài khoản/database.
 - Theo dõi [hướng dẫn cloud và bằng chứng deploy](docs/CLOUD_DEPLOYMENT.md). [Release mới v0.2.0](docs/RELEASE_NOTES_v0.2.0.md) có changelog và các giới hạn còn cần nghiệm thu.
 
@@ -180,7 +181,11 @@ Sau đó điền key riêng vào `.env`:
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**. Khi có key, ứng dụng **vẫn giữ offline mặc định** cho đến khi người dùng bật đồng ý gửi câu hỏi và dữ liệu matching tới Groq trong sidebar; tắt lại để ngăn gửi yêu cầu mới.
+Nếu không cấu hình key, ứng dụng vẫn chạy **RAG offline và Mentor Matching**, nhưng **không sinh hội thoại AI tổng quát**. Có 2 cách kích hoạt:
+1. Người dùng mở website, dán API key từ [Groq Console](https://console.groq.com/keys) vào ô mật khẩu ở sidebar; key nằm trong Streamlit Session State tại máy chủ Render và mất khi phiên kết thúc.
+2. Quản trị viên đặt biến môi trường `GROQ_API_KEY` ở Render Dashboard để người dùng không phải tự mang key. Nếu public, nên có auth/quota/rate limit trước khi bật cho nhiều người (tránh lạm dụng hoặc phát sinh chi phí).
+
+**Cả hai đều cần người dùng tick đồng ý** gửi câu hỏi/lịch sử/ngữ cảnh đến Groq trong phiên; tắt ô để ngừng gửi yêu cầu mới. Không chia sẻ API key cá nhân vào GitHub, email, hình chụp hoặc hội thoại. Model mặc định `openai/gpt-oss-120b` qua Groq, không phải dịch vụ ChatGPT chính thức. Phí/quota phụ thuộc tài khoản Groq.
 
 ### 5. Khởi động
 
@@ -196,9 +201,13 @@ Mặc định Streamlit mở tại `http://localhost:8501`.
 
 Điền năm học, lĩnh vực quan tâm, mục tiêu và giới thiệu ngắn. Hồ sơ này được dùng cho Mentor Matching, **chỉ lưu trong phiên Streamlit**, không có đăng nhập hoặc cơ sở dữ liệu người dùng. Trường lĩnh vực và mục tiêu bắt buộc có nội dung; có nút đặt lại hồ sơ.
 
-### Grounded AI Assistant
+### 🤖 Trò chuyện AI (mô hình ngôn ngữ thực)
 
-Hỏi câu liên quan đến tài liệu trong `knowledge_base/`. Hệ thống:
+Mở **AI Assistant → 🤖 Trò chuyện AI** (mặc định). Có thể chào hỏi tự nhiên, học toán, lập trình, viết nội dung, đặt câu hỏi tiếp theo về lời đáp trước. Đây là suy luận và sinh câu trả lời qua `openai/gpt-oss-120b`, **không phải câu trả lời cố định**. Lịch sử `general_messages` có giới hạn và chỉ giữ trong phiên; không hỗ trợ internet search, tải file hoặc trí nhớ bền vững. Nếu chưa có credential/consent thì ô chat **không nhận tin nhắn** để tránh giả lập AI online. Có nút xóa riêng.
+
+### 📚 Hỏi đáp tài liệu (RAG)
+
+Chuyển chế độ từ hộp chọn. Hỏi câu liên quan đến tài liệu trong `knowledge_base/`. Hệ thống:
 
 1. chuẩn hóa câu hỏi;
 2. truy xuất top-k chunks với kiểm tra lexical coverage nhằm giảm câu hỏi ngoài miền bị match do từ quá chung;
@@ -225,7 +234,7 @@ Hệ thống tính hybrid score theo:
 Chạy toàn bộ kiểm tra local:
 
 ```bash
-python -m py_compile app.py ui_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py
+python -m py_compile app.py general_chat.py ui_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py
 python -m pytest -q
 ```
 
@@ -259,6 +268,7 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ```text
 .
 ├── app.py                     # Streamlit presentation layer
+├── general_chat.py            # Genuine multi-turn model API integration
 ├── ui_helpers.py              # Chat source + RAG mode helpers
 ├── profile_helpers.py         # Student profile validation and reset
 ├── llm_client.py              # Optional Groq infrastructure
@@ -335,7 +345,7 @@ Grounded AI Assistant áp dụng các cơ chế phòng thủ cơ bản:
 - temperature thấp;
 - fallback khi API lỗi hoặc thiếu key.
 
-Đây là prototype học tập, vì vậy người dùng vẫn nên kiểm chứng thông tin quan trọng bằng nguồn gốc. **Chưa có kiểm định tự động citation/claim-level faithfulness**; các nguồn hiển thị là tài liệu được retrieval lấy ra, không phải chứng nhận mọi khẳng định đúng. Khi cấu hình Groq, nội dung chat và hồ sơ dùng để giải thích matching có thể được gửi tới dịch vụ bên ngoài; không nhập dữ liệu riêng tư khi chưa được khách hàng phê duyệt xử lý.
+Đây là prototype học tập, vì vậy người dùng vẫn nên kiểm chứng thông tin quan trọng bằng nguồn gốc. **Chưa có kiểm định tự động citation/claim-level faithfulness**; các nguồn hiển thị là tài liệu được retrieval lấy ra, không phải chứng nhận mọi khẳng định đúng. Khi có Groq key và opt-in, lịch sử Trò chuyện AI, câu hỏi RAG/nguồn truy xuất hoặc hồ sơ matching có thể được gửi tới nhà cung cấp; không nhập dữ liệu riêng tư khi chưa được khách hàng phê duyệt xử lý.
 
 ## Nhóm phát triển
 
