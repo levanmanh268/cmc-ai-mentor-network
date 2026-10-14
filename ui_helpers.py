@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, MutableMapping
 
 
 RAG_MODE_LABELS = {
@@ -55,3 +55,8 @@ def normalize_saved_source(source: Any) -> dict[str, Any] | None:
     if not isinstance(source, dict):
         return None
     return source_history_payload(source)
+
+
+def clear_chat_history(session_state: MutableMapping[str, Any]) -> None:
+    """Clear only the chat message list, preserving profile and favorites."""
+    session_state["messages"] = []
