@@ -3,6 +3,7 @@ import streamlit as st
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
 from rag_engine import KnowledgeBase, answer_with_rag
+from ui_helpers import normalize_saved_source, rag_mode_label, source_history_payload
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
@@ -15,6 +16,7 @@ def load_knowledge_base() -> KnowledgeBase:
 
 
 knowledge_base = load_knowledge_base()
+
 
 with st.sidebar:
     st.title("🤖 CMC AI Mentor Network")
@@ -30,9 +32,9 @@ with st.sidebar:
         f"{knowledge_base.chunk_count} chunks"
     )
     if llm_enabled():
-        st.success("LLM: configured (API connection not yet verified)")
+        st.info("LLM: đã cấu hình; kết nối và nội dung từng câu trả lời chưa được xác minh đầy đủ.")
     else:
-        st.info("LLM: offline grounded mode")
+        st.info("LLM: chế độ ngoại tuyến")
 
 
 if "favorite_mentors" not in st.session_state:
@@ -61,14 +63,14 @@ if page == "🏠 Dashboard":
     with col2:
         st.metric("Chunks đã index", knowledge_base.chunk_count)
     with col3:
-        st.metric("LLM", "Online" if client else "Offline")
+        st.metric("LLM", "Đã cấu hình" if client else "Ngoại tuyến")
 
     st.subheader("Luồng sử dụng")
     st.markdown(
         "1. Điền **Hồ sơ cá nhân**.\n"
         "2. Hỏi **AI Assistant** về nội dung trong kho tài liệu.\n"
         "3. Mở **Tìm Mentor** để nhận danh sách phù hợp.\n"
-        "4. Mỗi câu trả lời RAG đều hiển thị nguồn đã dùng."
+        "4. Mỗi câu trả lời RAG đều hiển thị nguồn truy xuất và trạng thái."
     )
 
 elif page == "👤 Hồ sơ cá nhân":
@@ -107,11 +109,12 @@ elif page == "👤 Hồ sơ cá nhân":
         st.session_state.top_matches = []
         st.session_state.match_explanations = {}
         st.success("Đã lưu hồ sơ.")
-
+        
 elif page == "💬 AI Assistant":
-    st.title("💬 Grounded AI Assistant")
+    st.title("💬 AI Assistant")
     st.caption(
-        "RAG theo tài liệu Markdown. Nếu không đủ bằng chứng, hệ thống sẽ từ chối suy diễn thay vì bịa."
+        "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
+        "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
     )
 
     if knowledge_base.document_count == 0:
@@ -122,15 +125,43 @@ elif page == "💬 AI Assistant":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    @st.dialog("Xóa lịch sử hội thoại?")
+    def confirm_clear_chat():
+        st.write(
+            "Thao tác này chỉ xóa tin nhắn trong phiên Streamlit hiện tại. "
+            "Hồ sơ cá nhân và danh sách mentor đã lưu sẽ được giữ nguyên."
+        )
+        confirm = st.checkbox("Tôi hiểu và muốn xóa lịch sử hội thoại", key="confirm_clear_chat")
+        if st.button("Xóa lịch sử", type="primary", disabled=not confirm):
+            st.session_state.messages = []
+            st.rerun()
+
+    clear_col, _ = st.columns([1, 4])
+    with clear_col:
+        if st.button("🗑️ Xóa lịch sử hội thoại", disabled=not st.session_state.messages):
+            confirm_clear_chat()
+
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message.get("sources"):
-                with st.expander("Nguồn đã dùng"):
-                    for source in message["sources"]:
-                        st.caption(
-                            f"{source['name']} • relevance={source['score']:.3f}"
+        role = message.get("role", "assistant")
+        with st.chat_message(role):
+            st.markdown(message.get("content", ""))
+            sources = [
+                normalized
+                for normalized in (
+                    normalize_saved_source(item) for item in message.get("sources", [])
+                )
+                if normalized is not None
+            ]
+            if sources:
+                with st.expander("Nguồn truy xuất"):
+                    for source in sources:
+                        st.markdown(
+                            f"**{source['name']}** • relevance={source['score']:.3f}"
                         )
+                        if source["excerpt"]:
+                            st.caption(source["excerpt"])
+            if role == "assistant" and message.get("mode"):
+                st.caption(f"Trạng thái: {rag_mode_label(message.get('mode'))}")
 
     if prompt := st.chat_input("Ví dụ: Quy trình xử lý một issue GitHub là gì?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -142,27 +173,24 @@ elif page == "💬 AI Assistant":
                 result = answer_with_rag(prompt, knowledge_base, client=client)
             st.markdown(result.answer)
 
-            source_payload = [
-                {"name": item.source, "score": item.score}
-                for item in result.sources
-            ]
+            source_payload = [source_history_payload(item) for item in result.sources]
             if source_payload:
-                with st.expander("Nguồn đã dùng", expanded=True):
-                    for item in result.sources:
+                with st.expander("Nguồn truy xuất", expanded=True):
+                    for source in source_payload:
                         st.markdown(
-                            f"**{item.source}** • relevance={item.score:.3f}"
+                            f"**{source['name']}** • relevance={source['score']:.3f}"
                         )
-                        st.caption(item.text[:350] + ("…" if len(item.text) > 350 else ""))
+                        if source["excerpt"]:
+                            st.caption(source["excerpt"])
 
-            st.caption(
-                f"Mode: {result.mode} • top relevance={result.top_score:.3f}"
-            )
+            st.caption(f"Trạng thái: {rag_mode_label(result.mode)}")
 
         st.session_state.messages.append(
             {
                 "role": "assistant",
                 "content": result.answer,
                 "sources": source_payload,
+                "mode": result.mode,
             }
         )
 
@@ -185,8 +213,7 @@ elif page == "👥 Tìm Mentor":
             st.session_state.top_matches = get_top_matches(student_profile, top_k=3)
             st.session_state.match_explanations = {}
 
-    # Results are stored independently of the search button state so that
-    # clicking a mentor's Save button does not make the results disappear.
+    # Keep results independent of the search button rerun state.
     for rank, match in enumerate(st.session_state.top_matches, start=1):
         mentor = match["mentor"]
         mentor_id = mentor["id"]
