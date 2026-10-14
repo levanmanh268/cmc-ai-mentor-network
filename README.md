@@ -101,10 +101,18 @@ Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích
 
 Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository còn chứa các demo/portfolio **độc lập**, có README và CI riêng: [C-Agent Lab](cagent_lab/README.md), [Enterprise Document AI](enterprise_doc_ai/README.md), [RetailOps AI](retail_ops_ai/README.md), [EduTrainer AI](edu_trainer_ai/README.md), [Pre-training Lab](model_pretraining_lab/README.md) và [Post-training Lab](model_posttraining_lab/README.md). Các lab này **không phải microservices hoặc plugin được tích hợp vào CMC AI Mentor Network**. Xem phần 2.1 của [kiến trúc chuẩn](docs/architecture.md) để phân biệt ranh giới và trách nhiệm từng hệ thống.
 
+## Demo cloud trực tuyến
+
+🌐 **Ứng dụng:** https://cmc-ai-mentor-network-group6.onrender.com
+
+- Chạy Streamlit trên Render (Singapore, Free), mặc định dùng **offline RAG và mentor matching**; không cần Groq API key.
+- Cloud có thể khởi động chậm do gói Free. Hồ sơ, lịch sử chat và mentor yêu thích **chỉ nằm trong phiên**; không có tài khoản/database.
+- Theo dõi [hướng dẫn cloud và bằng chứng deploy](docs/CLOUD_DEPLOYMENT.md). [Release mới v0.2.0](docs/RELEASE_NOTES_v0.2.0.md) có changelog và các giới hạn còn cần nghiệm thu.
+
 ## Phiên bản phát hành và chứng cứ Issues
 
 - 📦 **GitHub Releases:** [Xem các bản đã phát hành](https://github.com/levanmanh268/cmc-ai-mentor-network/releases).
-- **Bản đầu:** `v0.1.0 | Classroom Prototype`. [Ghi chú phát hành](docs/RELEASE_NOTES_v0.1.0.md) gồm tính năng thực tế, link các Issues đã đóng, Issues còn mở, hướng dẫn chạy và bằng chứng CI trên commit phát hành.
+- **Bản đầu:** `v0.1.0 | Classroom Prototype`, đã phát hành; phiên bản mới `v0.2.0 | Cloud-integrated Classroom Prototype` chỉ được đánh dấu đã phát hành khi GitHub Releases xác nhận.  [Ghi chú phát hành](docs/RELEASE_NOTES_v0.1.0.md) gồm tính năng thực tế, link các Issues đã đóng, Issues còn mở, hướng dẫn chạy và bằng chứng CI trên commit phát hành.
 - **Quy trình phát hành:** [RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md). Chỉ gắn tag sau CI PASS trên `main`; một Issue đang mở hoặc PR chưa merge **không** được tính là tính năng đã phát hành.
 - **Theo dõi công việc:** [Closed Issues](https://github.com/levanmanh268/cmc-ai-mentor-network/issues?q=is%3Aissue+is%3Aclosed) | [Open Issues](https://github.com/levanmanh268/cmc-ai-mentor-network/issues?q=is%3Aissue+is%3Aopen) | [Pull Requests](https://github.com/levanmanh268/cmc-ai-mentor-network/pulls).
 
