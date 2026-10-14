@@ -1,6 +1,6 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.0, 12/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.1, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
 > **Phạm vi:** Prototype ứng dụng Streamlit cho hỏi đáp tài liệu có căn cứ và đề xuất mentor trên dữ liệu mô phỏng. Không được giới thiệu như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
@@ -37,17 +37,12 @@ Quy tắc dependency:
 
 ```mermaid
 flowchart LR
-    Student["Sinh viên (người dùng)"]
-    Lecturer["Giảng viên / khách hàng"]
-    Developer["Thành viên nhóm 6"]
-    App["CMC AI Mentor Network (Streamlit prototype)"]
-    GH["GitHub Issues, Pull Requests, Actions"]
-    Provider["Groq LLM API (tùy chọn)"]
-    Student -->|"Tạo hồ sơ trong phiên; hỏi tài liệu; tìm mentor"| App
-    App -.->|"Yêu cầu sinh câu trả lời/giải thích nếu có key"| Provider
-    Lecturer -->|"Nêu yêu cầu/đánh giá qua Issues"| GH
-    Developer -->|"Code, PR, review, CI"| GH
+    Student[Student] --> App[CMC AI Mentor Network]
+    App -.-> Provider[Optional Groq API]
+    Lecturer[Lecturer] --> GitHub[GitHub Issues and Actions]
+    Developer[Development Team] --> GitHub
 ```
+**Chú giải:** Sinh viên sử dụng ứng dụng Streamlit; giảng viên và nhóm phát triển trao đổi qua GitHub; Groq chỉ được gọi khi có client được cấu hình. Các nhãn sơ đồ dùng tiếng Anh ngắn gọn để tương thích trình render Mermaid, phần diễn giải tiếng Việt nằm trong tài liệu.
 
 **Lưu ý:** GitHub Issues là công cụ quản lý dự án riêng biệt, **không tự động tạo dữ liệu hoặc gọi API trong ứng dụng**. Không vẽ luồng `GitHub → App` vì hiện không có webhook/integration.
 
@@ -57,21 +52,19 @@ Một container logic ứng dụng, một kho dữ liệu file cục bộ, một
 
 ```mermaid
 flowchart LR
-    Browser["Trình duyệt người dùng"]
-    subgraph Host["Máy chạy ứng dụng (Windows/Linux, Python 3.11+)"]
-        Streamlit["Streamlit app.py / Python process"]
-        Docs["knowledge_base/*.md (read-only nội dung tại runtime)"]
-        Demo["mentors_data.py (mentor demo in-memory)"]
-        Session["st.session_state (theo phiên WebSocket)"]
-        Streamlit <--> Session
-        Streamlit --> Docs
-        Streamlit --> Demo
+    Browser[Web Browser]
+    subgraph Host
+        App[Streamlit Python Process]
+        Docs[Local Markdown Documents]
+        Demo[In Memory Mentor Records]
+        Session[Streamlit Session State]
+        App --> Docs
+        App --> Demo
+        App --> Session
     end
-    API["Groq API (ngoài máy, tùy chọn)"]
-    Browser <-->|"HTTP + WebSocket qua localhost:8501"| Streamlit
-    Streamlit -.->|"HTTPS qua Groq SDK nếu cấu hình"| API
+    Browser <--> App
+    App -.-> API[Optional Groq API]
 ```
-
 - **Persistence:** file Markdown là nguồn tĩnh trong repo; mentor demo load vào RAM; hồ sơ, lịch sử chat, mentor yêu thích **không được ghi vào DB**. Session State có thể mất khi WebSocket/server/session kết thúc, refresh/restart không được bảo đảm giữ dữ liệu.
 - **Secrets:** `GROQ_API_KEY` lấy từ môi trường hoặc `.env` local, không hard-code; `.env` thuộc `.gitignore`. Key cũ có thể còn trong Git history và cần revoke thủ công.
 - **Triển khai:** `streamlit run app.py` hoặc `run_windows.bat`. Không có bằng chứng multi-tenant, RBAC, production hosting hay backup.
@@ -81,25 +74,22 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    UI["app.py: trang, sự kiện, Session State"]
-    CONFIG["llm_client.py: cấu hình và dựng client"]
-    KB["rag_engine.py: KnowledgeBase TF-IDF, answer_with_rag"]
-    MATCH["matching_engine.py: scoring, ranking, explanation"]
-    MR["mentors_data.py: MentorRepository + validate_mentor"]
-    MARKDOWN["knowledge_base/*.md"]
-    RAW["RAW_MENTORS (demo)"]
-    SDK["Groq Python SDK / API"]
+    UI[Streamlit app.py]
+    CONFIG[llm_client.py]
+    KB[rag_engine.py]
+    MATCH[matching_engine.py]
+    MR[mentors_data.py]
+    MARKDOWN[Markdown Documents]
+    RAW[RAW_MENTORS]
+    API[Groq API]
     UI --> CONFIG
     UI --> KB
     UI --> MATCH
-    MATCH -->|"get_mentor_repository().list()"| MR
+    MATCH --> MR
     MR --> RAW
     KB --> MARKDOWN
-    CONFIG -.-> SDK
-    UI -.->|"inject optional client"| KB
-    UI -.->|"inject optional client"| MATCH
+    CONFIG -.-> API
 ```
-
 | Thành phần | Vai trò được kiểm tra từ code | Contract chính |
 | --- | --- | --- |
 | `app.py` | Streamlit UI, chọn trang, `session_state`, gọi AI & matching | `get_top_matches`, `answer_with_rag` |
@@ -111,36 +101,39 @@ flowchart TD
 | `tests/` | Unit tests/Streamlit AppTest, không thay thế kiểm thử khách hàng | `python -m pytest -q` |
 | `.github/workflows/ci.yml` | Lint-like compile, pytest, CI HTTP smoke, secret pattern guard | Workflow khi PR/push |
 
+**Luồng phụ thuộc:** `app.py` tạo client (nếu có) qua `llm_client.py`, sau đó inject vào `rag_engine.py` và `matching_engine.py`. `get_mentor_repository().list()` được gọi bên trong matching. Không có đường truyền API trực tiếp từ trình duyệt tới Groq.
+
 **Giới hạn của MentorRepository hiện tại:** đây là abstraction trong bộ nhớ, không phải PostgreSQL/SQLite; nhãn “repository” không đồng nghĩa dữ liệu được lưu bền vững.
 
 ## 6. Runtime sequence: RAG
 
 ```mermaid
 sequenceDiagram
-    actor Student as Sinh viên
-    participant UI as Streamlit app.py
+    actor Student as Student
+    participant UI as Streamlit
+    participant RAG as RAG Engine
     participant KB as KnowledgeBase
-    participant Engine as answer_with_rag
-    participant LLM as Groq (optional)
-    Student->>UI: Gửi câu hỏi
-    UI->>Engine: answer_with_rag(question,kb,client)
-    Engine->>KB: search(question,k,min_score)
-    KB-->>Engine: danh sách chunks + scores
-    alt Không có chunk vượt ngưỡng
-        Engine-->>UI: mode=no-evidence, không sinh câu trả lời
-    else Có context, client=None
-        Engine-->>UI: mode=offline-grounded, trích đoạn nguồn
-    else Có context, client tồn tại
-        Engine->>LLM: câu hỏi + context đánh nhãn S1...Sn
-        alt API trả kết quả không rỗng
-            LLM-->>Engine: câu trả lời
-            Engine-->>UI: mode=online-grounded + danh sách chunks
-        else API lỗi/response rỗng
-            Engine-->>UI: mode=offline-fallback + trích đoạn nguồn
+    participant LLM as Optional Groq
+    Student->>UI: Submit question
+    UI->>RAG: answer_with_rag
+    RAG->>KB: search
+    KB-->>RAG: Scored chunks
+    alt No sufficient evidence
+        RAG-->>UI: no-evidence response
+    else Offline mode
+        RAG-->>UI: Retrieved excerpts and sources
+    else Online mode
+        RAG->>LLM: Question and retrieved context
+        alt Provider success
+            LLM-->>RAG: Generated answer
+            RAG-->>UI: online-grounded answer and sources
+        else Provider failure
+            RAG-->>UI: offline-fallback excerpts
         end
     end
-    UI-->>Student: văn bản, mode, nguồn + relevance
+    UI-->>Student: Display answer and sources
 ```
+**Các trạng thái RAG:** `no-evidence` khi không có chunk vượt ngưỡng; `offline-grounded` khi client chưa cấu hình; `online-grounded` khi API trả lời; `offline-fallback` khi API lỗi hoặc trả về rỗng. Trong sơ đồ, các nhãn ngắn gọn đại diện cho bốn nhánh xử lý này.
 
 **Không tuyên bố bảo đảm không hallucination:** hiện có prompt ràng buộc nguồn nhưng **chưa có lớp xác thực citation tự động / kiểm chứng từng claim**. Việc trả về `sources` là nguồn *được truy xuất*, không phải bằng chứng rằng LLM đã trích dẫn và suy luận đúng toàn bộ.
 
@@ -148,26 +141,27 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Student as Sinh viên
+    actor Student as Student
     participant UI as Streamlit
-    participant Match as matching_engine
-    participant Repo as MentorRepository in memory
-    participant LLM as Groq (optional)
-    Student->>UI: nhập hồ sơ / bấm Tìm Mentor
-    UI->>Match: get_top_matches(profile,3)
-    Match->>Repo: list() validated mentor demos
-    Repo-->>Match: danh sách mentor
-    Match->>Match: TF-IDF + overlap + experience -> sort
-    Match-->>UI: top-3 + hybrid_score
-    UI->>Match: generate_match_explanation(...,client)
-    opt LLM cấu hình và hoạt động
-        Match->>LLM: chỉ dữ liệu profile/mentor
-        LLM-->>Match: explanation
+    participant Match as Matching Engine
+    participant Repo as MentorRepository
+    participant LLM as Optional Groq
+    Student->>UI: Search for mentors
+    UI->>Match: get_top_matches
+    Match->>Repo: list
+    Repo-->>Match: Validated demo mentors
+    Match->>Match: TFIDF and hybrid ranking
+    Match-->>UI: Ranked mentor list
+    UI->>Match: generate_match_explanation
+    opt Client available
+        Match->>LLM: Profile and mentor facts
+        LLM-->>Match: Explanation or error
     end
-    Match-->>UI: giải thích (hoặc deterministic fallback)
-    Student->>UI: Lưu mentor
-    UI->>UI: st.session_state.favorite_mentors
+    Match-->>UI: Explanation or fallback
+    Student->>UI: Save mentor
+    UI->>UI: Update Session State
 ```
+**Chi tiết luồng matching:** Khi API lỗi, `generate_match_explanation` trả về giải thích deterministic. Khi bấm lưu mentor, ứng dụng cập nhật `st.session_state.favorite_mentors` mà không ghi xuống cơ sở dữ liệu.
 
 Công thức đang triển khai:
 `score = 0.65 × TF-IDF cosine + 0.25 × domain keyword overlap + 0.10 × experience fit`.
