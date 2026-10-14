@@ -249,7 +249,8 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ```text
 .
 ├── app.py                     # Streamlit presentation layer
-├── ui_helpers.py              # Session profile + chat source helpers
+├── ui_helpers.py              # Chat source + RAG mode helpers
+├── profile_helpers.py         # Student profile validation and reset
 ├── llm_client.py              # Optional Groq infrastructure
 ├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
