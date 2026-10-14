@@ -167,6 +167,17 @@ def _offline_answer(results: list[RetrievedChunk]) -> str:
     )
 
 
+def validate_citation_ids(answer: str, num_sources: int) -> bool:
+    """Validate reference ID membership, not semantic faithfulness.
+
+    Reject responses without bracketed [S<number>] citations or with any
+    referenced index outside the retrieval set. This is not entailment checking.
+    """
+    ids = re.findall(r"\\[S([0-9]+)\\]", answer)
+    return bool(ids) and all(1 <= int(index) <= num_sources for index in ids)
+
+
+
 def answer_with_rag(
     question: str,
     knowledge_base: KnowledgeBase,
@@ -226,10 +237,8 @@ CONTEXT:
         answer = completion.choices[0].message.content.strip()
         if not answer or len(answer) > 6000:
             raise ValueError("empty or oversized LLM response")
-        cited_ids = re.findall(r"\[S([0-9]+)\]", answer)
-        # Citation membership only: cannot establish semantic entailment.
-        # Reject missing or forged citation identifiers rather than labelling unverified text as grounded.
-        if not cited_ids or any(int(i) < 1 or int(i) > len(results) for i in cited_ids):
+        # Citation membership only: never assert claim-level semantic faithfulness.
+        if not validate_citation_ids(answer, len(results)):
             raise ValueError("missing or invented reference citations")
         mode = "online-citations-unverified"
     except Exception:
