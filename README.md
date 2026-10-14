@@ -43,7 +43,7 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
 | Citation | Hiển thị nguồn và relevance score để người dùng kiểm chứng |
 | No-evidence refusal | Từ chối suy diễn khi không tìm được bằng chứng đủ liên quan |
 | Offline-safe mode | Không có Groq API key vẫn dùng được retrieval và fallback |
-| Mentor Matching | Xếp hạng mentor bằng semantic similarity + domain overlap + experience fit |
+| Mentor Matching | Xếp hạng mentor bằng TF-IDF cosine similarity + domain overlap + experience fit |
 | Explainable ranking | Hiển thị match score và lý do phù hợp |
 | Customer workflow | Có Issue Forms cho customer request và bug report |
 | CI quality gate | Secret guard, compile check, pytest và Streamlit runtime health check |
@@ -79,7 +79,7 @@ CMC AI Mentor Network giải quyết bài toán này bằng hai luồng độc l
           LLM client được app.py tạo một lần rồi inject vào các engine.
 ```
 
-Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu chuẩn: [Kiến trúc hệ thống](docs/architecture.md) và [Yêu cầu phi chức năng NFR-01 đến NFR-10](docs/non-functional-requirements.md). Các tài liệu phân biệt rõ chức năng đang có và tính năng đề xuất.
+Thiết kế ưu tiên **khả năng kiểm thử**, **khả năng giải thích**, **maintainability** và **graceful degradation** khi dịch vụ LLM không khả dụng. Tài liệu chuẩn: [Kiến trúc hệ thống, gồm 5 sơ đồ đã kiểm thử render](docs/architecture.md) và [Yêu cầu phi chức năng NFR-01 đến NFR-10](docs/non-functional-requirements.md). Các tài liệu phân biệt rõ chức năng đang có và tính năng đề xuất.
 
 ## Cách chạy nhanh
 
@@ -176,7 +176,7 @@ Nếu retrieval không đủ bằng chứng, hệ thống trả về trạng th�
 Hệ thống tính hybrid score theo:
 
 ```text
-65% semantic similarity
+65% TF-IDF cosine similarity
 25% domain overlap
 10% experience fit
 ```
@@ -204,14 +204,16 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 - quét pattern secret phổ biến trong tracked files;
 - compile smoke check;
 - regression tests bằng pytest;
-- khởi động Streamlit thật và kiểm tra health endpoint.
+- khởi động Streamlit thật và kiểm tra health endpoint;
+- dựng từng sơ đồ Mermaid trong tài liệu kiến trúc thành SVG bằng trình duyệt headless để phát hiện lỗi cú pháp.
 
 ## Cấu trúc repository
 
 ```text
 .
 ├── app.py                     # Streamlit presentation layer
-├── llm_client.py              # Optional Groq infrastructure\n├── rag_engine.py              # Retrieval + grounded answering
+├── llm_client.py              # Optional Groq infrastructure
+├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
 ├── mentors_data.py            # Validated in-memory MentorRepository + dataset
 ├── ingest.py                  # Knowledge-base diagnostics
