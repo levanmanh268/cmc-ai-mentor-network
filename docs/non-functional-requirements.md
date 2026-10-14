@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- |
 | **NFR-01** | Hiệu năng local | Ở offline mode, với dataset demo, P95 tìm mentor **≤2 giây** và truy xuất RAG **≤2 giây**, tối thiểu 100 lượt/luồng, đo warm/cold riêng | Script benchmark `time.perf_counter()`, CSV môi trường, P50/P95; không gộp network latency Groq | **Chưa xác minh** |
 | **NFR-02** | Quản lý secret/bảo mật | 100% secret dùng qua environment/secret store, không tồn tại trong **HEAD tracked files**; quét history để phát hiện key cũ; 0 key thật trong PR mới | CI secret guard, manual security review, evidence key cũ đã revoke | **Đã có kiểm tra cơ bản**, history/revoke chưa xác minh |
-| **NFR-03** | Quyền riêng tư dữ liệu người dùng | Không truyền hồ sơ/chat ra provider nếu chưa thông báo rõ và được user đồng ý; không ghi PII vào GitHub logs; quy định retention trước khi có persistence | Review luồng `app.py → client → Groq`, manual consent/UAT, log redaction check | **Đã có cơ chế consent trong UI** (mặc định offline, opt-in trước khi gửi qua Groq); cần bổ sung network/log audit và UAT về việc hiểu đồng ý trước khi kết luận đạt |
+| **NFR-03** | Quyền riêng tư dữ liệu người dùng (bao gồm lịch sử General Chat và BYOK key) | Không truyền hồ sơ/chat ra provider nếu chưa thông báo rõ và được user đồng ý; không ghi PII vào GitHub logs; quy định retention trước khi có persistence | Review luồng `app.py → client → Groq`, manual consent/UAT, log redaction check | **Đã có cơ chế consent trong UI** (mặc định offline, opt-in trước khi gửi qua Groq); cần bổ sung network/log audit và UAT về việc hiểu đồng ý trước khi kết luận đạt |
 | **NFR-04** | Độ bền vững của dữ liệu | **Nếu** yêu cầu dữ liệu còn sau restart: hồ sơ/favorites được khôi phục chính xác qua 10 chu kỳ restart với DB/backup; bản prototype phải hiển thị cảnh báo chỉ giữ trong phiên | Restart persistence test + DB integrity report sau khi triển khai; kiểm thử rõ session life cycle | **Chưa đáp ứng persistence**, do chỉ có `st.session_state`; cần customer approval nếu bổ sung |
 | **NFR-05** | Tương thích | Python 3.11 trên **Windows & Linux**, dependency install, pytest và Streamlit health đều thành công với môi trường sạch | GitHub Actions hai OS + log chạy tại máy người dùng | **Đã có CI kiểm tra cơ bản**, không bảo đảm mọi thiết bị |
 | **NFR-06** | Usability | Ít nhất 5 người thử, **≥4/5** hoàn thành flow xem dashboard, hỏi RAG, tìm/lưu mentor với hướng dẫn; ghi lỗi từng flow | Kịch bản UAT, thời lượng, observation, bảng đánh giá | **Chưa xác minh** |
@@ -37,7 +37,7 @@
 | Session profile | `app.py` | 03, 04, 06 | AppTest một phần; chưa có DB, cần consent/persistence decision |
 | RAG retrieval + fallback | `rag_engine.py` | 01, 08, 09 | `tests/test_rag_engine.py`; cần benchmark và groundedness |
 | Mentor matching + repository | `matching_engine.py`, `mentors_data.py` | 01, 07, 08, 09 | `tests/test_matching_engine.py`; cần đánh giá fairness/ranking |
-| Optional Groq client | `llm_client.py` | 02, 03, 08 | `tests/test_llm_client.py`; chưa kiểm thử với secret thật, cần consent |
+| Optional Groq client + multi-turn chat | `llm_client.py`, `general_chat.py` | 02, 03, 08 | `tests/test_llm_client.py`; chưa kiểm thử với secret thật, cần consent |
 | GitHub development workflow | `.github/`, `tests/` | 05, 07, 10 | Linux/Windows Actions; không thay UAT |
 
 ## Template ghi bằng chứng cho từng case
