@@ -47,7 +47,8 @@ def test_real_language_model_called_with_multi_turn_context_not_templates():
     ]
     assert "Python" in call["messages"][1]["content"]
     assert "đệ quy" in call["messages"][-1]["content"]
-    assert call["reasoning_format"] == "hidden"
+    assert call["include_reasoning"] is False
+    assert "reasoning_format" not in call
 
 
 def test_history_is_bounded_and_unsafe_roles_fail_closed():
