@@ -1,4 +1,4 @@
-from profile_helpers import safe_student_year, validate_profile_fields
+from profile_helpers import (\n    reset_profile_state,\n    safe_student_year,\n    save_profile_state,\n    validate_profile_fields,\n)
 
 
 YEARS = ["Năm 1", "Năm 2", "Năm 3", "Năm 4"]
@@ -58,3 +58,47 @@ def test_unknown_year_is_normalized_during_validation():
 
     assert cleaned["year"] == "Năm 1"
     assert errors == {}
+
+
+
+def test_saving_updated_profile_invalidates_matching_but_keeps_favorites_and_chat():
+    state = {
+        "user_profile": {"field_interest": "Old"},
+        "top_matches": [{"id": "stale-match"}],
+        "match_explanations": {"stale-match": "Old explanation"},
+        "favorite_mentors": [{"id": "favorite-1"}],
+        "messages": [{"role": "user", "content": "Keep chat"}],
+    }
+    updated = {
+        "name": "Student",
+        "year": "Năm 2",
+        "field_interest": "NLP",
+        "goals": "Build a project",
+        "bio": "",
+    }
+
+    save_profile_state(state, updated)
+
+    assert state["user_profile"] == updated
+    assert state["top_matches"] == []
+    assert state["match_explanations"] == {}
+    assert state["favorite_mentors"] == [{"id": "favorite-1"}]
+    assert state["messages"] == [{"role": "user", "content": "Keep chat"}]
+
+
+def test_reset_profile_clears_profile_and_matching_but_preserves_favorites_and_chat():
+    state = {
+        "user_profile": {"field_interest": "Old"},
+        "top_matches": [{"id": "stale-match"}],
+        "match_explanations": {"stale-match": "Old explanation"},
+        "favorite_mentors": [{"id": "favorite-1"}],
+        "messages": [{"role": "user", "content": "Keep chat"}],
+    }
+
+    reset_profile_state(state)
+
+    assert state["user_profile"] == {}
+    assert state["top_matches"] == []
+    assert state["match_explanations"] == {}
+    assert state["favorite_mentors"] == [{"id": "favorite-1"}]
+    assert state["messages"] == [{"role": "user", "content": "Keep chat"}]
