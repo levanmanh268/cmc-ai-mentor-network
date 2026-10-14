@@ -1,0 +1,84 @@
+name: Publish Classroom v0.1.0
+
+# First release is created only after the trusted main-branch CI has passed.
+# workflow_run is privileged; NEVER checkout/run untrusted PR head code here.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: ["main"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish-first-release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: classroom-release-v0.1.0
+      cancel-in-progress: false
+    steps:
+      - name: Checkout exactly the CI-verified main commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Publish one-time v0.1.0 release after CI success
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RELEASE_TAG: v0.1.0
+        run: |
+          set -euo pipefail
+
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [[ "$ACTUAL_SHA" != "$RELEASE_SHA" ]]; then
+            echo "ERROR: checked out commit differs from successful main CI run."
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already published, nothing to do."
+            exit 0
+          fi
+
+          # Never publish a stale main build if a later main commit appeared.
+          LATEST_MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          if [[ "$LATEST_MAIN_SHA" != "$RELEASE_SHA" ]]; then
+            echo "Skipping outdated green CI run; waiting for latest main CI."
+            exit 0
+          fi
+
+          # A pre-existing tag without a release must be investigated manually.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --silent >/dev/null 2>&1; then
+            echo "ERROR: tag exists but no published release; refusing to move/overwrite tag."
+            exit 1
+          fi
+
+          NOTES="$RUNNER_TEMP/release-notes-v0.1.0.md"
+          cp docs/RELEASE_NOTES_v0.1.0.md "$NOTES"
+          printf '\n\n### Bằng chứng kiểm thử trên đúng commit phát hành\n\n' >> "$NOTES"
+          printf -- '- Commit: [`%s`](https://github.com/%s/commit/%s)\n' "$RELEASE_SHA" "$GITHUB_REPOSITORY" "$RELEASE_SHA" >> "$NOTES"
+          printf -- '- GitHub Actions (CI đã PASS): %s\n' "$CI_RUN_URL" >> "$NOTES"
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "v0.1.0 | Classroom Prototype" \
+            --notes-file "$NOTES" \
+            --prerelease
+
+          echo "Release created: $(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')"
+          TAG_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          if [[ "$TAG_SHA" != "$RELEASE_SHA" ]]; then
+            echo "ERROR: published release tag does not match CI-tested commit."
+            exit 1
+          fi
+          echo "PASS: $RELEASE_TAG points to the exact CI-tested commit $RELEASE_SHA"
