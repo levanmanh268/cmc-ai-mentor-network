@@ -1,8 +1,9 @@
-"""Validation helpers for the session-only student profile form."""
+"""Validation and session-state helpers for the student profile form."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
+from typing import Any
 
 MAX_NAME_LENGTH = 100
 MAX_FIELD_INTEREST_LENGTH = 120
@@ -53,3 +54,19 @@ def validate_profile_fields(
         errors["bio"] = f"Giới thiệu không được vượt quá {MAX_BIO_LENGTH} ký tự."
 
     return cleaned, errors
+
+
+def save_profile_state(
+    session_state: MutableMapping[str, Any], profile: dict[str, str]
+) -> None:
+    """Save a validated profile and invalidate derived matching results."""
+    session_state["user_profile"] = dict(profile)
+    session_state["top_matches"] = []
+    session_state["match_explanations"] = {}
+
+
+def reset_profile_state(session_state: MutableMapping[str, Any]) -> None:
+    """Delete the session profile and stale matching data, preserving favorites/chat."""
+    session_state["user_profile"] = {}
+    session_state["top_matches"] = []
+    session_state["match_explanations"] = {}
