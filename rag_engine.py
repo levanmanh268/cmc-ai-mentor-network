@@ -122,6 +122,17 @@ class KnowledgeBase:
         if not query or self._vectorizer is None or self._matrix is None:
             return []
 
+        # Avoid accepting irrelevant questions solely because generic words
+        # overlap with the corpus (e.g. "công thức ... và ..." on AI docs).
+        # This is a conservative OOV-coverage heuristic calibrated only on
+        # the small demonstration corpus, not a guarantee of semantic relevance.
+        terms = set(re.findall(r"(?u)\b\w\w+\b", query))
+        if not terms:
+            return []
+        coverage = sum(term in self._vectorizer.vocabulary_ for term in terms) / len(terms)
+        if coverage < 0.55:
+            return []
+
         query_vector = self._vectorizer.transform([query])
         scores = cosine_similarity(query_vector, self._matrix)[0]
 
