@@ -170,7 +170,7 @@ Sau đó điền key riêng vào `.env`:
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**.
+Nếu không cấu hình key, ứng dụng vẫn chạy ở **offline grounded mode**. Khi có key, ứng dụng **vẫn giữ offline mặc định** cho đến khi người dùng bật đồng ý gửi câu hỏi và dữ liệu matching tới Groq trong sidebar; tắt lại để ngăn gửi yêu cầu mới.
 
 ### 5. Khởi động
 
