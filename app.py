@@ -2,15 +2,14 @@ import streamlit as st
 
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
-from rag_engine import KnowledgeBase, answer_with_rag
-from mentors_data import get_mentor_repository
-from ui_helpers import (
-    STUDENT_YEARS,
-    clear_matching,
-    mode_label,
-    normalize_sources,
-    validate_profile,
+from profile_helpers import (
+    reset_profile_state,
+    safe_student_year,
+    save_profile_state,
+    validate_profile_fields,
 )
+from rag_engine import KnowledgeBase, answer_with_rag
+from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
@@ -23,6 +22,7 @@ def load_knowledge_base() -> KnowledgeBase:
 
 
 knowledge_base = load_knowledge_base()
+
 
 with st.sidebar:
     st.title("🤖 CMC AI Mentor Network")
@@ -38,9 +38,9 @@ with st.sidebar:
         f"{knowledge_base.chunk_count} chunks"
     )
     if llm_enabled():
-        st.success("LLM: configured (API connection not yet verified)")
+        st.info("LLM: đã cấu hình; kết nối và nội dung từng câu trả lời chưa được xác minh đầy đủ.")
     else:
-        st.info("LLM: offline grounded mode")
+        st.info("LLM: chế độ ngoại tuyến")
 
 
 if "favorite_mentors" not in st.session_state:
@@ -69,63 +69,96 @@ if page == "🏠 Dashboard":
     with col2:
         st.metric("Chunks đã index", knowledge_base.chunk_count)
     with col3:
-        st.metric("LLM", "Online" if client else "Offline")
+        st.metric("LLM", "Đã cấu hình" if client else "Ngoại tuyến")
 
     st.subheader("Luồng sử dụng")
     st.markdown(
         "1. Điền **Hồ sơ cá nhân**.\n"
         "2. Hỏi **AI Assistant** về nội dung trong kho tài liệu.\n"
         "3. Mở **Tìm Mentor** để nhận danh sách phù hợp.\n"
-        "4. Mỗi câu trả lời RAG đều hiển thị nguồn đã dùng."
+        "4. Mỗi câu trả lời RAG đều hiển thị nguồn truy xuất và trạng thái."
     )
 
 elif page == "👤 Hồ sơ cá nhân":
     st.title("👤 Hồ sơ cá nhân")
+    st.info(
+        "Hồ sơ chỉ được lưu trong phiên Streamlit hiện tại. Ứng dụng chưa có tài khoản "
+        "hay cơ sở dữ liệu để lưu bền vững; dữ liệu có thể mất khi phiên kết thúc."
+    )
     profile = st.session_state.user_profile
-    st.info("Hồ sơ chỉ được lưu trong phiên Streamlit hiện tại; không có tài khoản hoặc cơ sở dữ liệu lưu dài hạn.")
+    years = ["Năm 1", "Năm 2", "Năm 3", "Năm 4"]
+    current_year = safe_student_year(profile.get("year", "Năm 1"), years)
+    form_version = st.session_state.get("profile_form_version", 0)
 
-    name = st.text_input("Họ và tên", value=profile.get("name", ""))
-    years = list(STUDENT_YEARS)
-    current_year = profile.get("year", "Năm 1")
+    name = st.text_input(
+        "Họ và tên (không bắt buộc)",
+        value=profile.get("name", ""),
+        key=f"profile_name_{form_version}",
+        max_chars=100,
+    )
     year = st.selectbox(
         "Bạn là sinh viên năm mấy?",
         years,
-        index=years.index(current_year) if current_year in years else 0,
+        index=years.index(current_year),
+        key=f"profile_year_{form_version}",
     )
     field_interest = st.text_input(
-        "Lĩnh vực quan tâm",
+        "Lĩnh vực quan tâm *",
         value=profile.get("field_interest", "NLP, LLM, RAG"),
+        key=f"profile_interest_{form_version}",
+        max_chars=120,
+        help="Bắt buộc, tối đa 120 ký tự.",
     )
     goals = st.text_input(
-        "Mục tiêu",
+        "Mục tiêu *",
         value=profile.get("goals", "Làm project AI và chuẩn bị thực tập"),
+        key=f"profile_goals_{form_version}",
+        max_chars=240,
+        help="Bắt buộc, tối đa 240 ký tự.",
     )
     bio = st.text_area(
-        "Giới thiệu ngắn",
+        "Giới thiệu ngắn (không bắt buộc)",
         value=profile.get("bio", "Em muốn cải thiện kỹ năng xây dựng hệ thống AI."),
+        key=f"profile_bio_{form_version}",
+        max_chars=500,
+        help="Tối đa 500 ký tự.",
     )
 
-    if st.button("💾 Lưu hồ sơ", type="primary"):
-        validated, errors = validate_profile(
-            name=name, year=year, field_interest=field_interest, goals=goals, bio=bio
+    if st.button("💾 Lưu hồ sơ trong phiên", type="primary"):
+        cleaned, errors = validate_profile_fields(
+            name, year, field_interest, goals, bio, years
         )
         if errors:
-            for error in errors:
-                st.error(error)
+            for field in ("name", "field_interest", "goals", "bio"):
+                if field in errors:
+                    st.error(errors[field])
+            st.warning("Hồ sơ chưa được lưu; dữ liệu hồ sơ trước đó vẫn được giữ nguyên.")
         else:
-            st.session_state.user_profile = validated
-            clear_matching(st.session_state)
-            st.success("Đã lưu hồ sơ trong phiên hiện tại.")
-    if st.button("🗑️ Đặt lại hồ sơ phiên"):
-        st.session_state.user_profile = {}
-        clear_matching(st.session_state)
-        st.success("Đã xóa hồ sơ trong phiên. Mentor yêu thích được giữ nguyên.")
-        st.rerun()
+            save_profile_state(st.session_state, cleaned)
+            st.success("Đã lưu hồ sơ trong phiên Streamlit hiện tại.")
+
+    @st.dialog("Đặt lại hồ sơ trong phiên?")
+    def confirm_reset_profile():
+        st.write(
+            "Hồ sơ sẽ được xóa khỏi phiên hiện tại và kết quả matching cũ sẽ bị xóa. "
+            "Danh sách mentor yêu thích và lịch sử chat không bị xóa."
+        )
+        confirm_reset = st.checkbox(
+            "Tôi xác nhận đặt lại hồ sơ", key="confirm_reset_profile"
+        )
+        if st.button("Xóa hồ sơ và kết quả matching", type="primary", disabled=not confirm_reset):
+            reset_profile_state(st.session_state)
+            st.session_state.profile_form_version = form_version + 1
+            st.rerun()
+
+    if st.button("Đặt lại / xóa hồ sơ trong phiên"):
+        confirm_reset_profile()
 
 elif page == "💬 AI Assistant":
     st.title("💬 Grounded AI Assistant")
     st.caption(
-        "RAG theo tài liệu Markdown. Nếu không đủ bằng chứng, hệ thống sẽ từ chối suy diễn thay vì bịa."
+        "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
+        "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
     )
 
     if knowledge_base.document_count == 0:
@@ -136,23 +169,43 @@ elif page == "💬 AI Assistant":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    st.caption("Xóa lịch sử chỉ áp dụng cho phiên này; hồ sơ và mentor yêu thích được giữ nguyên.")
-    if st.button("🗑️ Xóa lịch sử hội thoại"):
-        st.session_state.messages = []
-        st.success("Đã xóa lịch sử hội thoại trong phiên.")
+    @st.dialog("Xóa lịch sử hội thoại?")
+    def confirm_clear_chat():
+        st.write(
+            "Thao tác này chỉ xóa tin nhắn trong phiên Streamlit hiện tại. "
+            "Hồ sơ cá nhân và danh sách mentor đã lưu sẽ được giữ nguyên."
+        )
+        confirm = st.checkbox("Tôi hiểu và muốn xóa lịch sử hội thoại", key="confirm_clear_chat")
+        if st.button("Xóa lịch sử", type="primary", disabled=not confirm):
+            clear_chat_history(st.session_state)
+            st.rerun()
+
+    clear_col, _ = st.columns([1, 4])
+    with clear_col:
+        if st.button("🗑️ Xóa lịch sử hội thoại", disabled=not st.session_state.messages):
+            confirm_clear_chat()
 
     for message in st.session_state.messages:
-        with st.chat_message(message.get("role", "assistant")):
+        role = message.get("role", "assistant")
+        with st.chat_message(role):
             st.markdown(message.get("content", ""))
-            sources = normalize_sources(message.get("sources"))
+            sources = [
+                normalized
+                for normalized in (
+                    normalize_saved_source(item) for item in message.get("sources", [])
+                )
+                if normalized is not None
+            ]
             if sources:
                 with st.expander("Nguồn truy xuất"):
                     for source in sources:
-                        st.markdown(f"**{source['name']}** • relevance={source['score']:.3f}")
+                        st.markdown(
+                            f"**{source['name']}** • relevance={source['score']:.3f}"
+                        )
                         if source["excerpt"]:
                             st.caption(source["excerpt"])
-            if message.get("mode"):
-                st.caption(mode_label(message["mode"]))
+            if role == "assistant" and message.get("mode"):
+                st.caption(f"Trạng thái: {rag_mode_label(message.get('mode'))}")
 
     if prompt := st.chat_input("Ví dụ: Quy trình xử lý một issue GitHub là gì?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -164,15 +217,17 @@ elif page == "💬 AI Assistant":
                 result = answer_with_rag(prompt, knowledge_base, client=client)
             st.markdown(result.answer)
 
-            source_payload = normalize_sources(result.sources)
+            source_payload = [source_history_payload(item) for item in result.sources]
             if source_payload:
                 with st.expander("Nguồn truy xuất", expanded=True):
                     for source in source_payload:
-                        st.markdown(f"**{source['name']}** • relevance={source['score']:.3f}")
+                        st.markdown(
+                            f"**{source['name']}** • relevance={source['score']:.3f}"
+                        )
                         if source["excerpt"]:
                             st.caption(source["excerpt"])
-            st.caption(mode_label(result.mode))
-            st.caption(f"Độ liên quan cao nhất: {result.top_score:.3f}. Nguồn truy xuất không chứng minh mọi khẳng định là đúng.")
+
+            st.caption(f"Trạng thái: {rag_mode_label(result.mode)}")
 
         st.session_state.messages.append(
             {
@@ -197,30 +252,33 @@ elif page == "👥 Tìm Mentor":
     with st.expander("Hồ sơ dùng để matching"):
         st.json(student_profile)
 
+    from mentors_data import get_mentor_repository
+
     mentor_pool = get_mentor_repository().list()
-    fields = sorted({mentor["field"] for mentor in mentor_pool})
-    support_types = sorted({value for mentor in mentor_pool for value in mentor["available_for"]})
-    field_filter = st.selectbox("Lọc theo lĩnh vực", ["Tất cả", *fields])
-    support_filter = st.selectbox("Lọc theo loại hỗ trợ", ["Tất cả", *support_types])
+    field_choices = ["Tất cả", *sorted({mentor["field"] for mentor in mentor_pool})]
+    support_choices = ["Tất cả", *sorted({
+        support for mentor in mentor_pool for support in mentor["available_for"]
+    })]
+    field_filter = st.selectbox("Lọc theo lĩnh vực", field_choices)
+    support_filter = st.selectbox("Lọc theo loại hỗ trợ", support_choices)
     active_filters = (field_filter, support_filter)
     if st.session_state.get("active_mentor_filters") != active_filters:
-        clear_matching(st.session_state)
+        st.session_state.top_matches = []
+        st.session_state.match_explanations = {}
         st.session_state.active_mentor_filters = active_filters
 
     if st.button("🔍 Tìm Mentor", type="primary"):
         with st.spinner("Đang xếp hạng mentor..."):
             st.session_state.top_matches = get_top_matches(
-                student_profile,
-                top_k=3,
+                student_profile, top_k=3,
                 field_filter=None if field_filter == "Tất cả" else field_filter,
                 support_filter=None if support_filter == "Tất cả" else support_filter,
             )
             st.session_state.match_explanations = {}
             if not st.session_state.top_matches:
-                st.info("Không tìm thấy mentor phù hợp với bộ lọc đã chọn. Hãy thử đổi điều kiện.")
+                st.info("Không tìm thấy mentor phù hợp với bộ lọc đã chọn.")
 
-    # Results are stored independently of the search button state so that
-    # clicking a mentor's Save button does not make the results disappear.
+    # Keep results independent of the search button rerun state.
     for rank, match in enumerate(st.session_state.top_matches, start=1):
         mentor = match["mentor"]
         mentor_id = mentor["id"]

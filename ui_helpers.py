@@ -1,75 +1,62 @@
-"""Small, pure UI helpers. Session state is ephemeral; do not persist user data."""
+"""Small, dependency-light presentation helpers for the Streamlit UI."""
+
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, MutableMapping
 
-STUDENT_YEARS = ("Năm 1", "Năm 2", "Năm 3", "Năm 4")
-PROFILE_LIMITS = {"name": 100, "field_interest": 180, "goals": 400, "bio": 1000}
 
 RAG_MODE_LABELS = {
-    "no-evidence": "Chưa tìm thấy bằng chứng phù hợp trong tài liệu.",
-    "offline-grounded": "Chế độ offline: hiển thị các đoạn tài liệu đã truy xuất, không tự sinh kết luận.",
-    "online-citations-unverified": "AI có trích dẫn nguồn truy xuất, nhưng các khẳng định chưa được xác minh ngữ nghĩa.",
-    "offline-fallback": "Dịch vụ AI gặp lỗi hoặc trích dẫn không hợp lệ; đang hiển thị nguồn offline.",
+    "no-evidence": "Chưa tìm thấy bằng chứng phù hợp",
+    "offline-grounded": "Trả lời ngoại tuyến dựa trên tài liệu truy xuất",
+    "online-citations-unverified": (
+        "Có dùng mô hình trực tuyến; mã nguồn trích dẫn đã được kiểm tra, "
+        "nhưng nội dung chưa được xác minh ngữ nghĩa"
+    ),
+    "offline-fallback": (
+        "Đã dùng câu trả lời dự phòng ngoại tuyến sau khi phản hồi trực tuyến "
+        "không vượt qua kiểm tra trích dẫn"
+    ),
 }
 
 
-def validate_profile(
-    *, name: str, year: str, field_interest: str, goals: str, bio: str
-) -> tuple[dict[str, str] | None, list[str]]:
-    values = {
-        "name": name.strip(),
-        "year": year,
-        "field_interest": field_interest.strip(),
-        "goals": goals.strip(),
-        "bio": bio.strip(),
+def rag_mode_label(mode: str | None) -> str:
+    """Return a truthful Vietnamese label for a known or legacy RAG mode."""
+    if not mode:
+        return "Không có thông tin trạng thái RAG"
+    return RAG_MODE_LABELS.get(mode, f"Trạng thái RAG chưa được nhận diện ({mode})")
+
+
+def source_history_payload(source: Any) -> dict[str, Any]:
+    """Normalize a retrieved chunk or an older saved source into safe history data."""
+    if isinstance(source, dict):
+        name = source.get("name") or source.get("source") or "Nguồn không xác định"
+        score = source.get("score", 0.0)
+        excerpt = source.get("excerpt") or source.get("text") or ""
+    else:
+        name = getattr(source, "source", None) or "Nguồn không xác định"
+        score = getattr(source, "score", 0.0)
+        excerpt = getattr(source, "text", "") or ""
+
+    try:
+        score = float(score)
+    except (TypeError, ValueError):
+        score = 0.0
+
+    excerpt = str(excerpt).strip()
+    return {
+        "name": str(name),
+        "score": max(0.0, min(1.0, score)),
+        "excerpt": excerpt[:350] + ("…" if len(excerpt) > 350 else ""),
     }
-    errors: list[str] = []
-    if values["year"] not in STUDENT_YEARS:
-        errors.append("Năm học không hợp lệ.")
-    if not values["field_interest"]:
-        errors.append("Vui lòng nhập lĩnh vực quan tâm.")
-    if not values["goals"]:
-        errors.append("Vui lòng nhập mục tiêu học tập.")
-    for key, max_len in PROFILE_LIMITS.items():
-        if len(values[key]) > max_len:
-            errors.append(f"Trường {key} vượt quá {max_len} ký tự.")
-    return (None if errors else values), errors
 
 
-def normalize_sources(sources: Iterable[Any] | None) -> list[dict[str, Any]]:
-    """Normalize fresh RetrievedChunk and legacy Session State source dicts."""
-    normalized: list[dict[str, Any]] = []
-    for source in sources or []:
-        if isinstance(source, Mapping):
-            name = source.get("source") or source.get("name") or "Không rõ tài liệu"
-            excerpt = source.get("excerpt") or source.get("text") or ""
-            raw_score = source.get("score", 0.0)
-        else:
-            name = getattr(source, "source", "Không rõ tài liệu")
-            excerpt = getattr(source, "text", "")
-            raw_score = getattr(source, "score", 0.0)
-        try:
-            score = float(raw_score)
-        except (TypeError, ValueError):
-            score = 0.0
-        if not (0 <= score <= 1):
-            score = 0.0
-        normalized.append(
-            {
-                "name": str(name)[:180],
-                "score": score,
-                "excerpt": str(excerpt)[:350],
-            }
-        )
-    return normalized
+def normalize_saved_source(source: Any) -> dict[str, Any] | None:
+    """Normalize legacy history entries without crashing on missing fields."""
+    if not isinstance(source, dict):
+        return None
+    return source_history_payload(source)
 
 
-def mode_label(mode: str | None) -> str:
-    return RAG_MODE_LABELS.get(mode or "", "Trạng thái AI chưa xác định; hãy kiểm tra nguồn.")
-
-
-def clear_matching(state: Any) -> None:
-    state["top_matches"] = []
-    state["match_explanations"] = {}
+def clear_chat_history(session_state: MutableMapping[str, Any]) -> None:
+    """Clear only the chat message list, preserving profile and favorites."""
+    session_state["messages"] = []
