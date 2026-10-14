@@ -24,6 +24,7 @@ python -m streamlit run app.py
 | Mentor | lọc không có kết quả | trả list rỗng và UI thông báo | `tests/test_issue_batch.py` |
 | UI | save mentor, rerun | kết quả và favorites giữ trong phiên | `tests/test_streamlit_ui.py` |
 | UI | hồ sơ sai, chat history cũ | thông báo rõ; no crash | `tests/test_issue_batch.py` |
+| Quyền riêng tư | có key nhưng chưa đồng ý gửi dữ liệu | offline theo mặc định, tắt lại chặn yêu cầu mới | `tests/test_issue_batch.py` |
 | Release/docs | sơ đồ Mermaid | Chromium render cả hai phiên bản | `scripts/validate_mermaid.mjs`, CI |
 
 **Evidence chuẩn:** đường dẫn workflow run của đúng SHA commit, số tests pass/fail trong log, hạn chế thủ công nếu chưa chạy. CI chạy Linux và Windows nhưng không có nghĩa đã kiểm thử mọi phiên bản trình duyệt, accessibility hoặc tải đồng thời.
