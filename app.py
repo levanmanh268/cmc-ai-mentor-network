@@ -111,7 +111,7 @@ elif page == "👤 Hồ sơ cá nhân":
         st.success("Đã lưu hồ sơ.")
         
 elif page == "💬 AI Assistant":
-    st.title("💬 AI Assistant")
+    st.title("💬 Grounded AI Assistant")
     st.caption(
         "RAG truy xuất tài liệu Markdown trước khi trả lời. Nguồn truy xuất là bằng chứng tham khảo; "
         "việc xuất hiện trong danh sách nguồn không chứng minh mọi khẳng định đã được xác minh."
