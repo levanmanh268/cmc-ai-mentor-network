@@ -6,7 +6,7 @@ Prototype Streamlit + RAG + matching, không bao gồm 6 portfolio labs độc l
 ## Chạy
 ```bash
 python -m pip install -r requirements.txt
-python -m py_compile app.py ui_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py
+python -m py_compile app.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py
 python -m pytest -q
 python mentor_data_diagnostics.py
 python -m scripts.evaluate_rag
