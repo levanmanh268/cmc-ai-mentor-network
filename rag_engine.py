@@ -196,7 +196,7 @@ def answer_with_rag(
     knowledge_base: KnowledgeBase,
     *,
     client: Any | None = None,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
     k: int = 4,
 ) -> RAGAnswer:
     # A greeting is not a document question. Short, strictly allowlisted
