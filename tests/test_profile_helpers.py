@@ -1,4 +1,9 @@
-from profile_helpers import (\n    reset_profile_state,\n    safe_student_year,\n    save_profile_state,\n    validate_profile_fields,\n)
+from profile_helpers import (
+    reset_profile_state,
+    safe_student_year,
+    save_profile_state,
+    validate_profile_fields,
+)
 
 
 YEARS = ["Năm 1", "Năm 2", "Năm 3", "Năm 4"]
