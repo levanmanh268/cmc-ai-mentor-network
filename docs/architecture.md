@@ -1,6 +1,6 @@
 # Kiến trúc phần mềm CMC AI Mentor Network
 
-> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.4, 14/10/2026.**
+> **Nguồn chuẩn duy nhất (canonical architecture), phiên bản 2.5, 14/10/2026.**
 > Cập nhật từ tài liệu kiến trúc và NFR của thành viên Dương Tuấn Dũng, đối chiếu với mã nguồn `main` hiện có. Lịch sử tác giả vẫn được lưu ở Git commits.
 >
 > **Phạm vi:** Kiến trúc runtime của **ứng dụng môn học** ở thư mục gốc (Streamlit + RAG + mentor demo). Repo còn chứa các *portfolio labs độc lập* với entrypoint và CI riêng, được liệt kê ở Mục 2.1, không được coi là microservices của ứng dụng môn học. Không được giới thiệu ứng dụng môn học như nền tảng quản lý người dùng, đặt lịch/nhắn tin mentor hay dịch vụ SaaS production.
@@ -19,7 +19,8 @@
 | FR-08 | Lọc mentor theo lĩnh vực và loại hỗ trợ trước khi xếp hạng | `app.py` + `matching_engine.py` | demo records trong RAM | Có, theo Issue #18 |
 | FR-09 | Validate, đặt lại hồ sơ và xóa chat trong phiên | `app.py` + `ui_helpers.py` + `profile_helpers.py` | `st.session_state` | Có, theo Issues #50/#51 |
 | FR-10 | Chẩn đoán độc lập chất lượng dữ liệu mentor | `mentor_data_diagnostics.py` | đọc demo records, không ghi DB | Có dưới dạng CLI, không phải màn hình app |
-| FR-11 | Chào hỏi ngắn không cần tài liệu, không mạo nhận LLM | `chat_intents.py` + `rag_engine.py` | không lưu riêng, chỉ tin nhắn trong session | Template cục bộ, giới hạn allowlist |
+| FR-11 | Chào hỏi ngắn không cần tài liệu trong chế độ RAG | `chat_intents.py` + `rag_engine.py` | `messages` trong session | Template cục bộ, giới hạn allowlist |
+| FR-12 | Chat nhiều lượt bằng mô hình ngôn ngữ thực, tách khỏi RAG | `app.py` + `general_chat.py` + `llm_client.py` | `general_messages` trong session | Có khi có Groq API key và user opt-in |
 
 **Không triển khai trong phiên bản này:** đăng ký/đăng nhập, phân quyền ứng dụng, cơ sở dữ liệu tài khoản, hồ sơ lưu vĩnh viễn, lịch hẹn/nhắn tin mentor, gửi yêu cầu ghép đôi đến mentor, web search trực tuyến, tải và lập chỉ mục tài liệu qua giao diện, báo cáo SLA production. Những mục này chỉ có thể là backlog sau khi khách hàng phê duyệt.
 
@@ -29,8 +30,8 @@
 
 Quy tắc dependency:
 - `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval; `ui_helpers.py` chuẩn hóa lịch sử nguồn và nhãn trạng thái chat, còn `profile_helpers.py` kiểm tra/đặt lại hồ sơ.
-- `rag_engine.py` và `matching_engine.py` nhận client LLM tùy chọn qua tham số; không tự đọc credential.
-- `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client. Streamlit sidebar **yêu cầu opt-in rõ ràng mỗi phiên** trước khi chuyển client vào RAG hoặc matching; cấu hình credential **không** tự cho phép truyền nội dung ra ngoài.
+- `rag_engine.py`, `matching_engine.py` và `general_chat.py` nhận client LLM tùy chọn qua tham số; không tự đọc credential. Hỏi đáp tài liệu và trò chuyện chung là **hai chế độ độc lập**, không dùng lẫn lịch sử hoặc trích dẫn.
+- `llm_client.py` là ranh giới hạ tầng, tải `.env` hoặc nhận **BYOK session credential** từ widget mật khẩu và dựng Groq client. Streamlit sidebar **yêu cầu opt-in rõ ràng mỗi phiên** trước khi chuyển client vào general chat, RAG hoặc matching; cấu hình credential **không** tự cho phép truyền nội dung ra ngoài. Model mặc định là `openai/gpt-oss-120b` trên Groq; model cũ Llama 3.3 không còn mặc định.
 - `matching_engine.py` hiện phụ thuộc **`get_mentor_repository()` trong `mentors_data.py`**, không truy vấn DB.
 - `mentors_data.py` chứa dữ liệu demo, `validate_mentor` và `MentorRepository` trong bộ nhớ; `mentor_data_diagnostics.py` là công cụ CLI chạy offline kiểm tra riêng, không được gọi từ UI.
 - `rag_engine.py` đọc Markdown trực tiếp từ thư mục `knowledge_base/` (không dùng Chroma/vector database trong bản này).
@@ -97,6 +98,7 @@ flowchart TD
     UI[Streamlit app.py]
     CONFIG[llm_client.py]
     KB[rag_engine.py]
+    GEN[general_chat.py]
     SOCIAL[chat_intents.py]
     MATCH[matching_engine.py]
     HELPER[ui_helpers.py]
@@ -107,6 +109,7 @@ flowchart TD
     API[Groq API]
     UI --> CONFIG
     UI --> KB
+    UI --> GEN
     KB --> SOCIAL
     UI --> MATCH
     UI --> HELPER
@@ -122,7 +125,8 @@ flowchart TD
 | `ui_helpers.py` | Chuẩn hóa nguồn trong lịch sử chat, nhãn mode và xóa riêng chat trong session | `normalize_saved_source`, `source_history_payload`, `rag_mode_label`, `clear_chat_history` |
 | `profile_helpers.py` | Validation hồ sơ, năm học cũ, lưu và reset dữ liệu phiên | `validate_profile_fields`, `safe_student_year`, `save_profile_state`, `reset_profile_state` |
 | `llm_client.py` | Cấu hình `GROQ_API_KEY`, tạo `Groq` hoặc trả `None` | `build_llm_client()`, `llm_enabled()` |
-| `rag_engine.py` | Markdown chunking, TF-IDF, cosine retrieval, fallback khi thiếu nguồn/API lỗi | `KnowledgeBase.search`, `answer_with_rag` |
+| `rag_engine.py` | Markdown chunking, TF-IDF, cosine retrieval, fallback khi thiếu nguồn/API lỗi, tách chế độ nguồn | `KnowledgeBase.search`, `answer_with_rag` |
+| `general_chat.py` | Hội thoại mô hình ngôn ngữ nhiều lượt, cửa sổ ngữ cảnh giới hạn, lỗi nhà cung cấp không tiết lộ key | `generate_general_reply`, `build_general_messages` |
 | `chat_intents.py` | Cho phép chào hỏi/cảm ơn độc lập bằng template, không truy xuất hay giả vờ là AI online | `local_social_reply` |
 | `matching_engine.py` | TF-IDF trên mentor, tính hybrid score, tạo giải thích offline/online | `get_top_matches`, `generate_match_explanation` |
 | `mentors_data.py` | Danh sách demo, normalize/validate mentor, repository trong RAM | `get_mentor_repository`, `validate_mentor` |
@@ -131,7 +135,7 @@ flowchart TD
 | `tests/` | Unit tests/Streamlit AppTest, không thay thế kiểm thử khách hàng | `python -m pytest -q` |
 | `.github/workflows/ci.yml` | Lint-like compile, pytest, CI HTTP smoke, secret pattern guard | Workflow khi PR/push |
 
-**Luồng phụ thuộc:** `app.py` tạo client (nếu có) qua `llm_client.py`, sau đó inject vào `rag_engine.py` và `matching_engine.py`. `get_mentor_repository().list()` được gọi bên trong matching. Không có đường truyền API trực tiếp từ trình duyệt tới Groq.
+**Luồng phụ thuộc:** `app.py` tạo client (nếu có) qua `llm_client.py`, sau đó inject vào `general_chat.py`, `rag_engine.py` và `matching_engine.py` chỉ khi người dùng đã cho phép. `get_mentor_repository().list()` được gọi bên trong matching. Không có đường truyền API trực tiếp từ trình duyệt tới Groq.
 
 **Giới hạn của MentorRepository hiện tại:** đây là abstraction trong bộ nhớ, không phải PostgreSQL/SQLite; nhãn “repository” không đồng nghĩa dữ liệu được lưu bền vững.
 
@@ -171,6 +175,14 @@ sequenceDiagram
 
 **Không tuyên bố bảo đảm không hallucination:** prompt ràng buộc nguồn và `rag_engine.py` hiện có **kiểm tra sự tồn tại của chỉ số citation** (`[S1]` đến `[Sk]`) trong các kết quả retrieval, từ chối câu trả lời thiếu citation hoặc có chỉ số ngoài phạm vi, đồng thời chặn câu trả lời rỗng hoặc quá dài. **Chưa có kiểm chứng ngữ nghĩa từng claim (entailment/faithfulness)**: citation tồn tại không chứng minh nội dung thực sự được nguồn hỗ trợ. `sources` chỉ phản ánh các đoạn được truy xuất.
 
+### 6.1. Hội thoại AI thực (tách khỏi RAG)
+
+- Giao diện mặc định **Trò chuyện AI** sử dụng `general_chat.py` và model `openai/gpt-oss-120b` khi có credential hợp lệ và opt-in. `general_messages` chỉ chứa user/assistant text, không trộn `messages` (lịch sử RAG) hoặc source Markdown.
+- `build_general_messages()` giữ tối đa 16 messages và 12.000 ký tự gần nhất; lọc vai trò giả và các câu lỗi. Cửa sổ đó là **ngữ cảnh hội thoại tạm thời**, không phải trí nhớ dài hạn ngoài phiên.
+- Khi thiếu key hoặc chưa bật consent, `st.chat_input` của Trò chuyện AI bị vô hiệu hóa, không dùng lời chào hard-code để đóng giả câu trả lời LLM. Người dùng có thể dán Groq key trong widget **mật khẩu** ở sidebar; key tồn tại trong Streamlit Session State ở phía máy chủ (RAM) và được gửi đến Groq khi cho phép. Chưa có bằng chứng kiểm tra xóa key khỏi RAM ngay lập tức khi đóng phiên.
+- Trò chuyện AI **không có citation/groundedness** theo tài liệu; kết quả không được gắn các nhãn `offline-grounded` hay `online-citations-unverified`. Muốn kiểm chứng nội dung trong kho Markdown, người dùng chủ động chuyển sang **Hỏi đáp tài liệu**. Hai chế độ có lịch sử riêng và thao tác xóa riêng.
+- Đã thay model mặc định Llama 3.3 đã ngừng hỗ trợ ở Free/Developer bằng GPT-OSS 120B. Đây là model open-weight do bên thứ ba phục vụ qua API; không cam kết ngang GPT-6/Gemini/Claude ở tất cả benchmark. Cần key, quota và có thể phát sinh chi phí nhà cung cấp.
+
 ## 7. Runtime sequence: Mentor Matching
 
 ```mermaid
@@ -207,7 +219,7 @@ Bộ lọc theo field/available_for được áp dụng **trước** tính TF-ID
 - **Mentor:** `{id, name, title, company, field, experience_years, bio, strengths[], available_for[]}`; `validate_mentor` thực hiện kiểm tra/chuẩn hóa đầu vào.
 - **Retriever output:** `RetrievedChunk(source, text, score)`, score bằng cosine TF-IDF, ngưỡng mặc định `0.06`.
 - **RAG output:** `RAGAnswer(answer, sources, mode, top_score)`, mode thuộc `no-evidence`, `offline-grounded`, `online-citations-unverified`, `offline-fallback`.
-- **Session state:** `user_profile`, `messages`, `top_matches`, `match_explanations`, `favorite_mentors`, `active_mentor_filters`. Không phải database hay bộ nhớ lâu dài. Chức năng xóa chat chỉ xóa `messages`, đặt lại hồ sơ xóa kết quả matching cũ và giữ nguyên favorites.
+- **Session state:** `user_profile`, `messages` (RAG), `general_messages` (trò chuyện model), `top_matches`, `match_explanations`, `favorite_mentors`, `active_mentor_filters`. Không phải database hay bộ nhớ lâu dài. Chức năng xóa chat chỉ xóa `messages`, đặt lại hồ sơ xóa kết quả matching cũ và giữ nguyên favorites.
 
 ## 9. An toàn, giới hạn tin cậy và lỗi
 
@@ -249,7 +261,7 @@ Chất lượng cần kiểm tra từ ít nhất ba lớp: `Unit/Integration`, `
 ## 13. Đồng bộ tài liệu, bằng chứng & trách nhiệm
 
 - **Tài liệu chuẩn:** `docs/architecture.md` (file này) và `docs/non-functional-requirements.md`.
-- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `chat_intents.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
+- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `chat_intents.py`, `general_chat.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
 - **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml` cho root, các workflow `.github/workflows/*lab*.yml` hoặc `industry-ai-labs.yml` cho module độc lập. Mermaid được kiểm tra từ `scripts/validate_mermaid.mjs` trên Chromium.
 - **Lịch sử contributor:** commit gốc `6439cdeb`, `a991dbaf` do Dương Tuấn Dũng (`@TuanDungir`) thực hiện; bản hợp nhất là một lần review, không xóa lịch sử tác giả.
 - **Change control:** tạo Issue → branch riêng → kiểm tra mã nguồn/tài liệu → CI → PR review → merge. Mỗi lần thêm chức năng phải cập nhật bảng FR, diagram, NFR và bằng chứng liên quan.
