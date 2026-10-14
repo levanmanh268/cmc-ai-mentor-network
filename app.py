@@ -39,8 +39,21 @@ with st.sidebar:
     )
     if llm_enabled():
         st.info("LLM: đã cấu hình; kết nối và nội dung từng câu trả lời chưa được xác minh đầy đủ.")
+        online_consent = st.checkbox(
+            "Cho phép gửi câu hỏi và dữ liệu matching tới Groq",
+            value=False,
+            help=(
+                "Khi bật, câu hỏi và tài liệu retrieval hoặc lĩnh vực/mục tiêu của hồ sơ "
+                "cùng thông tin mentor có thể được gửi tới Groq để tạo câu trả lời. "
+                "Mặc định tắt; tắt lại để ngừng gửi yêu cầu mới."
+            ),
+        )
+        st.caption("Chỉ gọi dịch vụ ngoài khi bạn chủ động đồng ý. Nội dung đã gửi trước đó không được xóa khỏi dịch vụ ngoài bởi thao tác này.")
     else:
+        online_consent = False
         st.info("LLM: chế độ ngoại tuyến")
+
+authorized_client = client if online_consent else None
 
 
 if "favorite_mentors" not in st.session_state:
@@ -69,7 +82,7 @@ if page == "🏠 Dashboard":
     with col2:
         st.metric("Chunks đã index", knowledge_base.chunk_count)
     with col3:
-        st.metric("LLM", "Đã cấu hình" if client else "Ngoại tuyến")
+        st.metric("LLM", "Cho phép trực tuyến" if authorized_client else "Ngoại tuyến")
 
     st.subheader("Luồng sử dụng")
     st.markdown(
@@ -214,7 +227,7 @@ elif page == "💬 AI Assistant":
 
         with st.chat_message("assistant"):
             with st.spinner("Đang truy xuất tài liệu và kiểm tra bằng chứng..."):
-                result = answer_with_rag(prompt, knowledge_base, client=client)
+                result = answer_with_rag(prompt, knowledge_base, client=authorized_client)
             st.markdown(result.answer)
 
             source_payload = [source_history_payload(item) for item in result.sources]
@@ -297,7 +310,7 @@ elif page == "👥 Tìm Mentor":
 
             if mentor_id not in st.session_state.match_explanations:
                 st.session_state.match_explanations[mentor_id] = generate_match_explanation(
-                    student_profile, mentor, match["hybrid_score"], client=client
+                    student_profile, mentor, match["hybrid_score"], client=authorized_client
                 )
             st.markdown("**Vì sao phù hợp**")
             st.write(st.session_state.match_explanations[mentor_id])
