@@ -109,5 +109,7 @@ def test_offline_chat_ui_has_onboarding_warning(monkeypatch):
     assert not app.exception
     app.sidebar.radio[0].set_value("💬 AI Assistant").run()
     assert not app.exception
+    app.selectbox[0].set_value("📚 Hỏi đáp tài liệu").run()
+    assert not app.exception
     assert any("Bản demo offline" in info.value for info in app.info)
     assert any("3 tài liệu mẫu" in info.value for info in app.info)

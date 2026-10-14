@@ -46,3 +46,9 @@ Cold starts may be slow; limited CPU/RAM, no SLA, and memory-backed `st.session_
 Cloud demo runs without Groq key. If a maintainer later sets `GROQ_API_KEY`, the UI requires an explicit opt-in to send question/context/matching data externally. Users must not upload confidential personal records. The test/demo mentor dataset is fictional.
 
 **This is a student prototype, not production-ready.** Performance P95, independent groundedness, privacy review and human UAT require their own evidence. Latest docs: [architecture](architecture.md) and [non-functional requirements](non-functional-requirements.md).
+
+## Real LLM chat activation (Issue #63)
+
+The site provides **two separate modes**: General AI conversation (requires Groq GPT-OSS 120B) and grounded Markdown retrieval. The session can supply an ephemeral Groq API key through a masked Streamlit sidebar field; the key is transmitted to the Render server over the hosted Streamlit session, temporarily held in memory, and used after the user opts in. Do **not** paste keys into chat or source control. The administrator can alternatively set `GROQ_API_KEY` in **Render → Environment** without committing credentials; consider authentication and rate limits before public shared-key usage.
+
+`openai/gpt-oss-120b` is the default model for all online paths. Missing key or no consent means general chat is disabled; grounded document RAG remains offline-capable. An HTTP health check never establishes that AI inference with a real key works. Tests mock Groq SDK; to prove end-to-end model responses, use a *real nonproduction key and consent* in a controlled session and inspect the response, without sharing the key in logs/screenshots.

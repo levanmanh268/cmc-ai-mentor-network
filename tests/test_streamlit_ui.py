@@ -15,7 +15,8 @@ def test_offline_dashboard_and_chat_navigation(monkeypatch):
     app = make_app(monkeypatch)
     app.sidebar.radio[0].set_value("💬 AI Assistant").run()
     assert not app.exception
-    assert any("Grounded AI Assistant" in item.value for item in app.title)
+    assert any("CMC AI Assistant" in item.value for item in app.title)
+    assert app.selectbox[0].value == "🤖 Trò chuyện AI"
 
 
 def test_mentor_search_results_remain_after_saving(monkeypatch):

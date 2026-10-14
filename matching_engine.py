@@ -206,7 +206,7 @@ def generate_match_explanation(
     hybrid_score: float,
     *,
     client: Any | None = None,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
 ) -> str:
     """Explain a ranking while keeping the external LLM dependency optional."""
     if client is None:
