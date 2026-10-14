@@ -2,7 +2,12 @@ import streamlit as st
 
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
-from profile_helpers import (\n    reset_profile_state,\n    safe_student_year,\n    save_profile_state,\n    validate_profile_fields,\n)
+from profile_helpers import (
+    reset_profile_state,
+    safe_student_year,
+    save_profile_state,
+    validate_profile_fields,
+)
 from rag_engine import KnowledgeBase, answer_with_rag
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
