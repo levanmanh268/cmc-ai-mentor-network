@@ -64,3 +64,22 @@ def test_all_rag_modes_have_truthful_vietnamese_labels():
 def test_unknown_and_missing_modes_are_safe():
     assert "chưa được nhận diện" in rag_mode_label("future-mode")
     assert "Không có thông tin" in rag_mode_label(None)
+
+
+
+def test_clear_chat_history_preserves_profile_and_favorites():
+    from ui_helpers import clear_chat_history
+
+    state = {
+        "messages": [{"role": "user", "content": "hello"}],
+        "user_profile": {"name": "Keep profile"},
+        "favorite_mentors": [{"id": "mentor-1"}],
+        "top_matches": [{"id": "match-1"}],
+    }
+
+    clear_chat_history(state)
+
+    assert state["messages"] == []
+    assert state["user_profile"] == {"name": "Keep profile"}
+    assert state["favorite_mentors"] == [{"id": "mentor-1"}]
+    assert state["top_matches"] == [{"id": "match-1"}]
