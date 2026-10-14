@@ -141,7 +141,7 @@ sequenceDiagram
         RAG->>LLM: Question and retrieved context
         alt Provider success
             LLM-->>RAG: Generated answer
-            RAG-->>UI: online-grounded answer and sources
+            RAG-->>UI: unverified cited answer and sources
         else Provider failure
             RAG-->>UI: offline-fallback excerpts
         end
