@@ -110,7 +110,7 @@ Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository 
 - Chạy Streamlit trên Render (Singapore, Free). **Trò chuyện AI** dùng GPT-OSS 120B thực qua Groq sau khi có key và người dùng đồng ý; không cấu hình key thì **chỉ RAG offline và Mentor matching** hoạt động.
 - Có thể nhập Groq API key **ngay trong sidebar (ô mật khẩu, chỉ trong phiên)** và bật đồng ý để kích hoạt mô hình mà không cần sửa code. Hoặc quản trị viên đặt `GROQ_API_KEY` dưới Render Environment (các phiên vẫn phải opt-in). **Không nhập khóa thật vào chat hay GitHub**.
 - Cloud có thể khởi động chậm do gói Free. Hồ sơ, lịch sử chat và mentor yêu thích **chỉ nằm trong phiên**; không có tài khoản/database.
-- Theo dõi [hướng dẫn cloud và bằng chứng deploy](docs/CLOUD_DEPLOYMENT.md). [Release mới v0.2.0](docs/RELEASE_NOTES_v0.2.0.md) có changelog và các giới hạn còn cần nghiệm thu.
+- Theo dõi [hướng dẫn cloud](docs/CLOUD_DEPLOYMENT.md). [Ghi chú bản tích hợp AI thật v0.3.0](docs/RELEASE_NOTES_v0.3.0.md) mô tả cách nhập Groq API key, giới hạn hiện tại và bằng chứng kiểm thử. Chỉ xem là bản đã phát hành khi GitHub Releases xác nhận tag.
 
 ## Phiên bản phát hành và chứng cứ Issues
 
