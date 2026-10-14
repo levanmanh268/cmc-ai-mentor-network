@@ -17,7 +17,7 @@
 | FR-06 | Lưu/bỏ lưu mentor trong phiên hiện tại | `app.py` | `st.session_state` | Có |
 | FR-07 | Tiếp nhận yêu cầu khách hàng và lỗi qua GitHub Issues | `.github/ISSUE_TEMPLATE` | GitHub (không thuộc ứng dụng Streamlit) | Có ở quy trình phát triển |
 | FR-08 | Lọc mentor theo lĩnh vực và loại hỗ trợ trước khi xếp hạng | `app.py` + `matching_engine.py` | demo records trong RAM | Có, theo Issue #18 |
-| FR-09 | Validate, đặt lại hồ sơ và xóa chat trong phiên | `app.py` + `ui_helpers.py` | `st.session_state` | Có, theo Issues #50/#51 |
+| FR-09 | Validate, đặt lại hồ sơ và xóa chat trong phiên | `app.py` + `ui_helpers.py` + `profile_helpers.py` | `st.session_state` | Có, theo Issues #50/#51 |
 | FR-10 | Chẩn đoán độc lập chất lượng dữ liệu mentor | `mentor_data_diagnostics.py` | đọc demo records, không ghi DB | Có dưới dạng CLI, không phải màn hình app |
 
 **Không triển khai trong phiên bản này:** đăng ký/đăng nhập, phân quyền ứng dụng, cơ sở dữ liệu tài khoản, hồ sơ lưu vĩnh viễn, lịch hẹn/nhắn tin mentor, gửi yêu cầu ghép đôi đến mentor, web search trực tuyến, tải và lập chỉ mục tài liệu qua giao diện, báo cáo SLA production. Những mục này chỉ có thể là backlog sau khi khách hàng phê duyệt.
@@ -27,7 +27,7 @@
 **Riêng ứng dụng môn học ở root** dùng modular monolith chạy trong **một tiến trình Python/Streamlit**, phân tách theo trách nhiệm (không phải microservices, không có REST backend độc lập). Giao diện điều phối các hàm domain; AI bên ngoài chỉ được dùng nếu có cấu hình, không phải điều kiện để ứng dụng khởi động.
 
 Quy tắc dependency:
-- `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval; `ui_helpers.py` thực hiện validate hồ sơ, chuẩn hóa nguồn và nhãn trạng thái chat.
+- `app.py` điều phối, quản lý trạng thái UI, không trực tiếp triển khai ranking/retrieval; `ui_helpers.py` chuẩn hóa lịch sử nguồn và nhãn trạng thái chat, còn `profile_helpers.py` kiểm tra/đặt lại hồ sơ.
 - `rag_engine.py` và `matching_engine.py` nhận client LLM tùy chọn qua tham số; không tự đọc credential.
 - `llm_client.py` là ranh giới hạ tầng, tải `.env` và dựng Groq client.
 - `matching_engine.py` hiện phụ thuộc **`get_mentor_repository()` trong `mentors_data.py`**, không truy vấn DB.
@@ -97,6 +97,7 @@ flowchart TD
     KB[rag_engine.py]
     MATCH[matching_engine.py]
     HELPER[ui_helpers.py]
+    PROFILE[profile_helpers.py]
     MR[mentors_data.py]
     MARKDOWN[Markdown Documents]
     RAW[RAW_MENTORS]
@@ -105,6 +106,7 @@ flowchart TD
     UI --> KB
     UI --> MATCH
     UI --> HELPER
+    UI --> PROFILE
     MATCH --> MR
     MR --> RAW
     KB --> MARKDOWN
@@ -113,7 +115,8 @@ flowchart TD
 | Thành phần | Vai trò được kiểm tra từ code | Contract chính |
 | --- | --- | --- |
 | `app.py` | Streamlit UI, chọn trang, `session_state`, gọi AI & matching, bộ lọc, chat clear | `get_top_matches`, `answer_with_rag` |
-| `ui_helpers.py` | Validation hồ sơ, chuẩn hóa nguồn chat & nhãn RAG mode | `validate_profile`, `normalize_sources`, `mode_label`, `clear_matching` |
+| `ui_helpers.py` | Chuẩn hóa nguồn trong lịch sử chat, nhãn mode và xóa riêng chat trong session | `normalize_saved_source`, `source_history_payload`, `rag_mode_label`, `clear_chat_history` |
+| `profile_helpers.py` | Validation hồ sơ, năm học cũ, lưu và reset dữ liệu phiên | `validate_profile_fields`, `safe_student_year`, `save_profile_state`, `reset_profile_state` |
 | `llm_client.py` | Cấu hình `GROQ_API_KEY`, tạo `Groq` hoặc trả `None` | `build_llm_client()`, `llm_enabled()` |
 | `rag_engine.py` | Markdown chunking, TF-IDF, cosine retrieval, fallback khi thiếu nguồn/API lỗi | `KnowledgeBase.search`, `answer_with_rag` |
 | `matching_engine.py` | TF-IDF trên mentor, tính hybrid score, tạo giải thích offline/online | `get_top_matches`, `generate_match_explanation` |
@@ -237,7 +240,7 @@ Chất lượng cần kiểm tra từ ít nhất ba lớp: `Unit/Integration`, `
 ## 13. Đồng bộ tài liệu, bằng chứng & trách nhiệm
 
 - **Tài liệu chuẩn:** `docs/architecture.md` (file này) và `docs/non-functional-requirements.md`.
-- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
+- **Code source-of-truth:** `app.py`, `ui_helpers.py`, `profile_helpers.py`, `rag_engine.py`, `matching_engine.py`, `llm_client.py`, `mentors_data.py`; CLI `mentor_data_diagnostics.py`.
 - **Kiểm thử/CI:** `tests/` và `.github/workflows/ci.yml` cho root, các workflow `.github/workflows/*lab*.yml` hoặc `industry-ai-labs.yml` cho module độc lập. Mermaid được kiểm tra từ `scripts/validate_mermaid.mjs` trên Chromium.
 - **Lịch sử contributor:** commit gốc `6439cdeb`, `a991dbaf` do Dương Tuấn Dũng (`@TuanDungir`) thực hiện; bản hợp nhất là một lần review, không xóa lịch sử tác giả.
 - **Change control:** tạo Issue → branch riêng → kiểm tra mã nguồn/tài liệu → CI → PR review → merge. Mỗi lần thêm chức năng phải cập nhật bảng FR, diagram, NFR và bằng chứng liên quan.
