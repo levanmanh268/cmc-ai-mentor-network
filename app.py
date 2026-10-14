@@ -2,7 +2,7 @@ import streamlit as st
 
 from llm_client import build_llm_client, llm_enabled
 from matching_engine import get_top_matches, generate_match_explanation
-from profile_helpers import validate_profile_fields, safe_student_year
+from profile_helpers import (\n    reset_profile_state,\n    safe_student_year,\n    save_profile_state,\n    validate_profile_fields,\n)
 from rag_engine import KnowledgeBase, answer_with_rag
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
@@ -127,9 +127,7 @@ elif page == "👤 Hồ sơ cá nhân":
                     st.error(errors[field])
             st.warning("Hồ sơ chưa được lưu; dữ liệu hồ sơ trước đó vẫn được giữ nguyên.")
         else:
-            st.session_state.user_profile = cleaned
-            st.session_state.top_matches = []
-            st.session_state.match_explanations = {}
+            save_profile_state(st.session_state, cleaned)
             st.success("Đã lưu hồ sơ trong phiên Streamlit hiện tại.")
 
     @st.dialog("Đặt lại hồ sơ trong phiên?")
@@ -142,9 +140,7 @@ elif page == "👤 Hồ sơ cá nhân":
             "Tôi xác nhận đặt lại hồ sơ", key="confirm_reset_profile"
         )
         if st.button("Xóa hồ sơ và kết quả matching", type="primary", disabled=not confirm_reset):
-            st.session_state.user_profile = {}
-            st.session_state.top_matches = []
-            st.session_state.match_explanations = {}
+            reset_profile_state(st.session_state)
             st.session_state.profile_form_version = form_version + 1
             st.rerun()
 
