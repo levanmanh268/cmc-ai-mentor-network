@@ -1,7 +1,7 @@
 import streamlit as st
 
 from llm_client import DEFAULT_GROQ_MODEL, build_llm_client, llm_enabled
-from general_chat import generate_general_reply
+from general_chat import generate_general_reply, probe_online_model
 from matching_engine import get_top_matches, generate_match_explanation
 from profile_helpers import (
     reset_profile_state,
@@ -67,6 +67,39 @@ with st.sidebar:
         st.caption("Nếu quản trị viên cấu hình GROQ_API_KEY trong Render, người dùng vẫn phải đồng ý trước khi gọi API.")
 
 authorized_client = client if online_consent else None
+
+# Classroom demo limits are per Streamlit session, not a security boundary:
+# reconnecting can reset counters. A public shared key still needs server-side
+# authentication, quotas and monitoring before production use.
+MAX_CHAT_CALLS_PER_SESSION = 30
+MAX_PROBES_PER_SESSION = 3
+if "demo_chat_calls" not in st.session_state:
+    st.session_state.demo_chat_calls = 0
+if "demo_probe_calls" not in st.session_state:
+    st.session_state.demo_probe_calls = 0
+
+if authorized_client is not None:
+    with st.sidebar:
+        st.caption("Kết nối đã được cho phép, nhưng chưa được xác minh bằng API thật.")
+        st.caption(
+            f"Giới hạn demo: {st.session_state.demo_chat_calls}/{MAX_CHAT_CALLS_PER_SESSION} "
+            "lượt chat AI trong phiên (không chống được việc tạo phiên mới)."
+        )
+        if st.button(
+            "🧪 Kiểm tra AI thật ngay",
+            key="run_real_model_probe",
+            disabled=st.session_state.demo_probe_calls >= MAX_PROBES_PER_SESSION,
+            help="Gửi một câu hỏi thử thật tới Groq; có thể sử dụng quota/token API.",
+        ):
+            st.session_state.demo_probe_calls += 1
+            with st.spinner("Đang gọi trực tiếp mô hình tại Groq..."):
+                probe = probe_online_model(client=authorized_client)
+            if probe.status == "online":
+                st.success(f"✅ Groq vừa phản hồi bằng {probe.model}.")
+                st.caption("Nội dung trả lời thực từ API (không phải câu template):")
+                st.write(probe.answer)
+            else:
+                st.error("❌ Chưa xác minh được mô hình: " + probe.answer)
 
 
 if "favorite_mentors" not in st.session_state:
@@ -203,7 +236,7 @@ elif page == "💬 AI Assistant":
                 "Hệ thống sẽ không giả lập câu trả lời từ một mô hình chưa kết nối."
             )
         else:
-            st.success("Đã bật kết nối mô hình ngôn ngữ; có thể hội thoại nhiều lượt trong phiên.")
+            st.info("Đã đồng ý gọi Groq. Hãy dùng nút “Kiểm tra AI thật ngay” ở sidebar để xác minh API có phản hồi.")
         if "general_messages" not in st.session_state:
             st.session_state.general_messages = []
 
@@ -224,12 +257,16 @@ elif page == "💬 AI Assistant":
                 if item.get("role") == "assistant" and item.get("status") == "online":
                     st.caption(f"Phản hồi mô hình · {DEFAULT_GROQ_MODEL} · Chưa được kiểm chứng bằng tài liệu")
 
+        if st.session_state.demo_chat_calls >= MAX_CHAT_CALLS_PER_SESSION:
+            st.warning("Đã đạt 30 lượt chat trong phiên demo. Để dùng công khai cần hạn mức phía máy chủ.")
+
         if general_prompt := st.chat_input(
             "Hỏi AI bất kỳ điều gì: code Python, toán, AI, ý tưởng dự án...",
-            disabled=authorized_client is None,
+            disabled=(authorized_client is None or st.session_state.demo_chat_calls >= MAX_CHAT_CALLS_PER_SESSION),
             max_chars=3000,
             key="general_ai_prompt",
         ):
+            st.session_state.demo_chat_calls += 1
             st.session_state.general_messages.append({"role": "user", "content": general_prompt})
             with st.chat_message("user"):
                 st.markdown(general_prompt)
