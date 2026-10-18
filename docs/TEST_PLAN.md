@@ -6,10 +6,11 @@ Prototype Streamlit + RAG + matching, không bao gồm 6 portfolio labs độc l
 ## Chạy
 ```bash
 python -m pip install -r requirements.txt
-python -m py_compile app.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py
+python -m py_compile app.py general_chat.py chat_intents.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/final_smoke_audit.py
 python -m pytest -q
 python mentor_data_diagnostics.py
 python -m scripts.evaluate_rag
+python -m scripts.final_smoke_audit
 python -m streamlit run app.py
 ```
 
@@ -25,8 +26,14 @@ python -m streamlit run app.py
 | UI | save mentor, rerun | kết quả và favorites giữ trong phiên | `tests/test_streamlit_ui.py` |
 | UI | hồ sơ sai, chat history cũ | thông báo rõ; no crash | `tests/test_issue_batch.py` |
 | Quyền riêng tư | có key nhưng chưa đồng ý gửi dữ liệu | offline theo mặc định, tắt lại chặn yêu cầu mới | `tests/test_issue_batch.py` |
+| General chat (fake API) | gửi 2 câu liên tiếp → history user/assistant, không fake offline | `tests/test_final_defense_probe.py` |
+| Groq consent/probe (fake API) | chưa đồng ý không gọi, đã đồng ý probe gọi provider, 401 không lộ key | `tests/test_final_defense_probe.py` |
+| Demo quota | sau 30 yêu cầu trong 1 session, input chat disabled (không phải server rate limit) | `tests/test_final_defense_probe.py` |
+| CPU latency sample | 50 samples/operation, p50/p95 trên local CPU; không áp dụng cloud/LLM | `scripts/final_smoke_audit.py` |
 | Release/docs | sơ đồ Mermaid | Chromium render cả hai phiên bản | `scripts/validate_mermaid.mjs`, CI |
 
 **Evidence chuẩn:** đường dẫn workflow run của đúng SHA commit, số tests pass/fail trong log, hạn chế thủ công nếu chưa chạy. CI chạy Linux và Windows nhưng không có nghĩa đã kiểm thử mọi phiên bản trình duyệt, accessibility hoặc tải đồng thời.
 
 Issue liên quan [#19](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/19), [#34](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/34), [#39](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/39).
+
+**Chốt bảo vệ (20/10/2026):** xem [FINAL_DEFENSE_GATE.md](FINAL_DEFENSE_GATE.md), đặc biệt yêu cầu live Groq API probe sau khi cấu hình key. CI/fake client không chứng minh đã có inference online trên cloud.
