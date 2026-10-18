@@ -177,6 +177,8 @@ sequenceDiagram
 
 ### 6.1. Hội thoại AI thực (tách khỏi RAG)
 
+- **Kiểm tra AI thật (Issue #67):** sau khi user tick consent, sidebar hiện nút chạy một **Groq completion thực** với prompt thử riêng; thành công chỉ khi client nhận được text. Nếu không có key/consent, không tạo request. Kết quả kiểm tra không được hiểu là chứng nhận độ chính xác hay 0 hallucination.
+- **Giới hạn lớp học:** tối đa 30 lượt chat chung và 3 lần probe mỗi Streamlit session để giảm thao tác vô ý; người dùng reconnect có thể tạo session mới, nên đây **không phải rate-limit theo IP/user, không phải biện pháp chống spam an toàn cho public server key**.
 - Giao diện mặc định **Trò chuyện AI** sử dụng `general_chat.py` và model `openai/gpt-oss-120b` khi có credential hợp lệ và opt-in. `general_messages` chỉ chứa user/assistant text, không trộn `messages` (lịch sử RAG) hoặc source Markdown.
 - `build_general_messages()` giữ tối đa 16 messages và 12.000 ký tự gần nhất; lọc vai trò giả và các câu lỗi. Cửa sổ đó là **ngữ cảnh hội thoại tạm thời**, không phải trí nhớ dài hạn ngoài phiên.
 - Khi thiếu key hoặc chưa bật consent, `st.chat_input` của Trò chuyện AI bị vô hiệu hóa, không dùng lời chào hard-code để đóng giả câu trả lời LLM. Người dùng có thể dán Groq key trong widget **mật khẩu** ở sidebar; key tồn tại trong Streamlit Session State ở phía máy chủ (RAM) và được gửi đến Groq khi cho phép. Chưa có bằng chứng kiểm tra xóa key khỏi RAM ngay lập tức khi đóng phiên.

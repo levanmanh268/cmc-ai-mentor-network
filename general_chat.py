@@ -125,3 +125,20 @@ def generate_general_reply(
             status="error",
             model=model,
         )
+
+
+def probe_online_model(*, client: Any | None) -> GeneralChatResult:
+    """On-demand real inference probe, not an offline simulation.
+
+    Call this ONLY after explicit user consent. A successful provider response
+    confirms connectivity at that moment, not model correctness or data safety.
+    Never return credential values or exception details.
+    """
+    result = generate_general_reply(
+        [
+            {"role": "user", "content":
+             "Trả lời bằng một câu tiếng Việt ngắn: AI có thể giúp sinh viên học tập như thế nào?"}
+        ],
+        client=client,
+    )
+    return result
