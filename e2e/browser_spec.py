@@ -67,7 +67,7 @@ def navigate(page, target):
 
 def test_browser01_dashboard_renders_in_real_chromium(page, local_app):
     page.goto(local_app, wait_until="domcontentloaded")
-    expect(page.get_by_role("heading", name=re.compile("CMC AI Mentor Network"))).to_be_visible(timeout=30_000)
+    expect(page.get_by_role("heading", name="🏠 CMC AI Mentor Network", exact=True)).to_be_visible(timeout=30_000)
     expect(page.get_by_text("Tài liệu RAG", exact=True)).to_be_visible()
 
 
@@ -90,8 +90,11 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     expect(page.get_by_role("heading", name=re.compile("CMC AI Assistant"))).to_be_visible(timeout=30_000)
     expect(page.get_by_text("Chưa bật AI thực", exact=False)).to_be_visible()
     # Streamlit's selectbox is a real browser interaction, not AppTest.
-    page.locator('[data-testid="stSelectbox"]').first.click()
-    page.get_by_text("📚 Hỏi đáp tài liệu", exact=True).last.click()
+    select = page.locator('[data-testid="stSelectbox"] [data-baseweb="select"]').first
+    select.click()
+    page.keyboard.press("End")
+    page.keyboard.press("Enter")
+    expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
     chat = page.locator('[data-testid="stChatInput"] textarea')
     expect(chat).to_be_enabled()
     chat.fill("Issue và Pull Request sau commit?")
