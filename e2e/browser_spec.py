@@ -18,7 +18,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 import pytest
-from playwright.sync_api import expect
+from playwright.sync_api import expect, TimeoutError as PlaywrightTimeoutError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,10 +93,26 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     # unlike older BaseWeb releases. Select via accessibility roles rather
     # than a keyboard shortcut that can leave the current selection unchanged.
     mode_widget = page.locator('[data-testid="stSelectbox"]').first
-    mode_widget.get_by_role("button", name="Open").click()
     option = page.get_by_role("option", name=re.compile("Hỏi đáp tài liệu"))
-    expect(option).to_be_visible(timeout=10_000)
-    option.click()
+    # Streamlit rerenders the React-Aria selectbox asynchronously. When an
+    # opener click races with a rerender, the popup can immediately disappear.
+    # Use only real user clicks, bounded retries, and verify the resulting page.
+    for attempt in range(3):
+        mode_widget.get_by_role("button", name="Open").click()
+        try:
+            option.wait_for(state="visible", timeout=2_500)
+        except PlaywrightTimeoutError:
+            # Try the accessible combobox trigger as an alternate UI gesture.
+            mode_widget.get_by_role("combobox", name="Chọn chế độ AI").click()
+            try:
+                option.wait_for(state="visible", timeout=2_500)
+            except PlaywrightTimeoutError:
+                page.keyboard.press("Escape")
+                continue
+        option.click()
+        break
+    else:
+        pytest.fail("RAG mode dropdown did not expose the option after 3 UI attempts")
     expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
     chat = page.locator('[data-testid="stChatInput"] textarea')
     expect(chat).to_be_enabled()
