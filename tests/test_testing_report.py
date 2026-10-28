@@ -28,3 +28,12 @@ def test_evidence_report_never_fakes_missing_xml(tmp_path):
     report = build_report(None, None, sha="", repo="", run_id="")
     assert "NOT VERIFIED" in report
     assert "PASS —" not in report
+
+
+def test_report_sha_markdown_and_separate_chromium_evidence():
+    totals = {"tests": 1, "failures": 0, "errors": 0, "skipped": 0, "passed": 1}
+    report = build_report(totals, (100.0, 1, 1), sha="abc123", repo="group6/app", run_id="42")
+    assert "- **Commit SHA:** `abc123`" in report
+    assert r"\`" not in report
+    assert "Local Chromium browser E2E" in report
+    assert "Public cloud browser UAT" in report
