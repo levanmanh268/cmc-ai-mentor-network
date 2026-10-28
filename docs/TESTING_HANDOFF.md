@@ -9,7 +9,7 @@
 
 - **Unit / boundary / equivalence partitioning:** đầu vào rỗng, biên độ dài, sai role, lỗi mã HTTP, truy vấn ngoài kho.
 - **Integration:** Groq client giả lập (dependency injection), RAG + TF-IDF, mentor matching + lưu hồ sơ.
-- **Application E2E in-process:** Streamlit `AppTest` chạy mã giao diện qua nhiều trang, chat, consent, RAG, profile, mentor, favorites. Đây KHÔNG phải Selenium/Playwright hoặc kiểm thử trình duyệt cloud thật.
+- **Browser E2E:** dedicated GitHub Actions Chromium headless opens the actual local Streamlit HTTP/WebSocket UI; searches/saves/deletes a mentor and submits offline RAG. This is not the public Render endpoint.\n- **Application E2E in-process:** Streamlit `AppTest` chạy mã giao diện qua nhiều trang, chat, consent, RAG, profile, mentor, favorites. Đây KHÔNG phải Selenium/Playwright hoặc kiểm thử trình duyệt cloud thật.
 - **Regression trên CI:** Linux + Windows với pytest/JUnit, compile, offline RAG benchmark, app startup/health, Mermaid CLI hai phiên bản.
 - **Bảo mật/riêng tư:** thiếu consent không phát sinh provider call; exception không lộ nội dung secrets; file Markdown vượt kích thước không được index. Đây không phải pentest.
 - **Định lượng:** đo scoped source-line coverage với pytest-cov trên Linux; JUnit XML cho cả hai OS. Không đánh đồng line coverage với branch coverage, hiệu năng hay độ chính xác AI.
@@ -53,6 +53,9 @@
 | TC-32 | NFR Cloud smoke | Public Render health/root | HTTP 200; không suy ra Groq hoạt động | `docs/FINAL_DEFENSE_GATE.md` + manual |
 | TC-33 | UAT thực tế | Người thử theo UAT-01..UAT-10 | Ghi người/thiết bị/ngày/actual/issue | `docs/UAT_CHECKLIST.md` — NOT RUN |
 | TC-34 | Groq online acceptance | BYOK key thật + explicit consent + model probe | Nội dung provider thật trả về, không 401/403/429 | `docs/FINAL_DEFENSE_GATE.md` — NOT VERIFIED |
+| TC-35 | Browser Chromium startup | Load public-facing localhost UI in real Chromium | Dashboard and content appear | `e2e/browser_spec.py::test_browser01_*` |
+| TC-36 | Browser Chromium mentor path | Click radio → Search → Save → Delete | Favorites visible and correctly cleared | `e2e/browser_spec.py::test_browser02_*` |
+| TC-37 | Browser Chromium RAG | Open AI Assistant → switch to grounded → ask issue | Non-mocked local UI sends question and displays RAG status | `e2e/browser_spec.py::test_browser03_*` |
 
 Ký hiệu `QG-xx` và `E2E-xx` trùng tên hàm `test_qgXX_` / `test_e2eXX_` trong thư mục `tests/`. Một mã có thể gồm nhiều bộ dữ liệu được parameterize, vì vậy tổng số pytest cases sẽ lớn hơn số hàng matrix.
 
@@ -66,9 +69,13 @@ python -m scripts.testing_report --junit reports/junit-linux.xml --coverage repo
 python -m scripts.evaluate_rag
 python -m scripts.final_smoke_audit
 python -m streamlit run app.py
+# Browser E2E in a separate terminal:
+python -m pip install "pytest-playwright>=0.6,<1"
+python -m playwright install chromium
+python -m pytest -q e2e/browser_spec.py --browser chromium --junitxml=reports/junit-browser.xml
 ```
 
-**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD) và `testing-evidence-windows` (JUnit). Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
+**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD), `testing-evidence-windows` (JUnit), và `testing-evidence-chromium` (JUnit/screenshots/traces nếu test fail). Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
 
 Bảng phân loại kết quả khi báo cáo với thầy:
 
