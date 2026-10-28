@@ -52,10 +52,10 @@
 | TC-31 | NFR Cross-platform | Python 3.11, Linux/Windows | Pytest và Streamlit health pass | `.github/workflows/ci.yml` |
 | TC-32 | NFR Cloud smoke | Public Render health/root | HTTP 200; không suy ra Groq hoạt động | `docs/FINAL_DEFENSE_GATE.md` + manual |
 | TC-33 | UAT thực tế | Người thử theo UAT-01..UAT-10 | Ghi người/thiết bị/ngày/actual/issue | `docs/UAT_CHECKLIST.md` — NOT RUN |
+| TC-34 | Groq online acceptance | BYOK key thật + explicit consent + model probe | Nội dung provider thật trả về, không 401/403/429 | `docs/FINAL_DEFENSE_GATE.md` — NOT VERIFIED |
 | TC-35 | Browser Chromium startup | Load public-facing localhost UI in real Chromium | Dashboard and content appear | `e2e/browser_spec.py::test_browser01_*` |
 | TC-36 | Browser Chromium mentor path | Click radio → Search → Save → Delete | Favorites visible and correctly cleared | `e2e/browser_spec.py::test_browser02_*` |
 | TC-37 | Browser Chromium RAG | Open AI Assistant → switch to grounded → ask issue | Non-mocked local UI sends question and displays RAG status | `e2e/browser_spec.py::test_browser03_*` |
-| TC-34 | Groq online acceptance | BYOK key thật + explicit consent + model probe | Nội dung provider thật trả về, không 401/403/429 | `docs/FINAL_DEFENSE_GATE.md` — NOT VERIFIED |
 
 Ký hiệu `QG-xx` và `E2E-xx` trùng tên hàm `test_qgXX_` / `test_e2eXX_` trong thư mục `tests/`. Một mã có thể gồm nhiều bộ dữ liệu được parameterize, vì vậy tổng số pytest cases sẽ lớn hơn số hàng matrix.
 
