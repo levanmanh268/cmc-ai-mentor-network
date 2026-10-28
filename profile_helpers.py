@@ -19,31 +19,39 @@ def safe_student_year(value: object, supported_years: Sequence[str]) -> str:
 
 
 def validate_profile_fields(
-    name: str,
+    name: object,
     year: object,
-    field_interest: str,
-    goals: str,
-    bio: str,
+    field_interest: object,
+    goals: object,
+    bio: object,
     supported_years: Sequence[str],
 ) -> tuple[dict[str, str], dict[str, str]]:
     """Trim profile fields and return (cleaned_values, field_errors)."""
-    cleaned = {
-        "name": (name or "").strip(),
-        "year": safe_student_year(year, supported_years),
-        "field_interest": (field_interest or "").strip(),
-        "goals": (goals or "").strip(),
-        "bio": (bio or "").strip(),
+    raw_text = {
+        "name": name,
+        "field_interest": field_interest,
+        "goals": goals,
+        "bio": bio,
     }
+    cleaned = {
+        key: value.strip() if isinstance(value, str) else ""
+        for key, value in raw_text.items()
+    }
+    cleaned["year"] = safe_student_year(year, supported_years)
     errors: dict[str, str] = {}
 
-    if not cleaned["field_interest"]:
+    for key, value in raw_text.items():
+        if value is not None and not isinstance(value, str):
+            errors[key] = f"Giá trị {key} không hợp lệ. Hãy nhập văn bản."
+
+    if not cleaned["field_interest"] and "field_interest" not in errors:
         errors["field_interest"] = "Vui lòng nhập lĩnh vực quan tâm."
     elif len(cleaned["field_interest"]) > MAX_FIELD_INTEREST_LENGTH:
         errors["field_interest"] = (
             f"Lĩnh vực quan tâm không được vượt quá {MAX_FIELD_INTEREST_LENGTH} ký tự."
         )
 
-    if not cleaned["goals"]:
+    if not cleaned["goals"] and "goals" not in errors:
         errors["goals"] = "Vui lòng nhập mục tiêu học tập hoặc nghề nghiệp."
     elif len(cleaned["goals"]) > MAX_GOALS_LENGTH:
         errors["goals"] = f"Mục tiêu không được vượt quá {MAX_GOALS_LENGTH} ký tự."

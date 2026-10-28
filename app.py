@@ -1,463 +1,10 @@
-import streamlit as st
-
-from llm_client import DEFAULT_GROQ_MODEL, build_llm_client, llm_enabled
-from general_chat import generate_general_reply, probe_online_model
-from matching_engine import get_top_matches, generate_match_explanation
-from profile_helpers import (
-    reset_profile_state,
-    safe_student_year,
-    save_profile_state,
-    validate_profile_fields,
-)
-from rag_engine import KnowledgeBase, answer_with_rag
-from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
-
-st.set_page_config(page_title="CMC AI Mentor Network", page_icon="ðŸ¤–", layout="wide")
-
-client = build_llm_client()
-
-
-@st.cache_resource
-def load_knowledge_base() -> KnowledgeBase:
-    return KnowledgeBase("knowledge_base")
-
-
-knowledge_base = load_knowledge_base()
-
-
-with st.sidebar:
-    st.title("ðŸ¤– CMC AI Mentor Network")
-    st.caption("AI learning support â€¢ CMCU course project")
-    st.divider()
-    page = st.radio(
-        "Chá»n trang",
-        ["ðŸ  Dashboard", "ðŸ‘¤ Há»“ sÆ¡ cÃ¡ nhÃ¢n", "ðŸ’¬ AI Assistant", "ðŸ‘¥ TÃ¬m Mentor"],
-    )
-    st.divider()
-    st.caption(
-        f"Knowledge base: {knowledge_base.document_count} tÃ i liá»‡u â€¢ "
-        f"{knowledge_base.chunk_count} chunks"
-    )
-    st.subheader("ðŸ§  Káº¿t ná»‘i AI thá»±c")
-    st.caption(f"Model: `{DEFAULT_GROQ_MODEL}` qua Groq.")
-    session_key = st.text_input(
-        "Groq API key (chá»‰ trong phiÃªn nÃ y)",
-        type="password",
-        key="session_groq_api_key",
-        help="API key gá»­i Ä‘áº¿n mÃ¡y chá»§ Render trong káº¿t ná»‘i Streamlit cá»§a phiÃªn; khÃ´ng Ä‘Æ°a vÃ o lá»‹ch sá»­ chat, GitHub hay logs.",
-        placeholder="DÃ¡n API key cá»§a cáº­u táº¡i Ä‘Ã¢y",
-    )
-    if session_key.strip():
-        client = build_llm_client(api_key=session_key)
-    if client is not None:
-        st.info("ÄÃ£ cÃ³ cáº¥u hÃ¬nh káº¿t ná»‘i mÃ´ hÃ¬nh. Chá»‰ gá»­i yÃªu cáº§u khi cáº­u cho phÃ©p.")
-        online_consent = st.checkbox(
-            "Äá»“ng Ã½ gá»­i cÃ¢u há»i, lá»‹ch sá»­ chat vÃ  ngá»¯ cáº£nh Ä‘áº¿n Groq",
-            value=False,
-            help=(
-                "Báº¯t buá»™c trÆ°á»›c khi gá»i AI. Groq sáº½ xá»­ lÃ½ ná»™i dung gá»­i Ä‘i theo "
-                "Ä‘iá»u khoáº£n vÃ  chÃ­nh sÃ¡ch riÃªng; táº¯t Ä‘á»ƒ dá»«ng cÃ¡c yÃªu cáº§u má»›i."
-            ),
-        )
-        st.caption("Táº¯t Ä‘á»“ng Ã½ sáº½ ngÄƒn lá»‡nh gá»i má»›i, khÃ´ng thu há»“i dá»¯ liá»‡u Ä‘Ã£ gá»­i tá»›i nhÃ  cung cáº¥p.")
-    else:
-        online_consent = False
-        st.warning("ChÆ°a káº¿t ná»‘i mÃ´ hÃ¬nh. Cáº­u cáº§n Groq API key Ä‘á»ƒ trÃ² chuyá»‡n vá»›i AI thá»±c.")
-        st.markdown("[Táº¡o API key táº¡i Groq Console](https://console.groq.com/keys)")
-        st.caption("Náº¿u quáº£n trá»‹ viÃªn cáº¥u hÃ¬nh GROQ_API_KEY trong Render, ngÆ°á»i dÃ¹ng váº«n pháº£i Ä‘á»“ng Ã½ trÆ°á»›c khi gá»i API.")
-
-authorized_client = client if online_consent else None
-
-# Classroom demo limits are per Streamlit session, not a security boundary:
-# reconnecting can reset counters. A public shared key still needs server-side
-# authentication, quotas and monitoring before production use.
-MAX_CHAT_CALLS_PER_SESSION = 30
-MAX_PROBES_PER_SESSION = 3
-if "demo_chat_calls" not in st.session_state:
-    st.session_state.demo_chat_calls = 0
-if "demo_probe_calls" not in st.session_state:
-    st.session_state.demo_probe_calls = 0
-
-if authorized_client is not None:
-    with st.sidebar:
-        st.caption("Káº¿t ná»‘i Ä‘Ã£ Ä‘Æ°á»£c cho phÃ©p, nhÆ°ng chÆ°a Ä‘Æ°á»£c xÃ¡c minh báº±ng API tháº­t.")
-        st.caption(
-            f"Giá»›i háº¡n demo: {st.session_state.demo_chat_calls}/{MAX_CHAT_CALLS_PER_SESSION} "
-            "lÆ°á»£t chat AI trong phiÃªn (khÃ´ng chá»‘ng Ä‘Æ°á»£c viá»‡c táº¡o phiÃªn má»›i)."
-        )
-        if st.button(
-            "ðŸ§ª Kiá»ƒm tra AI tháº­t ngay",
-            key="run_real_model_probe",
-            disabled=st.session_state.demo_probe_calls >= MAX_PROBES_PER_SESSION,
-            help="Gá»­i má»™t cÃ¢u há»i thá»­ tháº­t tá»›i Groq; cÃ³ thá»ƒ sá»­ dá»¥ng quota/token API.",
-        ):
-            st.session_state.demo_probe_calls += 1
-            with st.spinner("Äang gá»i trá»±c tiáº¿p mÃ´ hÃ¬nh táº¡i Groq..."):
-                probe = probe_online_model(client=authorized_client)
-            if probe.status == "online":
-                st.success(f"âœ… Groq vá»«a pháº£n há»“i báº±ng {probe.model}.")
-                st.caption("Ná»™i dung tráº£ lá»i thá»±c tá»« API (khÃ´ng pháº£i cÃ¢u template):")
-                st.write(probe.answer)
-            else:
-                st.error("âŒ ChÆ°a xÃ¡c minh Ä‘Æ°á»£c mÃ´ hÃ¬nh: " + probe.answer)
-
-
-if "favorite_mentors" not in st.session_state:
-    st.session_state.favorite_mentors = []
-
-if "top_matches" not in st.session_state:
-    st.session_state.top_matches = []
-
-if "match_explanations" not in st.session_state:
-    st.session_state.match_explanations = {}
-
-if "user_profile" not in st.session_state:
-    st.session_state.user_profile = {}
-
-
-if page == "ðŸ  Dashboard":
-    st.title("ðŸ  CMC AI Mentor Network")
-    st.write(
-        "Má»™t prototype giÃ¡o dá»¥c AI gá»“m trá»£ lÃ½ há»i Ä‘Ã¡p cÃ³ cÄƒn cá»© theo tÃ i liá»‡u "
-        "vÃ  há»‡ thá»‘ng ghÃ©p mentor theo há»“ sÆ¡ sinh viÃªn."
-    )
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("TÃ i liá»‡u RAG", knowledge_base.document_count)
-    with col2:
-        st.metric("Chunks Ä‘Ã£ index", knowledge_base.chunk_count)
-    with col3:
-        st.metric("LLM", "Cho phÃ©p trá»±c tuyáº¿n" if authorized_client else "Ngoáº¡i tuyáº¿n")
-
-    st.subheader("Luá»“ng sá»­ dá»¥ng")
-    st.markdown(
-        "1. Äiá»n **Há»“ sÆ¡ cÃ¡ nhÃ¢n**.\n"
-        "2. Há»i **AI Assistant** vá» ná»™i dung trong kho tÃ i liá»‡u.\n"
-        "3. Má»Ÿ **TÃ¬m Mentor** Ä‘á»ƒ nháº­n danh sÃ¡ch phÃ¹ há»£p.\n"
-        "4. Má»—i cÃ¢u tráº£ lá»i RAG Ä‘á»u hiá»ƒn thá»‹ nguá»“n truy xuáº¥t vÃ  tráº¡ng thÃ¡i."
-    )
-
-elif page == "ðŸ‘¤ Há»“ sÆ¡ cÃ¡ nhÃ¢n":
-    st.title("ðŸ‘¤ Há»“ sÆ¡ cÃ¡ nhÃ¢n")
-    st.info(
-        "Há»“ sÆ¡ chá»‰ Ä‘Æ°á»£c lÆ°u trong phiÃªn Streamlit hiá»‡n táº¡i. á»¨ng dá»¥ng chÆ°a cÃ³ tÃ i khoáº£n "
-        "hay cÆ¡ sá»Ÿ dá»¯ liá»‡u Ä‘á»ƒ lÆ°u bá»n vá»¯ng; dá»¯ liá»‡u cÃ³ thá»ƒ máº¥t khi phiÃªn káº¿t thÃºc."
-    )
-    profile = st.session_state.user_profile
-    years = ["NÄƒm 1", "NÄƒm 2", "NÄƒm 3", "NÄƒm 4"]
-    current_year = safe_student_year(profile.get("year", "NÄƒm 1"), years)
-    form_version = st.session_state.get("profile_form_version", 0)
-
-    name = st.text_input(
-        "Há» vÃ  tÃªn (khÃ´ng báº¯t buá»™c)",
-        value=profile.get("name", ""),
-        key=f"profile_name_{form_version}",
-        max_chars=100,
-    )
-    year = st.selectbox(
-        "Báº¡n lÃ  sinh viÃªn nÄƒm máº¥y?",
-        years,
-        index=years.index(current_year),
-        key=f"profile_year_{form_version}",
-    )
-    field_interest = st.text_input(
-        "LÄ©nh vá»±c quan tÃ¢m *",
-        value=profile.get("field_interest", "NLP, LLM, RAG"),
-        key=f"profile_interest_{form_version}",
-        max_chars=120,
-        help="Báº¯t buá»™c, tá»‘i Ä‘a 120 kÃ½ tá»±.",
-    )
-    goals = st.text_input(
-        "Má»¥c tiÃªu *",
-        value=profile.get("goals", "LÃ m project AI vÃ  chuáº©n bá»‹ thá»±c táº­p"),
-        key=f"profile_goals_{form_version}",
-        max_chars=240,
-        help="Báº¯t buá»™c, tá»‘i Ä‘a 240 kÃ½ tá»±.",
-    )
-    bio = st.text_area(
-        "Giá»›i thiá»‡u ngáº¯n (khÃ´ng báº¯t buá»™c)",
-        value=profile.get("bio", "Em muá»‘n cáº£i thiá»‡n ká»¹ nÄƒng xÃ¢y dá»±ng há»‡ thá»‘ng AI."),
-        key=f"profile_bio_{form_version}",
-        max_chars=500,
-        help="Tá»‘i Ä‘a 500 kÃ½ tá»±.",
-    )
-
-    if st.button("ðŸ’¾ LÆ°u há»“ sÆ¡ trong phiÃªn", type="primary"):
-        cleaned, errors = validate_profile_fields(
-            name, year, field_interest, goals, bio, years
-        )
-        if errors:
-            for field in ("name", "field_interest", "goals", "bio"):
-                if field in errors:
-                    st.error(errors[field])
-            st.warning("Há»“ sÆ¡ chÆ°a Ä‘Æ°á»£c lÆ°u; dá»¯ liá»‡u há»“ sÆ¡ trÆ°á»›c Ä‘Ã³ váº«n Ä‘Æ°á»£c giá»¯ nguyÃªn.")
-        else:
-            save_profile_state(st.session_state, cleaned)
-            st.success("ÄÃ£ lÆ°u há»“ sÆ¡ trong phiÃªn Streamlit hiá»‡n táº¡i.")
-
-    @st.dialog("Äáº·t láº¡i há»“ sÆ¡ trong phiÃªn?")
-    def confirm_reset_profile():
-        st.write(
-            "Há»“ sÆ¡ sáº½ Ä‘Æ°á»£c xÃ³a khá»i phiÃªn hiá»‡n táº¡i vÃ  káº¿t quáº£ matching cÅ© sáº½ bá»‹ xÃ³a. "
-            "Danh sÃ¡ch mentor yÃªu thÃ­ch vÃ  lá»‹ch sá»­ chat khÃ´ng bá»‹ xÃ³a."
-        )
-        confirm_reset = st.checkbox(
-            "TÃ´i xÃ¡c nháº­n Ä‘áº·t láº¡i há»“ sÆ¡", key="confirm_reset_profile"
-        )
-        if st.button("XÃ³a há»“ sÆ¡ vÃ  káº¿t quáº£ matching", type="primary", disabled=not confirm_reset):
-            reset_profile_state(st.session_state)
-            st.session_state.profile_form_version = form_version + 1
-            st.rerun()
-
-    if st.button("Äáº·t láº¡i / xÃ³a há»“ sÆ¡ trong phiÃªn"):
-        confirm_reset_profile()
-
-elif page == "ðŸ’¬ AI Assistant":
-    st.title("ðŸ¤– CMC AI Assistant")
-    st.caption("Hai cháº¿ Ä‘á»™ Ä‘á»™c láº­p: há»™i thoáº¡i báº±ng mÃ´ hÃ¬nh ngÃ´n ngá»¯ thá»±c vÃ  tra cá»©u tÃ i liá»‡u cÃ³ trÃ­ch nguá»“n.")
-    mode = st.selectbox(
-        "Chá»n cháº¿ Ä‘á»™ AI",
-        ["ðŸ¤– TrÃ² chuyá»‡n AI", "ðŸ“š Há»i Ä‘Ã¡p tÃ i liá»‡u"],
-        key="assistant_mode",
-        help="TrÃ² chuyá»‡n AI khÃ´ng cÃ³ citation tÃ i liá»‡u. Há»i Ä‘Ã¡p tÃ i liá»‡u Æ°u tiÃªn báº±ng chá»©ng vÃ  cÃ³ thá»ƒ tá»« chá»‘i khi thiáº¿u nguá»“n.",
-    )
-
-    if mode == "ðŸ¤– TrÃ² chuyá»‡n AI":
-        st.subheader("TrÃ² chuyá»‡n vá»›i AI")
-        st.caption(
-            f"Powered by Groq Â· {DEFAULT_GROQ_MODEL}. ÄÃ¢y lÃ  mÃ´ hÃ¬nh ngÃ´n ngá»¯ thá»±c; "
-            "khÃ´ng pháº£i chÃ­nh ChatGPT, Gemini hay Claude. CÃ³ thá»ƒ nháº§m láº«n, khÃ´ng cÃ³ web search trong á»©ng dá»¥ng."
-        )
-        if authorized_client is None:
-            st.warning(
-                "ðŸ”‘ **ChÆ°a báº­t AI thá»±c.** Nháº­p Groq API key trong thanh bÃªn "
-                "vÃ  báº­t Ã´ Ä‘á»“ng Ã½ gá»­i ná»™i dung Ä‘áº¿n Groq. "
-                "Há»‡ thá»‘ng sáº½ khÃ´ng giáº£ láº­p cÃ¢u tráº£ lá»i tá»« má»™t mÃ´ hÃ¬nh chÆ°a káº¿t ná»‘i."
-            )
-        else:
-            st.info("ÄÃ£ Ä‘á»“ng Ã½ gá»i Groq. HÃ£y dÃ¹ng nÃºt â€œKiá»ƒm tra AI tháº­t ngayâ€ á»Ÿ sidebar Ä‘á»ƒ xÃ¡c minh API cÃ³ pháº£n há»“i.")
-        if "general_messages" not in st.session_state:
-            st.session_state.general_messages = []
-
-        @st.dialog("XÃ³a lá»‹ch sá»­ TrÃ² chuyá»‡n AI?")
-        def confirm_clear_general_chat():
-            st.write("Chá»‰ xÃ³a há»™i thoáº¡i AI trong phiÃªn nÃ y. Há»i Ä‘Ã¡p tÃ i liá»‡u, há»“ sÆ¡ vÃ  Mentor yÃªu thÃ­ch Ä‘Æ°á»£c giá»¯ nguyÃªn.")
-            confirm = st.checkbox("TÃ´i xÃ¡c nháº­n", key="confirm_clear_general")
-            if st.button("XÃ³a há»™i thoáº¡i AI", type="primary", disabled=not confirm):
-                st.session_state.general_messages = []
-                st.rerun()
-
-        if st.button("ðŸ—‘ï¸ XÃ³a cuá»™c trÃ² chuyá»‡n AI", disabled=not st.session_state.general_messages):
-            confirm_clear_general_chat()
-
-        for item in st.session_state.general_messages:
-            with st.chat_message(item.get("role", "assistant")):
-                st.markdown(item.get("content", ""))
-                if item.get("role") == "assistant" and item.get("status") == "online":
-                    st.caption(f"Pháº£n há»“i mÃ´ hÃ¬nh Â· {DEFAULT_GROQ_MODEL} Â· ChÆ°a Ä‘Æ°á»£c kiá»ƒm chá»©ng báº±ng tÃ i liá»‡u")
-
-        if st.session_state.demo_chat_calls >= MAX_CHAT_CALLS_PER_SESSION:
-            st.warning("ÄÃ£ Ä‘áº¡t 30 lÆ°á»£t chat trong phiÃªn demo. Äá»ƒ dÃ¹ng cÃ´ng khai cáº§n háº¡n má»©c phÃ­a mÃ¡y chá»§.")
-
-        if general_prompt := st.chat_input(
-            "Há»i AI báº¥t ká»³ Ä‘iá»u gÃ¬: code Python, toÃ¡n, AI, Ã½ tÆ°á»Ÿng dá»± Ã¡n...",
-            disabled=(authorized_client is None or st.session_state.demo_chat_calls >= MAX_CHAT_CALLS_PER_SESSION),
-            max_chars=3000,
-            key="general_ai_prompt",
-        ):
-            st.session_state.demo_chat_calls += 1
-            st.session_state.general_messages.append({"role": "user", "content": general_prompt})
-            with st.chat_message("user"):
-                st.markdown(general_prompt)
-            with st.chat_message("assistant"):
-                with st.spinner("AI Ä‘ang suy luáº­n vÃ  soáº¡n cÃ¢u tráº£ lá»i..."):
-                    completion = generate_general_reply(st.session_state.general_messages, client=authorized_client)
-                if completion.status == "online":
-                    st.markdown(completion.answer)
-                    st.caption(f"Pháº£n há»“i mÃ´ hÃ¬nh Â· {completion.model} Â· KhÃ´ng kÃ¨m nguá»“n truy xuáº¥t")
-                else:
-                    st.error(completion.answer)
-            st.session_state.general_messages.append({
-                "role": "assistant",
-                "content": completion.answer,
-                "status": completion.status,
-            })
-    else:
-        st.title("ðŸ’¬ Grounded AI Assistant")
-        st.caption(
-            "RAG truy xuáº¥t tÃ i liá»‡u Markdown trÆ°á»›c khi tráº£ lá»i. Nguá»“n truy xuáº¥t lÃ  báº±ng chá»©ng tham kháº£o; "
-            "viá»‡c xuáº¥t hiá»‡n trong danh sÃ¡ch nguá»“n khÃ´ng chá»©ng minh má»i kháº³ng Ä‘á»‹nh Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c minh."
-        )
-        if authorized_client is None:
-            st.info(
-                "ðŸ§ª **Báº£n demo offline:** Tá»› nháº­n diá»‡n vÃ i lá»i chÃ o cÆ¡ báº£n; cÃ²n vá»›i cÃ¢u há»i kiáº¿n thá»©c, "
-                "tá»› chá»‰ truy xuáº¥t **3 tÃ i liá»‡u máº«u** vÃ  hiá»ƒn thá»‹ nguá»“n, chÆ°a cÃ³ LLM Ä‘á»ƒ trÃ² chuyá»‡n tá»± do. "
-                "HÃ£y thá»­: **Quy trÃ¬nh xá»­ lÃ½ má»™t Issue GitHub nhÆ° tháº¿ nÃ o?** "
-                "hoáº·c **LÃ m sao giáº£m hallucination trong RAG?**"
-            )
-
-        if knowledge_base.document_count == 0:
-            st.warning(
-                "ChÆ°a cÃ³ tÃ i liá»‡u trong knowledge_base. HÃ£y thÃªm file .md rá»“i khá»Ÿi Ä‘á»™ng láº¡i á»©ng dá»¥ng."
-            )
-
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-
-        @st.dialog("XÃ³a lá»‹ch sá»­ há»™i thoáº¡i?")
-        def confirm_clear_chat():
-            st.write(
-                "Thao tÃ¡c nÃ y chá»‰ xÃ³a tin nháº¯n trong phiÃªn Streamlit hiá»‡n táº¡i. "
-                "Há»“ sÆ¡ cÃ¡ nhÃ¢n vÃ  danh sÃ¡ch mentor Ä‘Ã£ lÆ°u sáº½ Ä‘Æ°á»£c giá»¯ nguyÃªn."
-            )
-            confirm = st.checkbox("TÃ´i hiá»ƒu vÃ  muá»‘n xÃ³a lá»‹ch sá»­ há»™i thoáº¡i", key="confirm_clear_chat")
-            if st.button("XÃ³a lá»‹ch sá»­", type="primary", disabled=not confirm):
-                clear_chat_history(st.session_state)
-                st.rerun()
-
-        clear_col, _ = st.columns([1, 4])
-        with clear_col:
-            if st.button("ðŸ—‘ï¸ XÃ³a lá»‹ch sá»­ há»™i thoáº¡i", disabled=not st.session_state.messages):
-                confirm_clear_chat()
-
-        for message in st.session_state.messages:
-            role = message.get("role", "assistant")
-            with st.chat_message(role):
-                st.markdown(message.get("content", ""))
-                sources = [
-                    normalized
-                    for normalized in (
-                        normalize_saved_source(item) for item in message.get("sources", [])
-                    )
-                    if normalized is not None
-                ]
-                if sources:
-                    with st.expander("Nguá»“n truy xuáº¥t"):
-                        for source in sources:
-                            st.markdown(
-                                f"**{source['name']}** â€¢ relevance={source['score']:.3f}"
-                            )
-                            if source["excerpt"]:
-                                st.caption(source["excerpt"])
-                if role == "assistant" and message.get("mode"):
-                    st.caption(f"Tráº¡ng thÃ¡i: {rag_mode_label(message.get('mode'))}")
-
-        if prompt := st.chat_input("VÃ­ dá»¥: Quy trÃ¬nh xá»­ lÃ½ má»™t issue GitHub lÃ  gÃ¬?"):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.chat_message("assistant"):
-                with st.spinner("Äang truy xuáº¥t tÃ i liá»‡u vÃ  kiá»ƒm tra báº±ng chá»©ng..."):
-                    result = answer_with_rag(prompt, knowledge_base, client=authorized_client)
-                st.markdown(result.answer)
-
-                source_payload = [source_history_payload(item) for item in result.sources]
-                if source_payload:
-                    with st.expander("Nguá»“n truy xuáº¥t", expanded=True):
-                        for source in source_payload:
-                            st.markdown(
-                                f"**{source['name']}** â€¢ relevance={source['score']:.3f}"
-                            )
-                            if source["excerpt"]:
-                                st.caption(source["excerpt"])
-
-                st.caption(f"Tráº¡ng thÃ¡i: {rag_mode_label(result.mode)}")
-
-            st.session_state.messages.append(
-                {
-                    "role": "assistant",
-                    "content": result.answer,
-                    "sources": source_payload,
-                    "mode": result.mode,
-                }
-            )
-
-elif page == "ðŸ‘¥ TÃ¬m Mentor":
-    st.title("ðŸ‘¥ TÃ¬m Mentor phÃ¹ há»£p")
-    st.caption("Hybrid scoring + giáº£i thÃ­ch cÃ³ fallback khi LLM offline")
-
-    student_profile = st.session_state.user_profile or {
-        "year": "NÄƒm 1",
-        "field_interest": "NLP, LLM, RAG",
-        "goals": "LÃ m project AI",
-        "bio": "",
-    }
-
-    with st.expander("Há»“ sÆ¡ dÃ¹ng Ä‘á»ƒ matching"):
-        st.json(student_profile)
-
-    from mentors_data import get_mentor_repository
-
-    mentor_pool = get_mentor_repository().list()
-    field_choices = ["Táº¥t cáº£", *sorted({mentor["field"] for mentor in mentor_pool})]
-    support_choices = ["Táº¥t cáº£", *sorted({
-        support for mentor in mentor_pool for support in mentor["available_for"]
-    })]
-    field_filter = st.selectbox("Lá»c theo lÄ©nh vá»±c", field_choices)
-    support_filter = st.selectbox("Lá»c theo loáº¡i há»— trá»£", support_choices)
-    active_filters = (field_filter, support_filter)
-    if st.session_state.get("active_mentor_filters") != active_filters:
-        st.session_state.top_matches = []
-        st.session_state.match_explanations = {}
-        st.session_state.active_mentor_filters = active_filters
-
-    if st.button("ðŸ” TÃ¬m Mentor", type="primary"):
-        with st.spinner("Äang xáº¿p háº¡ng mentor..."):
-            st.session_state.top_matches = get_top_matches(
-                student_profile, top_k=3,
-                field_filter=None if field_filter == "Táº¥t cáº£" else field_filter,
-                support_filter=None if support_filter == "Táº¥t cáº£" else support_filter,
-            )
-            st.session_state.match_explanations = {}
-            if not st.session_state.top_matches:
-                st.info("KhÃ´ng tÃ¬m tháº¥y mentor phÃ¹ há»£p vá»›i bá»™ lá»c Ä‘Ã£ chá»n.")
-
-    # Keep results independent of the search button rerun state.
-    for rank, match in enumerate(st.session_state.top_matches, start=1):
-        mentor = match["mentor"]
-        mentor_id = mentor["id"]
-        with st.container(border=True):
-            left, right = st.columns([3, 1])
-            with left:
-                st.markdown(f"### {rank}. {mentor['name']} â€¢ {mentor['title']}")
-                st.caption(
-                    f"{mentor['company']} â€¢ {mentor['field']} â€¢ "
-                    f"{mentor['experience_years']} nÄƒm kinh nghiá»‡m"
-                )
-                st.write(mentor["bio"])
-            with right:
-                st.metric("Match", f"{match['hybrid_score']:.1f}%")
-                st.caption(f"Semantic: {match['semantic_score']:.1f}%")
-
-            if mentor_id not in st.session_state.match_explanations:
-                st.session_state.match_explanations[mentor_id] = generate_match_explanation(
-                    student_profile, mentor, match["hybrid_score"], client=authorized_client
-                )
-            st.markdown("**VÃ¬ sao phÃ¹ há»£p**")
-            st.write(st.session_state.match_explanations[mentor_id])
-
-            saved = any(
-                item["id"] == mentor_id for item in st.session_state.favorite_mentors
-            )
-            if st.button(
-                "â¤ï¸ ÄÃ£ lÆ°u" if saved else "â¤ï¸ LÆ°u mentor",
-                key=f"save_{mentor_id}",
-                disabled=saved,
-            ):
-                st.session_state.favorite_mentors.append(mentor)
-                st.success(f"ÄÃ£ lÆ°u {mentor['name']}.")
-
-    if st.session_state.favorite_mentors:
-        st.divider()
-        st.subheader("â¤ï¸ Mentor Ä‘Ã£ lÆ°u")
-        for index, mentor in enumerate(st.session_state.favorite_mentors):
-            with st.container(border=True):
-                st.write(f"**{mentor['name']}** â€¢ {mentor['title']} â€¢ {mentor['company']}")
-                if st.button("XÃ³a", key=f"delete_{index}"):
-                    st.session_state.favorite_mentors.pop(index)
-                    st.rerun()
-
-st.divider()
-st.caption("CMC AI Mentor Network â€¢ Group 6 â€¢ Software Engineering")
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíï~|N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐÍÑÉ•…µ±¥Ð…ÌÍÐ4(4)™É½´±±µ}±¥•¹Ð¥µÁ½ÉÐU1Q}I=E}5=0°‰Õ¥±‘}±±µ}±¥•¹Ð°±±µ}•¹…‰±•4)™É½´•¹•É…±}¡…Ð¥µÁ½ÉÐ•¹•É…Ñ•}•¹•É…±}É•Á±ä°ÁÉ½‰•}½¹±¥¹•}µ½‘•°4)™É½´µ…Ñ¡¥¹}•¹¥¹”¥µÁ½ÉÐ•Ñ}Ñ½Á}µ…Ñ¡•Ì°•¹•É…Ñ•}µ…Ñ¡}•áÁ±…¹…Ñ¥½¸4)™É½´ÁÉ½™¥±•}¡•±Á•ÉÌ¥µÁ½ÉÐ€ 4(€€€É•Í•Ñ}ÁÉ½™¥±•}ÍÑ…Ñ”°4(€€€Í…™•}ÍÑÕ‘•¹Ñ}å•…È°4(€€€Í…Ù•}ÁÉ½™¥±•}ÍÑ…Ñ”°4(€€€Ù…±¥‘…Ñ•}ÁÉ½™¥±•}™¥•±‘Ì°4(¤4)™É½´É…}•¹¥¹”¥µÁ½ÉÐ-¹½Ý±•‘•	…Í”°…¹ÍÝ•É}Ý¥Ñ¡}É…œ4)™É½´Õ¥}¡•±Á•ÉÌ¥µÁ½ÉÐ€ 4(€€€±•…É}¡…Ñ}¡¥ÍÑ½Éä°4(€€€±•…É}•¹•É…±}¡…Ñ}¡¥ÍÑ½Éä°4(€€€¹½Éµ…±¥é•}Í…Ù•‘}Í½ÕÉ”°4(€€€É…}µ½‘•}±…‰•°°4(€€€Í½ÕÉ•}¡¥ÍÑ½Éå}Á…å±½…°4(¤4(4)ÍÐ¹Í•Ñ}Á…•}½¹™¥œ¡Á…•}Ñ¥Ñ±”ô‰5$5•¹Ñ½È9•ÑÝ½É¬ˆ°Á…•}¥½¸ô‹Â~’Xˆ°±…å½ÕÐô‰Ý¥‘”ˆ¤4(4)±¥•¹Ð€ô‰Õ¥±‘}±±µ}±¥•¹Ð ¤4(4(4)ÍÐ¹…¡•}É•Í½ÕÉ”4)‘•˜±½…‘}­¹½Ý±•‘•}‰…Í” ¤€´ø-¹½Ý±•‘•	…Í”è4(€€€É•ÑÕÉ¸-¹½Ý±•‘•	…Í” ‰­¹½Ý±•‘•}‰…Í”ˆ¤4(4(4)­¹½Ý±•‘•}‰…Í”€ô±½…‘}­¹½Ý±•‘•}‰…Í” ¤4(4(4)Ý¥Ñ ÍÐ¹Í¥‘•‰…Èè4(€€€ÍÐ¹Ñ¥Ñ±” ‹Â~’X5$5•¹Ñ½È9•ÑÝ½É¬ˆ¤4(€€€ÍÐ¹…ÁÑ¥½¸ ‰$±•…É¹¥¹œÍÕÁÁ½ÉÐƒŠˆ5T½ÕÉÍ”ÁÉ½©•Ðˆ¤4(€€€ÍÐ¹‘¥Ù¥‘•È ¤4(€€€Á…”€ôÍÐ¹É…‘¥¼ 4(€€€€€€€€‰£†î5¸ÑÉ…¹œˆ°4(€€€€€€€l‹Â~>€…Í¡‰½…Éˆ°€‹Â~F#†îLÏ„„¹£‰¸ˆ°€‹Â~J°$ÍÍ¥ÍÑ…¹Ðˆ°€‹Â~F”S±´5•¹Ñ½È‰t°4(€€€€¤4(€€€ÍÐ¹‘¥Ù¥‘•È ¤4(€€€ÍÐ¹…ÁÑ¥½¸ 4(€€€€€€€˜‰-¹½Ý±•‘”‰…Í”èí­¹½Ý±•‘•}‰…Í”¹‘½Õµ•¹Ñ}½Õ¹ÑôÓ¤±§†îÔƒŠˆ€ˆ4(€€€€€€€˜‰í­¹½Ý±•‘•}‰…Í”¹¡Õ¹­}½Õ¹Ñô¡Õ¹­Ìˆ4(€€€€¤4(€€€ÍÐ¹ÍÕ‰¡•…‘•È ‹Â~ž€/†êýÐ»†îE¤$Ñ£†îÅŒˆ¤4(€€€ÍÐ¹…ÁÑ¥½¸¡˜‰5½‘•°èíU1Q}I=E}5=1õ€ÅÕ„É½Ä¸ˆ¤4(€€€Í•ÍÍ¥½¹}­•ä€ôÍÐ¹Ñ•áÑ}¥¹ÁÕÐ 4(€€€€€€€€‰É½ÄA$­•ä€¡£†î$ÑÉ½¹œÁ¡§©¸»ä¤ˆ°4(€€€€€€€ÑåÁ”ô‰Á…ÍÍÝ½Éˆ°4(€€€€€€€­•äô‰Í•ÍÍ¥½¹}É½Å}…Á¥}­•äˆ°4(€€€€€€€¡•±Àô‰A$­•äŸ†îµ¤ƒG†êý¸·…ä£†îœI•¹‘•ÈÑÉ½¹œ¯†êýÐ»†îE¤MÑÉ•…µ±¥Ð†î„Á¡§©¸ì­£Ñ¹œƒGÁ„Û¼³†î- Ï†î´¡…Ð°¥Ñ!Õˆ¡…ä±½Ì¸ˆ°4(€€€€€€€Á±…•¡½±‘•Èô‰…¸A$­•ä†î„†êµÔÓ†ê…¤ƒG‰äˆ°4(€€€€¤4(€€€¥˜Í•ÍÍ¥½¹}­•ä¹ÍÑÉ¥À ¤è4(€€€€€€€±¥•¹Ð€ô‰Õ¥±‘}±±µ}±¥•¹Ð¡…Á¥}­•äõÍ•ÍÍ¥½¹}­•ä¤4(€€€¥˜±¥•¹Ð¥Ì¹½Ð9½¹”è4(€€€€€€€ÍÐ¹¥¹™¼ ‹CŒÌ†ê•Ô£±¹ ¯†êýÐ»†îE¤·Ð£±¹ ¸£†î$Ÿ†îµ¤ç©Ô†êÔ­¡¤†êµÔ¡¼Á£¥À¸ˆ¤4(€€€€€€€½¹±¥¹•}½¹Í•¹Ð€ôÍÐ¹¡•­‰½à 4(€€€€€€€€€€€€‹C†îM¹œƒôŸ†îµ¤‰Ô£†î=¤°³†î- Ï†î´¡…ÐÛ€¹Ÿ†î¼†ê¹ ƒG†êý¸É½Äˆ°4(€€€€€€€€€€€Ù…±Õ”õ…±Í”°4(€€€€€€€€€€€¡•±Àô 4(€€€€€€€€€€€€€€€€‰†ê½Ð‰×†îeŒÑËÃ†îmŒ­¡¤Ÿ†î5¤$¸É½ÄÏ†êôã†î´³ô»†îe¤‘Õ¹œŸ†îµ¤ƒE¤Ñ¡•¼€ˆ4(€€€€€€€€€€€€€€€€‹E§†îÔ­¡¿†ê¸Û€£µ¹ Ï… É§©¹œìÓ†ê½ÐƒG†î“†î­¹œ…Œç©Ô†êÔ·†îm¤¸ˆ4(€€€€€€€€€€€€¤°4(€€€€€€€€¤4(€€€€€€€ÍÐ¹…ÁÑ¥½¸ ‰S†ê½ÐƒG†îM¹œƒôÏ†êô¹Ÿ¸³†î¹ Ÿ†î5¤·†îm¤°­£Ñ¹œÑ¡Ô£†îM¤“†î¼±§†îÔƒGŒŸ†îµ¤Ó†îm¤¹£€Õ¹œ†ê•À¸ˆ¤4(€€€•±Í”è4(€€€€€€€½¹±¥¹•}½¹Í•¹Ð€ô…±Í”4(€€€€€€€ÍÐ¹Ý…É¹¥¹œ ‰£Á„¯†êýÐ»†îE¤·Ð£±¹ ¸†êµÔ†ê¸É½ÄA$­•äƒG†îÑËÈ¡Õç†î¸Û†îm¤$Ñ£†îÅŒ¸ˆ¤4(€€€€€€€ÍÐ¹µ…É­‘½Ý¸ ‰mS†ê…¼A$­•äÓ†ê…¤É½Ä½¹Í½±•t¡¡ÑÑÁÌè¼½½¹Í½±”¹É½Ä¹½´½­•åÌ¤ˆ¤4(€€€€€€€ÍÐ¹…ÁÑ¥½¸ ‰;†êýÔÅ×†ê¸ÑË†î,Ù§©¸†ê•Ô£±¹ I=E}A%}-dÑÉ½¹œI•¹‘•È°¹ŸÃ†îu¤“å¹œÛ†ê­¸Á£†ê¤ƒG†îM¹œƒôÑËÃ†îmŒ­¡¤Ÿ†î5¤A$¸ˆ¤4(4)…ÕÑ¡½É¥é•‘}±¥•¹Ð€ô±¥•¹Ð¥˜½¹±¥¹•}½¹Í•¹Ð•±Í”9½¹”4(4(Œ±…ÍÍÉ½½´‘•µ¼±¥µ¥ÑÌ…É”Á•ÈMÑÉ•…µ±¥ÐÍ•ÍÍ¥½¸°¹½Ð„Í•ÕÉ¥Ñä‰½Õ¹‘…Éäè4(ŒÉ•½¹¹•Ñ¥¹œ…¸É•Í•Ð½Õ¹Ñ•ÉÌ¸ÁÕ‰±¥ŒÍ¡…É•­•äÍÑ¥±°¹••‘ÌÍ•ÉÙ•ÈµÍ¥‘”4(Œ…ÕÑ¡•¹Ñ¥…Ñ¥½¸°ÅÕ½Ñ…Ì…¹µ½¹¥Ñ½É¥¹œ‰•™½É”ÁÉ½‘ÕÑ¥½¸ÕÍ”¸4)5a}!Q}11M}AI}MMM%=8€ô€ÌÀ4)5a}AI=	M}AI}MMM%=8€ô€Ì4)¥˜€‰‘•µ½}¡…Ñ}…±±Ìˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹‘•µ½}¡…Ñ}…±±Ì€ô€À4)¥˜€‰‘•µ½}ÁÉ½‰•}…±±Ìˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹‘•µ½}ÁÉ½‰•}…±±Ì€ô€À4(4)¥˜…ÕÑ¡½É¥é•‘}±¥•¹Ð¥Ì¹½Ð9½¹”è4(€€€Ý¥Ñ ÍÐ¹Í¥‘•‰…Èè4(€€€€€€€ÍÐ¹…ÁÑ¥½¸ ‰/†êýÐ»†îE¤ƒGŒƒGÃ†îŒ¡¼Á£¥À°¹£Á¹œ£Á„ƒGÃ†îŒã…Œµ¥¹ ‹†êÅ¹œA$Ñ£†êµÐ¸ˆ¤4(€€€€€€€ÍÐ¹…ÁÑ¥½¸ 4(€€€€€€€€€€€˜‰§†îm¤£†ê…¸‘•µ¼èíÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹‘•µ½}¡…Ñ}…±±Íô½í5a}!Q}11M}AI}MMM%=9ô€ˆ4(€€€€€€€€€€€€‰³Ã†îÐ¡…Ð$ÑÉ½¹œÁ¡§©¸€¡­£Ñ¹œ£†îE¹œƒGÃ†îŒÙ§†îŒÓ†ê…¼Á¡§©¸·†îm¤¤¸ˆ4(€€€€€€€€¤4(€€€€€€€¥˜ÍÐ¹‰ÕÑÑ½¸ 4(€€€€€€€€€€€€‹Â~ž¨-§†î´ÑÉ„$Ñ£†êµÐ¹…äˆ°4(€€€€€€€€€€€­•äô‰ÉÕ¹}É•…±}µ½‘•±}ÁÉ½‰”ˆ°4(€€€€€€€€€€€‘¥Í…‰±•õÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹‘•µ½}ÁÉ½‰•}…±±Ì€øô5a}AI=	M}AI}MMM%=8°4(€€€€€€€€€€€¡•±Àô‰†îµ¤·†îeÐ‰Ô£†î=¤Ñ£†î´Ñ£†êµÐÓ†îm¤É½ÄìÌÑ£†îÏ†î´“†î•¹œÅÕ½Ñ„½Ñ½­•¸A$¸ˆ°4(€€€€€€€€¤è4(€€€€€€€€€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹‘•µ½}ÁÉ½‰•}…±±Ì€¬ô€Ä4(€€€€€€€€€€€Ý¥Ñ ÍÐ¹ÍÁ¥¹¹•È ‹A…¹œŸ†î5¤ÑË†îÅŒÑ§†êýÀ·Ð£±¹ Ó†ê…¤É½Ä¸¸¸ˆ¤è4(€€€€€€€€€€€€€€€ÁÉ½‰”€ôÁÉ½‰•}½¹±¥¹•}µ½‘•°¡±¥•¹Ðõ…ÕÑ¡½É¥é•‘}±¥•¹Ð¤4(€€€€€€€€€€€¥˜ÁÉ½‰”¹ÍÑ…ÑÕÌ€ôô€‰½¹±¥¹”ˆè4(€€€€€€€€€€€€€€€ÍÐ¹ÍÕ•ÍÌ¡˜‹ŠrÉ½ÄÛ†î­„Á£†ê¸£†îM¤‹†êÅ¹œíÁÉ½‰”¹µ½‘•±ô¸ˆ¤4(€€€€€€€€€€€€€€€ÍÐ¹…ÁÑ¥½¸ ‰;†îe¤‘Õ¹œÑË†êŒ³†îu¤Ñ£†îÅŒÓ†î¬A$€¡­£Ñ¹œÁ£†ê¤‰ÔÑ•µÁ±…Ñ”¤èˆ¤4(€€€€€€€€€€€€€€€ÍÐ¹ÝÉ¥Ñ”¡ÁÉ½‰”¹…¹ÍÝ•È¤4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€ÍÐ¹•ÉÉ½È ‹Šv0£Á„ã…Œµ¥¹ ƒGÃ†îŒ·Ð£±¹ è€ˆ€¬ÁÉ½‰”¹…¹ÍÝ•È¤4(4(4)¥˜€‰™…Ù½É¥Ñ•}µ•¹Ñ½ÉÌˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹™…Ù½É¥Ñ•}µ•¹Ñ½ÉÌ€ômt4(4)¥˜€‰Ñ½Á}µ…Ñ¡•Ìˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹Ñ½Á}µ…Ñ¡•Ì€ômt4(4)¥˜€‰µ…Ñ¡}•áÁ±…¹…Ñ¥½¹Ìˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹µ…Ñ¡}•áÁ±…¹…Ñ¥½¹Ì€ôíô4(4)¥˜€‰ÕÍ•É}ÁÉ½™¥±”ˆ¹½Ð¥¸ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”è4(€€€ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹ÕÍ•É}ÁÉ½™¥±”€ôíô4(4(4)¥˜Á…”€ôô€‹Â~>€…Í¡‰½…Éˆè4(€€€ÍÐ¹Ñ¥Ñ±” ‹Â~>€5$5•¹Ñ½È9•ÑÝ½É¬ˆ¤4(€€€ÍÐ¹ÝÉ¥Ñ” 4(€€€€€€€€‰7†îeÐÁÉ½Ñ½ÑåÁ”§…¼“†î•Œ$Ÿ†îM´ÑË†îŒ³ô£†î=¤ƒG…ÀÌ¸†î¤Ñ¡•¼Ó¤±§†îÔ€ˆ4(€€€€€€€€‰Û€£†îÑ£†îE¹œ£¥Àµ•¹Ñ½ÈÑ¡•¼£†îLÏ„Í¥¹ Ù§©¸¸ˆ4(€€€€¤4(4(€€€½°Ä°½°È°½°Ì€ôÍÐ¹½±Õµ¹Ì Ì¤4(€€€Ý¥Ñ ½°Äè4(€€€€€€€ÍÐ¹µ•ÑÉ¥Œ ‰S¤±§†îÔIˆ°­¹½Ý±•‘•}‰…Í”¹‘½Õµ•¹Ñ}½Õ¹Ð¤4(€€€Ý¥Ñ ½°Èè4(€€€€€€€ÍÐ¹µ•ÑÉ¥Œ ‰¡Õ¹­ÌƒGŒ¥¹‘•àˆ°­¹½Ý±•‘•}‰…Í”¹¡Õ¹­}½Õ¹Ð¤4(€€€Ý¥Ñ ½°Ìè4(€€€€€€€ÍÐ¹µ•ÑÉ¥Œ ‰114ˆ°€‰¡¼Á£¥ÀÑË†îÅŒÑÕç†êý¸ˆ¥˜…ÕÑ¡½É¥é•‘}±¥•¹Ð•±Í”€‰9¿†ê…¤ÑÕç†êý¸ˆ¤4(4(€€€ÍÐ¹ÍÕ‰¡•…‘•È ‰1×†îM¹œÏ†î´“†î•¹œˆ¤4(€€€ÍÐ¹µ…É­‘½Ý¸ 4(€€€€€€€€ˆÄ¸ƒA§†î¸€¨©#†îLÏ„„¹£‰¸¨¨¹q¸ˆ4(€€€€€€€€ˆÈ¸#†î=¤€¨©$ÍÍ¥ÍÑ…¹Ð¨¨Û†î»†îe¤‘Õ¹œÑÉ½¹œ­¡¼Ó¤±§†îÔ¹q¸ˆ4(€€€€€€€€ˆÌ¸7†î|€¨©S±´5•¹Ñ½È¨¨ƒG†î¹£†êµ¸‘…¹ Ï… Á£ä£†îÀ¹q¸ˆ4(€€€€€€€€ˆÐ¸7†î]¤‰ÔÑË†êŒ³†îu¤IƒG†îÔ¡§†î¸Ñ£†î,¹×†îM¸ÑÉÕäá×†ê•ÐÛ€ÑË†ê…¹œÑ£…¤¸ˆ4(€€€€¤4(4)•±¥˜Á…”€ôô€‹Â~F#†îLÏ„„¹£‰¸ˆè4(€€€ÍÐ¹Ñ¥Ñ±” ‹Â~F#†îLÏ„„¹£‰¸ˆ¤4(€€€ÍÐ¹¥¹™¼ 4(€€€€€€€€‰#†îLÏ„£†î$ƒGÃ†îŒ³ÁÔÑÉ½¹œÁ¡§©¸MÑÉ•…µ±¥Ð¡§†î¸Ó†ê…¤¸ƒ†î¡¹œ“†î•¹œ£Á„ÌÓ¤­¡¿†ê¸€ˆ4(€€€€€€€€‰¡…ä„Ï†î|“†î¼±§†îÔƒG†î³ÁÔ‹†î¸Û†î½¹œì“†î¼±§†îÔÌÑ£†î·†ê•Ð­¡¤Á¡§©¸¯†êýÐÑ£éŒ¸ˆ4(€€€€¤4(€€€ÁÉ½™¥±”€ôÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹ÕÍ•É}ÁÉ½™¥±”4(€€€å•…ÉÌ€ôl‰;´€Äˆ°€‰;´€Èˆ°€‰;´€Ìˆ°€‰;´€Ð‰t4(€€€ÕÉÉ•¹Ñ}å•…È€ôÍ…™•}ÍÑÕ‘•¹Ñ}å•…È¡ÁÉ½™¥±”¹•Ð ‰å•…Èˆ°€‰;´€Äˆ¤°å•…ÉÌ¤4(€€€™½Éµ}Ù•ÉÍ¥½¸€ôÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”¹•Ð ‰ÁÉ½™¥±•}™½Éµ}Ù•ÉÍ¥½¸ˆ°€À¤4(4(€€€¹…µ”€ôÍÐ¹Ñ•áÑ}¥¹ÁÕÐ 4(€€€€€€€€‰#†î4Û€Ó©¸€¡­£Ñ¹œ‹†ê½Ð‰×†îeŒ¤ˆ°4(€€€€€€€Ù…±Õ”õÁÉ½™¥±”¹•Ð ‰¹…µ”ˆ°€ˆˆ¤°4(€€€€€€€­•äõ˜‰ÁÉ½™¥±•}¹…µ•}í™½Éµ}Ù•ÉÍ¥½¹ôˆ°4(€€€€€€€µ…á}¡…ÉÌôÄÀÀ°4(€€€€¤4(€€€å•…È€ôÍÐ¹Í•±•Ñ‰½à 4(€€€€€€€€‰†ê…¸³€Í¥¹ Ù§©¸»´·†ê•äüˆ°4(€€€€€€€å•…ÉÌ°4(€€€€€€€¥¹‘•àõå•…ÉÌ¹¥¹‘•à¡ÕÉÉ•¹Ñ}å•…È¤°4(€€€€€€€­•äõ˜‰ÁÉ½™¥±•}å•…É}í™½Éµ}Ù•ÉÍ¥½¹ôˆ°4(€€€€¤4(€€€™¥•±‘}¥¹Ñ•É•ÍÐ€ôÍÐ¹Ñ•áÑ}¥¹ÁÕÐ 4(€€€€€€€€‰3¥¹ Û†îÅŒÅÕ…¸Ó‰´€¨ˆ°4(€€€€€€€Ù…±Õ”õÁÉ½™¥±”¹•Ð ‰™¥•±‘}¥¹Ñ•É•ÍÐˆ°€‰91@°114°Iˆ¤°4(€€€€€€€­•äõ˜‰ÁÉ½™¥±•}¥¹Ñ•É•ÍÑ}í™½Éµ}Ù•ÉÍ¥½¹ôˆ°4(€€€€€€€µ…á}¡…ÉÌôÄÈÀ°4(€€€€€€€¡•±Àô‰†ê½Ð‰×†îeŒ°Ó†îE¤ƒE„€ÄÈÀ¯ôÓ†îÄ¸ˆ°4(€€€€¤4(€€€½…±Ì€ôÍÐ¹Ñ•áÑ}¥¹ÁÕÐ 4(€€€€€€€€‰7†î•ŒÑ§©Ô€¨ˆ°4(€€€€€€€Ù…±Õ”õÁÉ½™¥±”¹•Ð ‰½…±Ìˆ°€‰3´ÁÉ½©•Ð$Û€¡×†ê¥¸‹†î,Ñ£†îÅŒÓ†êµÀˆ¤°4(€€€€€€€­•äõ˜‰ÁÉ½™¥±•}½…±Í}í™½Éµ}Ù•ÉÍ¥½¹ôˆ°4(€€€€€€€µ…á}¡…ÉÌôÈÐÀ°4(€€€€€€€¡•±Àô‰†ê½Ð‰×†îeŒ°Ó†îE¤ƒE„€ÈÐÀ¯ôÓ†îÄ¸ˆ°4(€€€€¤4(€€€‰¥¼€ôÍÐ¹Ñ•áÑ}…É•„ 4(€€€€€€€€‰§†îm¤Ñ¡§†îÔ¹Ÿ†ê½¸€¡­£Ñ¹œ‹†ê½Ð‰×†îeŒ¤ˆ°4(€€€€€€€Ù…±Õ”õÁÉ½™¥±”¹•Ð ‰‰¥¼ˆ°€‰´µ×†îE¸†ê¤Ñ¡§†î¸¯†îä»¹œã‰ä“†îÅ¹œ£†îÑ£†îE¹œ$¸ˆ¤°4(€€€€€€€­•äõ˜‰ÁÉ½™¥±•}‰¥½}í™½Éµ}Ù•ÉÍ¥½¹ôˆ°4(€€€€€€€µ…á}¡…ÉÌôÔÀÀ°4(€€€€€€€¡•±Àô‰S†îE¤ƒE„€ÔÀÀ¯ôÓ†îÄ¸ˆ°4(€€€€¤4(4(€€€¥˜ÍÐ¹‰ÕÑÑ½¸ ‹Â~Jø3ÁÔ£†îLÏ„ÑÉ½¹œÁ¡§©¸ˆ°ÑåÁ”ô‰ÁÉ¥µ…Éäˆ¤è4(€€€€€€€±•…¹•°•ÉÉ½ÉÌ€ôÙ…±¥‘…Ñ•}ÁÉ½™¥±•}™¥•±‘Ì 4(€€€€€€€€€€€¹…µ”°å•…È°™¥•±‘}¥¹Ñ•É•ÍÐ°½…±Ì°‰¥¼°å•…ÉÌ4(€€€€€€€€¤4(€€€€€€€¥˜•ÉÉ½ÉÌè4(€€€€€€€€€€€™½È™¥•±¥¸€ ‰¹…µ”ˆ°€‰™¥•±‘}¥¹Ñ•É•ÍÐˆ°€‰½…±Ìˆ°€‰‰¥¼ˆ¤è4(€€€€€€€€€€€€€€€¥˜™¥•±¥¸•ÉÉ½ÉÌè4(€€€€€€€€€€€€€€€€€€€ÍÐ¹•ÉÉ½È¡•ÉÉ½ÉÍm™¥•±‘t¤4(€€€€€€€€€€€ÍÐ¹Ý…É¹¥¹œ ‰#†îLÏ„£Á„ƒGÃ†îŒ³ÁÔì“†î¼±§†îÔ£†îLÏ„ÑËÃ†îmŒƒGÌÛ†ê­¸ƒGÃ†îŒ§†î¼¹Õç©¸¸ˆ¤4(€€€€€€€•±Í”è4(€€€€€€€€€€€Í…Ù•}ÁÉ½™¥±•}ÍÑ…Ñ”¡ÍÐ¹Í•ÍÍ¥½¹}ÍÑ…Ñ”°±•…¹•¤4(€€€€€€€€€€€ÍÐ¹ÍÕ•ÍÌ ‹CŒ³ÁÔ£†îLÏ„ÑÉ½¹œÁ¡§©¸MÑÉ•…µ±¥Ð¡§†î¸Ó†ê…¤¸ˆ¤4(4(€€€ÍÐ¹‘¥…±½œ ‹C†êÝÐ³†ê…¤£†îLÏ„ÑÉ½¹œÁ¡§©¸üˆ¤4(€€€‘•˜½¹™¥Éµ}É•Í•Ñ}ÁÉ½™¥±” ¤è4(€€€€€€€ÍÐ¹ÝÉ¥Ñ” 4(€€€€€€€€€€€€‰#†îLÏ„Ï†êôƒGÃ†îŒãÍ„­£†î=¤Á¡§©¸¡§†î¸Ó†ê…¤Û€¯†êýÐÅ×†êŒµ…Ñ¡¥¹œ¤Ï†êô‹†î,ãÍ„¸€ˆ4(€€€€€€€€€€€€‰…¹ Ï… µ•¹Ñ½Èç©ÔÑ£µ Û€³†î- Ï†î´¡…Ð­£Ñ¹œ‹†î,ãÍ„¸ˆ4(€€€€€€€€¤4(€€€€€€€½¹™¥Éµ}É•Í•Ð€ôÍÐ¹¡•­‰½à 4(€€€€€€€€€€€€‰SÑ¤ã…Œ¹£†êµ¸ƒG†êÝÐ³†ê…¤£†îLÏ„ˆ°­•äô‰½¹™¥Éµ}É•Í•Ñ}ÁÉ½™¥±”ˆ4(€€€€€€€€¤4+]ùòÚ$z{-®éÜj×7BæÖ&¶F÷vâ†6ö×ÆWF–öâæç7vW"Ð¢7Bæ6F–öâ†b%Žª6âŽ¹6’Ü;BŒ:Ææ‚+r¶6ö×ÆWF–öâæÖöFVÇÒ+r¶Œ;Fær¼:†Òæw^¹6âG'W’‡^ªWB"Ð¢VÇ6S Ð¢7BæW'&÷"†6ö×ÆWF–öâæç7vW"Ð¢7Bç6W76–öå÷7FFRævVæW&ÅöÖW76vW2æVæB‡°Ð¢'&öÆR#¢&76—7FçB"ÀÐ¢&6öçFVçB#¢6ö×ÆWF–öâæç7vW"ÀÐ¢'7FGW2#¢6ö×ÆWF–öâç7FGW2ÀÐ¢ÒÐ¢VÇ6S Ð¢7BçF—FÆR‚/	ù*Âw&÷VæFVB’76—7FçB"Ð¢7Bæ6F–öâ€Ð¢%$rG'W’‡^ªWBL:’Æž¸wRÖ&¶F÷vâG,k¹¶2¶†’G.ª2Î¹Ö’âæw^¹6âG'W’‡^ªWBÌ:.«ær6Žº–ærF†Ò¶Žª6ó² Ð¢'fž¸v2‡^ªWB†ž¸vâG&öærFæ‚<:6‚æw^¹6â¶Œ;Fær6Žº–ærÖ–æ‚Þ¸Ö’¶Ž«6ærI¸¶æ‚I:2Ikº62Œ:2Ö–æ‚â Ð¢Ð¢–bWF†÷&—¦VEö6Æ–VçB—2æöæS Ð¢7Bæ–æfò€Ð¢/	úz¢¢¤.ª6âFVÖòöffÆ–æS¢¢¢N¹²æŽªÖâFž¸vâl:’Î¹Ö’6Œ:ò<j.ª6ã²<;&ân¹¶’<:'RŽ¸ö’¶ž«öâFŽº–2Â Ð¢'N¹²6Ž¸’G'W’‡^ªWB¢£2L:’Æž¸wRÞª·R¢¢l:†ž¸6âFŽ¸²æw^¹6âÂ6Œk<;2ÄÄÒI¸2G,;"6‡Wž¸vâN»Fòâ Ð¢$Œ:7’FŽºÓ¢¢¥W’G,:Ææ‚ŽºÒÌ;ÒÞ¹—B—77VRv—D‡V"æŒkFŽ«òì:óò¢¢ Ð¢&†þ«v2¢¤Ì:Ò6òvžª6Ò†ÆÇV6–æF–öâG&öær$sò¢¢ Ð¢Ð Ð¢–b¶æ÷vÆVFvUö&6RæFö7VÖVçEö6÷VçBÓÒ Ð¢7Bçv&æ–ær€Ð¢$6Œk<;2L:’Æž¸wRG&öær¶æ÷vÆVFvUö&6RâŒ:7’FŒ:¦Òf–ÆRæÖB.¹6’¶Ž¹ö’I¹–ærÎª’º–ærNºVærâ Ð¢Ð Ð¢–b&ÖW76vW2"æ÷B–â7Bç6W76–öå÷7FFS Ð¢7Bç6W76–öå÷7FFRæÖW76vW2ÒµÐÐ Ð¢7BæF–Æör‚%Œ;6Î¸¶6‚>ºÒŽ¹–’F†þª“ò"Ð¢FVb6öæf—&Õö6ÆV%ö6†B‚“ Ð¢7Bçw&—FR€Ð¢%F†òL:2ì:’6Ž¸’Œ;6F–âæŽªöâG&öær†œ:¦â7G&VÖÆ—B†ž¸vâNª’â Ð¢$Ž¹2<j<:æŒ:&âl:Fæ‚<:6‚ÖVçF÷"I:2ÌkR>«ÒIkº62vžºòæwWœ:¦ââ Ð¢Ð¢6öæf—&ÒÒ7Bæ6†V6¶&÷‚‚%L;F’†ž¸7Rl:×^¹âŒ;6Î¸¶6‚>ºÒŽ¹–’F†þª’"Â¶W“Ò&6öæf—&Õö6ÆV%ö6†B"Ð¢–b7Bæ'WGFöâ‚%Œ;6Î¸¶6‚>ºÒ"ÂG—SÒ'&–Ö'’"ÂF—6&ÆVCÖæ÷B6öæf—&Ò“ Ð¢6ÆV%ö6†Eö†—7F÷'’‡7Bç6W76–öå÷7FFRÐ¢7Bç&W'Vâ‚Ð Ð¢6ÆV%ö6öÂÂòÒ7Bæ6öÇVÖç2…³ÂEÒÐ¢v—F‚6ÆV%ö6öÃ Ð¢–b7Bæ'WGFöâ‚/	ùyûˆòŒ;6Î¸¶6‚>ºÒŽ¹–’F†þª’"ÂF—6&ÆVCÖæ÷B7Bç6W76–öå÷7FFRæÖW76vW2“ Ð¢6öæf—&Õö6ÆV%ö6†B‚Ð Ð¢f÷"ÖW76vR–â7Bç6W76–öå÷7FFRæÖW76vW3 Ð¢&öÆRÒÖW76vRævWB‚'&öÆR"Â&76—7FçB"Ð¢v—F‚7Bæ6†EöÖW76vR‡&öÆR“ Ð¢7BæÖ&¶F÷vâ†ÖW76vRævWB‚&6öçFVçB"Â""’Ð¢6÷W&6W2Ò°Ð¢æ÷&ÖÆ—¦V@Ð¢f÷"æ÷&ÖÆ—¦VB–â€Ð¢æ÷&ÖÆ—¦U÷6fVE÷6÷W&6R†—FVÒ’f÷"—FVÒ–âÖW76vRævWB‚'6÷W&6W2"ÂµÒÐ¢Ð¢–bæ÷&ÖÆ—¦VB—2æ÷BæöæPÐ¢ÐÐ¢–b6÷W&6W3 Ð¢v—F‚7BæW‡æFW"‚$æw^¹6âG'W’‡^ªWB"“ Ð¢f÷"6÷W&6R–â6÷W&6W3 Ð¢7BæÖ&¶F÷vâ€Ð¢b"¢§·6÷W&6U²væÖRu×Ò¢¢(
+"&VÆWfæ6S×·6÷W&6U²w66÷&RuÓ¢ã6gÒ Ð¢Ð¢–b6÷W&6U²&W†6W'B%Ó Ð¢7Bæ6F–öâ‡6÷W&6U²&W†6W'B%ÒÐ¢–b&öÆRÓÒ&76—7FçB"æBÖW76vRævWB‚&ÖöFR"“ Ð¢7Bæ6F–öâ†b%G.ªærFŒ:“¢·&uöÖöFUöÆ&VÂ†ÖW76vRævWB‚vÖöFRr’—Ò"Ð Ð¢–b&ö×B£Ò7Bæ6†Eö–çWB‚%l:ÒNºS¢W’G,:Ææ‚ŽºÒÌ;ÒÞ¹—B—77VRv—D‡V"Ì:|:Ãò"“ Ð¢7Bç6W76–öå÷7FFRæÖW76vW2æVæB‡²'&öÆR#¢'W6W""Â&6öçFVçB#¢&ö×GÒÐ¢v—F‚7Bæ6†EöÖW76vR‚'W6W""“ Ð¢7BæÖ&¶F÷vâ‡&ö×BÐ Ð¢v—F‚7Bæ6†EöÖW76vR‚&76—7FçB"“ Ð¢v—F‚7Bç7–ææW"‚,IærG'W’‡^ªWBL:’Æž¸wRl:¶ž¸6ÒG&.«ær6Žº–ærâââ"“ Ð¢&W7VÇBÒç7vW%÷v—F…÷&r‡&ö×BÂ¶æ÷vÆVFvUö&6RÂ6Æ–VçCÖWF†÷&—¦VEö6Æ–VçBÐ¢7BæÖ&¶F÷vâ‡&W7VÇBæç7vW"Ð Ð¢6÷W&6U÷–ÆöBÒ·6÷W&6Uö†—7F÷'•÷–ÆöB†—FVÒ’f÷"—FVÒ–â&W7VÇBç6÷W&6W5ÐÐ¢–b6÷W&6U÷–ÆöC Ð¢v—F‚7BæW‡æFW"‚$æw^¹6âG'W’‡^ªWB"ÂW‡æFVCÕG'VR“ Ð¢f÷"6÷W&6R–â6÷W&6U÷–ÆöC Ð¢7BæÖ&¶F÷vâ€Ð¢b"¢§·6÷W&6U²væÖRu×Ò¢¢(
+"&VÆWfæ6S×·6÷W&6U²w66÷&RuÓ¢ã6gÒ Ð¢Ð¢–b6÷W&6U²&W†6W'B%Ó Ð¢7Bæ6F–öâ‡6÷W&6U²&W†6W'B%ÒÐ Ð¢7Bæ6F–öâ†b%G.ªærFŒ:“¢·&uöÖöFUöÆ&VÂ‡&W7VÇBæÖöFR—Ò"Ð Ð¢7Bç6W76–öå÷7FFRæÖW76vW2æVæB€Ð¢°Ð¢'&öÆR#¢&76—7FçB"ÀÐ¢&6öçFVçB#¢&W7VÇBæç7vW"ÀÐ¢'6÷W&6W2#¢6÷W&6U÷–ÆöBÀÐ¢&ÖöFR#¢&W7VÇBæÖöFRÀÐ¢ÐÐ¢Ð Ð¦VÆ–bvRÓÒ/	ùRL:ÆÒÖVçF÷"# Ð¢7BçF—FÆR‚/	ùRL:ÆÒÖVçF÷"Œ;’Žº7"Ð¢7Bæ6F–öâ‚$‡–'&–B66÷&–ær²vžª6’FŒ:Ö6‚<;2fÆÆ&6²¶†’ÄÄÒöffÆ–æR"Ð Ð¢7GVFVçE÷&öf–ÆRÒ7Bç6W76–öå÷7FFRçW6W%÷&öf–ÆR÷"°Ð¢'–V"#¢$ìH6Ò"ÀÐ¢&f–VÆEö–çFW&W7B#¢$äÅÂÄÄÒÂ$r"ÀÐ¢&vöÇ2#¢$Ì:Ò&ö¦V7B’"ÀÐ¢&&–ò#¢""ÀÐ¢ÐÐ Ð¢v—F‚7BæW‡æFW"‚$Ž¹2<jL;–ærI¸2ÖF6†–ær"“ Ð¢7Bæ§6öâ‡7GVFVçE÷&öf–ÆRÐ Ð¢g&öÒÖVçF÷'5öFF–×÷'BvWEöÖVçF÷%÷&W÷6—F÷'Ð Ð¢ÖVçF÷%÷ööÂÒvWEöÖVçF÷%÷&W÷6—F÷'’‚’æÆ—7B‚Ð¢f–VÆEö6†ö–6W2Ò²%NªWB>ª2"Â§6÷'FVB‡¶ÖVçF÷%²&f–VÆB%Òf÷"ÖVçF÷"–âÖVçF÷%÷ööÇÒ•ÐÐ¢7W÷'Eö6†ö–6W2Ò²%NªWB>ª2"Â§6÷'FVB‡°Ð¢7W÷'Bf÷"ÖVçF÷"–âÖVçF÷%÷ööÂf÷"7W÷'B–âÖVçF÷%²&f–Æ&ÆUöf÷"%ÐÐ¢Ò•ÐÐ¢f–VÆEöf–ÇFW"Ò7Bç6VÆV7F&÷‚‚$Î¸Ö2F†VòÌJ–æ‚n»2"Âf–VÆEö6†ö–6W2Ð¢7W÷'Eöf–ÇFW"Ò7Bç6VÆV7F&÷‚‚$Î¸Ö2F†VòÆþª’Ž¹rG.º2"Â7W÷'Eö6†ö–6W2Ð¢7F—fUöf–ÇFW'2Ò†f–VÆEöf–ÇFW"Â7W÷'Eöf–ÇFW"Ð¢–b7Bç6W76–öå÷7FFRævWB‚&7F—fUöÖVçF÷%öf–ÇFW'2"’Ò7F—fUöf–ÇFW'3 Ð¢7Bç6W76–öå÷7FFRçF÷öÖF6†W2ÒµÐÐ¢7Bç6W76–öå÷7FFRæÖF6…öW‡ÆæF–öç2Ò·ÐÐ¢7Bç6W76–öå÷7FFRæ7F—fUöÖVçF÷%öf–ÇFW'2Ò7F—fUöf–ÇFW'0Ð Ð¢–b7Bæ'WGFöâ‚/	ùHÒL:ÆÒÖVçF÷""ÂG—SÒ'&–Ö'’"“ Ð¢v—F‚7Bç7–ææW"‚,IærŽ«÷ŽªærÖVçF÷"âââ"“ Ð¢7Bç6W76–öå÷7FFRçF÷öÖF6†W2ÒvWE÷F÷öÖF6†W2€Ð¢7GVFVçE÷&öf–ÆRÂF÷ö³Ó2ÀÐ¢f–VÆEöf–ÇFW#ÔæöæR–bf–VÆEöf–ÇFW"ÓÒ%NªWB>ª2"VÇ6Rf–VÆEöf–ÇFW"ÀÐ¢7W÷'Eöf–ÇFW#ÔæöæR–b7W÷'Eöf–ÇFW"ÓÒ%NªWB>ª2"VÇ6R7W÷'Eöf–ÇFW"ÀÐ¢Ð¢7Bç6W76–öå÷7FFRæÖF6…öW‡ÆæF–öç2Ò·ÐÐ¢–bæ÷B7Bç6W76–öå÷7FFRçF÷öÖF6†W3 Ð¢7Bæ–æfò‚$¶Œ;FærL:ÆÒFŽªW’ÖVçF÷"Œ;’Žº7n¹¶’.¹’Î¸Ö2I:26Ž¸Öââ"Ð Ð¢2¶VW&W7VÇG2–æFWVæFVçBöbF†R6V&6‚'WGFöâ&W'Vâ7FFRàÐ¢f÷"&æ²ÂÖF6‚–âVçVÖW&FR‡7Bç6W76–öå÷7FFRçF÷öÖF6†W2Â7F'CÓ“ Ð¢ÖVçF÷"ÒÖF6…²&ÖVçF÷"%ÐÐ¢ÖVçF÷%ö–BÒÖVçF÷%²&–B%ÐÐ¢v—F‚7Bæ6öçF–æW"†&÷&FW#ÕG'VR“ Ð¢ÆVgBÂ&–v‡BÒ7Bæ6öÇVÖç2…³2ÂÒÐ¢v—F‚ÆVgC Ð¢7BæÖ&¶F÷vâ†b"222·&æ·Òâ¶ÖVçF÷%²væÖRu×Ò(
+"¶ÖVçF÷%²wF—FÆRu×Ò"Ð¢7Bæ6F–öâ€Ð¢b'¶ÖVçF÷%²v6ö×ç’u×Ò(
+"¶ÖVçF÷%²vf–VÆBu×Ò(
+" Ð¢b'¶ÖVçF÷%²vW‡W&–Væ6U÷–V'2u×ÒìH6Ò¶–æ‚æv†ž¸vÒ Ð¢Ð¢7Bçw&—FR†ÖVçF÷%²&&–ò%ÒÐ¢v—F‚&–v‡C Ð¢7BæÖWG&–2‚$ÖF6‚"Âb'¶ÖF6…²v‡–'&–E÷66÷&RuÓ¢ãgÒR"Ð¢7Bæ6F–öâ†b%6VÖçF–3¢¶ÖF6…²w6VÖçF–5÷66÷&RuÓ¢ãgÒR"Ð Ð¢–bÖVçF÷%ö–Bæ÷B–â7Bç6W76–öå÷7FFRæÖF6…öW‡ÆæF–öç3 Ð¢7Bç6W76–öå÷7FFRæÖF6…öW‡ÆæF–öç5¶ÖVçF÷%ö–EÒÒvVæW&FUöÖF6…öW‡ÆæF–öâ€Ð¢7GVFVçE÷&öf–ÆRÂÖVçF÷"ÂÖF6…²&‡–'&–E÷66÷&R%ÒÂ6Æ–VçCÖWF†÷&—¦VEö6Æ–Vç@Ð¢Ð¢7BæÖ&¶F÷vâ‚"¢¥l:Â6òŒ;’Žº7¢¢"Ð¢7Bçw&—FR‡7Bç6W76–öå÷7FFRæÖF6…öW‡ÆæF–öç5¶ÖVçF÷%ö–EÒÐ Ð¢6fVBÒç’€Ð¢—FVÕ²&–B%ÒÓÒÖVçF÷%ö–Bf÷"—FVÒ–â7Bç6W76–öå÷7FFRæff÷&—FUöÖVçF÷'0Ð¢Ð¢–b7Bæ'WGFöâ€Ð¢.)ÚNûˆòI:2ÌkR"–b6fVBVÇ6R.)ÚNûˆòÌkRÖVçF÷""ÀÐ¢¶W“Öb'6fU÷¶ÖVçF÷%ö–GÒ"ÀÐ¢F—6&ÆVC×6fVBÀÐ¢“ Ð¢7Bç6W76–öå÷7FFRæff÷&—FUöÖVçF÷'2æVæB†ÖVçF÷"Ð¢7Bç7V66W72†b,I:2ÌkR¶ÖVçF÷%²væÖRu×Òâ"Ð Ð¢–b7Bç6W76–öå÷7FFRæff÷&—FUöÖVçF÷'3 Ð¢7BæF—f–FW"‚Ð¢7Bç7V&†VFW"‚.)ÚNûˆòÖVçF÷"I:2ÌkR"Ð¢f÷"–æFW‚ÂÖVçF÷"–âVçVÖW&FR‡7Bç6W76–öå÷7FFRæff÷&—FUöÖVçF÷'2“ Ð¢v—F‚7Bæ6öçF–æW"†&÷&FW#ÕG'VR“ Ð¢7Bçw&—FR†b"¢§¶ÖVçF÷%²væÖRu×Ò¢¢(
+"¶ÖVçF÷%²wF—FÆRu×Ò(
+"¶ÖVçF÷%²v6ö×ç’u×Ò"Ð¢–b7Bæ'WGFöâ‚%Œ;6"Â¶W“Öb&FVÆWFU÷¶–æFW‡Ò"“ Ð¢7Bç6W76–öå÷7FFRæff÷&—FUöÖVçF÷'2ç÷†–æFW‚Ð¢7Bç&W'Vâ‚Ð Ð§7BæF—f–FW"‚Ð§7Bæ6F–öâ‚$4Ô2’ÖVçF÷"æWGv÷&²(
+"w&÷Wb(
+"6ögGv&RVæv–æVW&–ær"Ð
