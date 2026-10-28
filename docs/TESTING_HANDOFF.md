@@ -56,6 +56,8 @@
 | TC-35 | Browser Chromium startup | Load public-facing localhost UI in real Chromium | Dashboard and content appear | `e2e/browser_spec.py::test_browser01_*` |
 | TC-36 | Browser Chromium mentor path | Click radio → Search → Save → Delete | Favorites visible and correctly cleared | `e2e/browser_spec.py::test_browser02_*` |
 | TC-37 | Browser Chromium RAG | Open AI Assistant → switch to grounded → ask issue | Non-mocked local UI sends question and displays RAG status | `e2e/browser_spec.py::test_browser03_*` |
+| TC-38 | Browser offline consent gate | Không có key hoặc chưa cho phép online | General chat input bị disabled | `e2e/browser_spec.py::test_browser04_*` |
+| TC-39 | Browser session separation | Hai browser contexts độc lập, lưu mentor ở một phiên | Phiên thứ hai không thấy favorites của phiên đầu | `e2e/browser_spec.py::test_browser05_*` |
 
 Ký hiệu `QG-xx` và `E2E-xx` trùng tên hàm `test_qgXX_` / `test_e2eXX_` trong thư mục `tests/`. Một mã có thể gồm nhiều bộ dữ liệu được parameterize, vì vậy tổng số pytest cases sẽ lớn hơn số hàng matrix.
 
