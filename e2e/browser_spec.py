@@ -89,15 +89,14 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     navigate(page, "💬 AI Assistant")
     expect(page.get_by_role("heading", name=re.compile("CMC AI Assistant"))).to_be_visible(timeout=30_000)
     expect(page.get_by_text("Chưa bật AI thực", exact=False)).to_be_visible()
-    # Streamlit's selectbox is a real browser interaction, not AppTest.
-    # Prefer accessibility semantics; Streamlit 1.x changed the selectbox DOM.
-    select = page.get_by_role("combobox").first
-    if select.count() == 0:
-        print("SELECTBOX_HTML", page.locator('[data-testid="stSelectbox"]').first.inner_html()[:4000])
-    assert select.count() > 0, "Missing accessible combobox"
-    select.click()
-    page.keyboard.press("End")
-    page.keyboard.press("Enter")
+    # React-Aria Streamlit selectbox exposes an explicit Open/listbox/option,
+    # unlike older BaseWeb releases. Select via accessibility roles rather
+    # than a keyboard shortcut that can leave the current selection unchanged.
+    mode_widget = page.locator('[data-testid="stSelectbox"]').first
+    mode_widget.get_by_role("button", name="Open").click()
+    option = page.get_by_role("option", name=re.compile("Hỏi đáp tài liệu"))
+    expect(option).to_be_visible(timeout=10_000)
+    option.click()
     expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
     chat = page.locator('[data-testid="stChatInput"] textarea')
     expect(chat).to_be_enabled()
