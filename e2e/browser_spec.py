@@ -103,3 +103,35 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     chat.fill("Issue và Pull Request sau commit?")
     chat.press("Enter")
     expect(page.get_by_text("Trạng thái:", exact=False).last).to_be_visible(timeout=20_000)
+
+
+def test_browser04_general_chat_is_disabled_without_online_consent(page, local_app):
+    """Guest must not be able to submit an online general chat request."""
+    page.goto(local_app, wait_until="domcontentloaded")
+    navigate(page, "💬 AI Assistant")
+    expect(page.get_by_text("Chưa bật AI thực", exact=False)).to_be_visible(timeout=30_000)
+    expect(page.locator('[data-testid="stChatInput"] textarea')).to_be_disabled()
+
+
+def test_browser05_favorites_are_isolated_across_browser_sessions(browser, local_app):
+    """Distinct browser contexts must not share one another's saved mentors."""
+    first_context = browser.new_context()
+    second_context = browser.new_context()
+    try:
+        first_page = first_context.new_page()
+        first_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(first_page, "👥 Tìm Mentor")
+        first_page.get_by_role("button", name=re.compile("Tìm Mentor")).click()
+        save_button = first_page.get_by_role("button", name=re.compile("Lưu mentor")).first
+        expect(save_button).to_be_visible(timeout=20_000)
+        save_button.click()
+        expect(first_page.get_by_role("heading", name=re.compile("Mentor đã lưu"))).to_be_visible()
+
+        second_page = second_context.new_page()
+        second_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(second_page, "👥 Tìm Mentor")
+        expect(second_page.get_by_role("heading", name=re.compile("Tìm Mentor phù hợp"))).to_be_visible(timeout=30_000)
+        expect(second_page.get_by_role("heading", name=re.compile("Mentor đã lưu"))).not_to_be_visible()
+    finally:
+        first_context.close()
+        second_context.close()
