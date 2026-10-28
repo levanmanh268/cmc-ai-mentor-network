@@ -90,7 +90,11 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     expect(page.get_by_role("heading", name=re.compile("CMC AI Assistant"))).to_be_visible(timeout=30_000)
     expect(page.get_by_text("Chưa bật AI thực", exact=False)).to_be_visible()
     # Streamlit's selectbox is a real browser interaction, not AppTest.
-    select = page.locator('[data-testid="stSelectbox"] [data-baseweb="select"]').first
+    # Prefer accessibility semantics; Streamlit 1.x changed the selectbox DOM.
+    select = page.get_by_role("combobox").first
+    if select.count() == 0:
+        print("SELECTBOX_HTML", page.locator('[data-testid="stSelectbox"]').first.inner_html()[:4000])
+    assert select.count() > 0, "Missing accessible combobox"
     select.click()
     page.keyboard.press("End")
     page.keyboard.press("Enter")
