@@ -367,3 +367,5 @@ Bảng phân công mô tả workstream, không thay thế lịch sử commit/PR 
 Không commit API key, token, password hoặc file `.env`. Xem [SECURITY.md](SECURITY.md).
 
 Dự án phát hành theo [MIT License](LICENSE).
+
+📋 **Bộ kiểm thử và ma trận truy vết (Testing):** [Testing handoff, 34 test cases, CI evidence](docs/TESTING_HANDOFF.md). Báo cáo JUnit/coverage nằm trong GitHub Actions artifacts theo từng commit SHA; UAT và live Groq cần kiểm thử riêng.
