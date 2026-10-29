@@ -77,7 +77,7 @@ python -m playwright install chromium
 python -m pytest -q e2e/browser_spec.py --browser chromium --junitxml=reports/junit-browser.xml
 ```
 
-**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD), `testing-evidence-windows` (JUnit), và `testing-evidence-chromium` (JUnit/screenshots/traces nếu test fail). Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
+**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` / `browser-e2e` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD), `testing-evidence-windows` (JUnit + coverage XML + báo cáo MD), và `testing-evidence-chromium` (JUnit + báo cáo MD + screenshots/traces nếu test fail). Mỗi job cố gắng tạo báo cáo với `if: always()` để giữ bằng chứng khi test/setup lỗi; thiếu hoặc XML lỗi không được báo là PASS, và job báo cáo trả lỗi nếu JUnit thiếu, không hợp lệ, có 0 test hoặc toàn bộ test bị skip. Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
 
 Bảng phân loại kết quả khi báo cáo với thầy:
 
