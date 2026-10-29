@@ -274,10 +274,7 @@ jobs:
       - name: Generate Chromium testing evidence report
         if: always()
         run: |
-          python -m scripts.testing_report `
-            --junit reports/junit-browser.xml `
-            --coverage reports/coverage-browser.xml `
-            --output reports/TEST_EXECUTION_REPORT-chromium.md
+          python -m scripts.testing_report --junit reports/junit-browser.xml --coverage reports/coverage-browser.xml --output reports/TEST_EXECUTION_REPORT-chromium.md
 
       - name: Upload browser evidence (JUnit, report, screenshots, traces)
         if: always()
