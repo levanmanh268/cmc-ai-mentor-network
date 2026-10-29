@@ -49,10 +49,10 @@ def build_report(
         verdict = "NOT VERIFIED — JUnit output unavailable"
     elif junit["failures"] or junit["errors"]:
         verdict = "FAIL — test failures/errors present"
-    elif junit["tests"] == 0:
-        verdict = "NOT VERIFIED — zero tests executed"
+    elif junit["tests"] == 0 or junit["tests"] == junit["skipped"]:
+        verdict = "NOT VERIFIED — zero tests executed (all cases skipped or no cases collected)"
     else:
-        verdict = "PASS — executed pytest cases (does not include live Groq/UAT)"
+        verdict = "PASS — executed pytest cases; skipped cases are reported separately (does not include live Groq/UAT)"
     url = f"https://github.com/{repo}/actions/runs/{run_id}" if repo and run_id else "Not available"
     lines = [
         "# Automated Test Execution Evidence | Group 6",
@@ -112,7 +112,13 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report, encoding="utf-8")
     print(report)
-    return 1 if junit is None or junit["tests"] == 0 or junit["failures"] or junit["errors"] else 0
+    return 1 if (
+        junit is None
+        or junit["tests"] == 0
+        or junit["tests"] == junit["skipped"]
+        or junit["failures"]
+        or junit["errors"]
+    ) else 0
 
 
 if __name__ == "__main__":
