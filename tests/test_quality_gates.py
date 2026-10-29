@@ -105,7 +105,9 @@ def test_qg05_provider_returns_real_content_not_template():
     (400, "Model"),
     (404, "Model"),
     (500, "gián đoạn"),
+    (502, "gián đoạn"),
     (503, "gián đoạn"),
+    (504, "gián đoạn"),
 ])
 def test_qg06_provider_http_errors_are_sanitized(status, expected):
     secret = "gsk_FAKE_SECRET_MUST_NEVER_LEAK_12345678"
