@@ -1,5 +1,7 @@
 """Reporter must never present missing or failed evidence as successful."""
 from pathlib import Path
+
+import pytest
 from scripts.testing_report import summarize_junit, summarize_coverage, build_report
 import scripts.testing_report as reporter
 
