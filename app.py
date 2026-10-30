@@ -1,6 +1,6 @@
 import streamlit as st
 
-from llm_client import DEFAULT_GROQ_MODEL, build_llm_client, llm_enabled
+from llm_client import DEFAULT_GROQ_MODEL, build_llm_client
 from general_chat import generate_general_reply, probe_online_model
 from matching_engine import get_top_matches, generate_match_explanation
 from profile_helpers import (
@@ -10,7 +10,13 @@ from profile_helpers import (
     validate_profile_fields,
 )
 from rag_engine import KnowledgeBase, answer_with_rag
-from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
+from ui_helpers import (
+    clear_chat_history,
+    clear_general_chat_history,
+    normalize_saved_source,
+    rag_mode_label,
+    source_history_payload,
+)
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
@@ -245,7 +251,7 @@ elif page == "💬 AI Assistant":
             st.write("Chỉ xóa hội thoại AI trong phiên này. Hỏi đáp tài liệu, hồ sơ và Mentor yêu thích được giữ nguyên.")
             confirm = st.checkbox("Tôi xác nhận", key="confirm_clear_general")
             if st.button("Xóa hội thoại AI", type="primary", disabled=not confirm):
-                st.session_state.general_messages = []
+                clear_general_chat_history(st.session_state)
                 st.rerun()
 
         if st.button("🗑️ Xóa cuộc trò chuyện AI", disabled=not st.session_state.general_messages):

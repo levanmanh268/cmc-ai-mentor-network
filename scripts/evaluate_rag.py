@@ -1,6 +1,7 @@
 """Reproducible small offline TF-IDF retrieval smoke benchmark (not model accuracy)."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from rag_engine import KnowledgeBase, answer_with_rag
@@ -26,46 +27,116 @@ CASES = (
     ("Thuế nhập khẩu cá hồi Bắc Âu", None),
 )
 
+# Expected facts are deliberately short phrases present in the retrieved demo
+# corpus. This measures evidence retention in the offline excerpt, not the
+# semantic correctness of a live model-generated answer.
+EXPECTED_TERMS = {
+    CASES[0][0]: ("issue", "pull request"),
+    CASES[1][0]: ("branch", "issue"),
+    CASES[2][0]: ("review", "ci"),
+    CASES[3][0]: ("metric", "baseline"),
+    CASES[4][0]: ("debug", "retrieval"),
+    CASES[5][0]: ("temperature", "citation"),
+    CASES[6][0]: ("hồ sơ", "mentor matching"),
+    CASES[7][0]: ("strengths", "field"),
+    CASES[8][0]: ("ranking", "llm"),
+}
 
-def evaluate(root: Path = ROOT / "knowledge_base") -> dict[str, object]:
+
+def evaluate(root: Path = ROOT / "knowledge_base", *, k: int = 3) -> dict[str, object]:
     kb = KnowledgeBase(root)
     rows: list[dict[str, object]] = []
+    relevant_source_count = 0
+    relevant_source_hits = 0
+    citation_count = 0
+    correct_citation_count = 0
+    answer_count = 0
+    correct_answer_count = 0
+    negative_count = 0
+    correct_negative_count = 0
     for query, expected in CASES:
-        hits = kb.search(query, k=3)
+        hits = kb.search(query, k=k)
         response = answer_with_rag(query, kb, client=None)
-        success = (
-            expected in [chunk.source for chunk in hits]
-            if expected is not None
-            else not hits and response.mode == "no-evidence"
-        )
+        retrieved_sources = [chunk.source for chunk in hits]
+        if expected is not None:
+            relevant_source_count += 1
+            source_hit = expected in retrieved_sources
+            relevant_source_hits += int(source_hit)
+            cited_ids = [int(value) for value in re.findall(r"\[S(\d+)\]", response.answer)]
+            cited_sources = [
+                response.sources[index - 1].source
+                for index in cited_ids
+                if 1 <= index <= len(response.sources)
+            ]
+            citation_ok = bool(cited_ids) and len(cited_sources) == len(cited_ids) and all(
+                source == expected for source in cited_sources
+            )
+            citation_count += len(cited_ids)
+            correct_citation_count += sum(source == expected for source in cited_sources)
+
+            expected_terms = EXPECTED_TERMS.get(query, ())
+            cited_text = " ".join(
+                chunk.text.lower()
+                for chunk in response.sources
+                if chunk.source in cited_sources
+            )
+            terms_found = [term for term in expected_terms if term.lower() in cited_text]
+            answer_ok = bool(expected_terms) and len(terms_found) == len(expected_terms)
+            answer_count += int(bool(expected_terms))
+            correct_answer_count += int(answer_ok)
+            success = source_hit and citation_ok and answer_ok
+        else:
+            negative_count += 1
+            cited_ids = [int(value) for value in re.findall(r"\[S(\d+)\]", response.answer)]
+            cited_sources = []
+            citation_ok = not hits and not cited_ids and response.mode == "no-evidence"
+            answer_ok = citation_ok
+            correct_negative_count += int(answer_ok)
+            success = answer_ok
         rows.append(
             {
                 "query": query,
                 "expected": expected or "NO_EVIDENCE",
-                "top3": [chunk.source for chunk in hits],
+                "top_k": retrieved_sources,
+                "cited_sources": cited_sources,
                 "mode": response.mode,
+                "citation_correct": citation_ok,
+                "expected_answer_terms": list(EXPECTED_TERMS.get(query, ())),
+                "answer_terms_found": terms_found if expected is not None else [],
+                "answer_correct_proxy": answer_ok,
                 "pass": bool(success),
             }
         )
-    positives = [r for r in rows if r["expected"] != "NO_EVIDENCE"]
-    negatives = [r for r in rows if r["expected"] == "NO_EVIDENCE"]
     return {
-        "positive_hit_at_3": sum(bool(x["pass"]) for x in positives),
-        "positive_total": len(positives),
-        "no_evidence_pass": sum(bool(x["pass"]) for x in negatives),
-        "no_evidence_total": len(negatives),
+        "k": k,
+        "positive_hit_at_k": relevant_source_hits,
+        "positive_total": relevant_source_count,
+        "retrieval_recall_at_k": round(relevant_source_hits / relevant_source_count, 4) if relevant_source_count else 0.0,
+        "citation_correct": correct_citation_count,
+        "citation_total": citation_count,
+        "citation_correctness": round(correct_citation_count / citation_count, 4) if citation_count else 0.0,
+        "answer_correct_proxy": correct_answer_count,
+        "answer_total": answer_count,
+        "answer_correctness_proxy": round(correct_answer_count / answer_count, 4) if answer_count else 0.0,
+        "no_evidence_pass": correct_negative_count,
+        "no_evidence_total": negative_count,
         "rows": rows,
+        "limitations": "Small in-sample demo corpus; offline excerpt evidence proxy only. No live LLM semantic correctness or claim-level entailment is measured.",
     }
 
 
 def main() -> int:
     result = evaluate()
     for row in result["rows"]:
-        print(f"{'PASS' if row['pass'] else 'FAIL'} | {row['expected']} | {row['query']} | {row['mode']} | {row['top3']}")
-    print(
-        f"Hit@3: {result['positive_hit_at_3']}/{result['positive_total']}; "
-        f"No-evidence: {result['no_evidence_pass']}/{result['no_evidence_total']}"
-    )
+        # JSON escaping keeps the CLI usable on Windows consoles with legacy
+        # encodings that cannot represent all Vietnamese characters.
+        import json
+        print(json.dumps({"status": "PASS" if row["pass"] else "FAIL", **row}, ensure_ascii=True))
+    print(f"Recall@{result['k']}: {result['positive_hit_at_k']}/{result['positive_total']} ({result['retrieval_recall_at_k']:.0%})")
+    print(f"Citation correctness: {result['citation_correct']}/{result['citation_total']} ({result['citation_correctness']:.0%})")
+    print(f"Answer correctness proxy: {result['answer_correct_proxy']}/{result['answer_total']} ({result['answer_correctness_proxy']:.0%})")
+    print(f"No-evidence refusal: {result['no_evidence_pass']}/{result['no_evidence_total']}")
+    print(f"Limitations: {result['limitations']}")
     return 0 if all(x["pass"] for x in result["rows"]) else 1
 
 

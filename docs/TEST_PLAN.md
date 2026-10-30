@@ -5,12 +5,13 @@ Prototype Streamlit + RAG + matching, không bao gồm 6 portfolio labs độc l
 
 ## Chạy
 ```bash
-python -m pip install -r requirements.txt
-python -m py_compile app.py general_chat.py chat_intents.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/final_smoke_audit.py
+python -m pip install -r requirements-test.txt
+python -m py_compile app.py general_chat.py chat_intents.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py scripts/final_smoke_audit.py scripts/benchmark_scaling.py
 python -m pytest -q
 python mentor_data_diagnostics.py
 python -m scripts.evaluate_rag
 python -m scripts.final_smoke_audit
+python -m scripts.benchmark_scaling --output reports/scaling.json
 python -m streamlit run app.py
 ```
 
@@ -29,10 +30,15 @@ python -m streamlit run app.py
 | General chat (fake API) | gửi 2 câu liên tiếp → history user/assistant, không fake offline | `tests/test_final_defense_probe.py` |
 | Groq consent/probe (fake API) | chưa đồng ý không gọi, đã đồng ý probe gọi provider, 401 không lộ key | `tests/test_final_defense_probe.py` |
 | Demo quota | sau 30 yêu cầu trong 1 session, input chat disabled (không phải server rate limit) | `tests/test_final_defense_probe.py` |
-| CPU latency sample | 50 samples/operation, p50/p95 trên local CPU; không áp dụng cloud/LLM | `scripts/final_smoke_audit.py` |
+| CPU latency sample | 100 samples/operation sau warmup, p50/p95 trên local CPU; không áp dụng cloud/LLM | `scripts/final_smoke_audit.py` |
+| Data scale | 3/30/100 tài liệu và 10/100/500 mentor, 100 samples mỗi quy mô | `scripts/benchmark_scaling.py` |
+| Coverage gate | Line coverage tối thiểu 90% cho 7 module cốt lõi, không bao gồm branch coverage | CI `pytest-cov --cov-fail-under=90` |
+| Source lint | Ruff `E4,E7,E9,F` trên module cốt lõi, ngoài `py_compile` và pytest | `.github/workflows/ci.yml` |
 | Release/docs | sơ đồ Mermaid | Chromium render cả hai phiên bản | `scripts/validate_mermaid.mjs`, CI |
 
 **Evidence chuẩn:** đường dẫn workflow run của đúng SHA commit, số tests pass/fail trong log, hạn chế thủ công nếu chưa chạy. CI chạy Linux và Windows nhưng không có nghĩa đã kiểm thử mọi phiên bản trình duyệt, accessibility hoặc tải đồng thời.
+
+Test cases và liên kết issue được duy trì tại [TEST_CASES.md](TEST_CASES.md) và [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md). Kết quả đo thật được lưu tại [TEST_REPORT.md](TEST_REPORT.md), còn chất lượng RAG tại [RAG_EVALUATION_REPORT.md](RAG_EVALUATION_REPORT.md).
 
 Issue liên quan [#19](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/19), [#34](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/34), [#39](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/39).
 

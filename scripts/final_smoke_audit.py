@@ -18,7 +18,7 @@ def _quantile95(values: list[float]) -> float:
     return sorted(values)[int((len(values) - 1) * 0.95)]
 
 
-def measure(label: str, callback, *, n: int = 50) -> dict[str, float | int | str]:
+def measure(label: str, callback, *, n: int = 100) -> dict[str, float | int | str]:
     durations = []
     for _ in range(n):
         start = time.perf_counter()
@@ -45,6 +45,12 @@ def main() -> None:
     # Prewarm compiled vectorizer/imports before sampling.
     kb.search("GitHub issue branch commit")
     get_top_matches(profile, top_k=3)
+
+    # Warm up Python/sklearn and the target operation; keep warm samples separate
+    # from startup/import costs instead of mixing them into the latency percentiles.
+    for _ in range(10):
+        answer_with_rag("GitHub issue branch commit", kb, client=None)
+        get_top_matches(profile, top_k=3)
 
     metrics = [
         measure(

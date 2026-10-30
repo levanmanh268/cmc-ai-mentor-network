@@ -26,9 +26,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install "pytest-cov>=6,<8"
+          python -m pip install --upgrade "pip>=26.2"
+          pip install -r requirements-test.txt
 
       - name: Secret guard
         shell: bash
@@ -42,17 +41,26 @@ jobs:
 
       - name: Compile smoke check
         run: |
-          python -m py_compile general_chat.py chat_intents.py app.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py scripts/final_smoke_audit.py
+          python -m py_compile general_chat.py chat_intents.py app.py ui_helpers.py profile_helpers.py llm_client.py rag_engine.py matching_engine.py mentors_data.py mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py scripts/final_smoke_audit.py scripts/benchmark_scaling.py scripts/testing_report.py
+
+      - name: Core Python lint
+        run: >-
+          python -m ruff check --select E4,E7,E9,F
+          app.py general_chat.py chat_intents.py ui_helpers.py profile_helpers.py
+          llm_client.py rag_engine.py matching_engine.py mentors_data.py
+          mentor_data_diagnostics.py ingest.py scripts/evaluate_rag.py
+          scripts/final_smoke_audit.py scripts/benchmark_scaling.py
 
       - name: Run regression tests
         env:
           GROQ_API_KEY: ""
         run: |
           mkdir -p reports
-          python -m pytest -q --junitxml=reports/junit-linux.xml \
+          python -m pytest -q -rs --junitxml=reports/junit-linux.xml \
             --cov=general_chat --cov=rag_engine --cov=matching_engine \
             --cov=profile_helpers --cov=llm_client --cov=chat_intents \
-            --cov=ui_helpers --cov-report=term-missing --cov-report=xml:reports/coverage.xml
+            --cov=ui_helpers --cov-report=term-missing --cov-report=xml:reports/coverage.xml \
+            --cov-fail-under=90
 
       - name: Generate testing evidence report
         if: always()
@@ -61,6 +69,7 @@ jobs:
             --junit reports/junit-linux.xml \
             --coverage reports/coverage.xml \
             --output reports/TEST_EXECUTION_REPORT.md
+          python -m scripts.benchmark_scaling --output reports/scaling.json
 
       - name: Upload test evidence (JUnit, coverage, report)
         if: always()
@@ -71,6 +80,7 @@ jobs:
             reports/junit-linux.xml
             reports/coverage.xml
             reports/TEST_EXECUTION_REPORT.md
+            reports/scaling.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -123,13 +133,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install --upgrade "pip>=26.2"
+          python -m pip install -r requirements-test.txt
 
       - name: Windows unit and UI tests
         env:
           GROQ_API_KEY: ""
-        run: python -m pytest -q --junitxml=reports/junit-windows.xml
+        run: |
+          New-Item -ItemType Directory -Force reports | Out-Null
+          python -m pytest -q -rs --junitxml=reports/junit-windows.xml
 
       - name: Upload Windows JUnit regression evidence
         if: always()
@@ -238,7 +250,7 @@ jobs:
 
       - name: Install Python and browser test dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade "pip>=26.2"
           python -m pip install -r requirements.txt
           python -m pip install "pytest-playwright>=0.6,<1"
 
