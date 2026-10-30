@@ -4,3 +4,4 @@
 -r enterprise_doc_ai/requirements-api.txt
 -r retail_ops_ai/requirements-api.txt
 pytest-cov>=6,<8
+ruff>=0.13,<1
