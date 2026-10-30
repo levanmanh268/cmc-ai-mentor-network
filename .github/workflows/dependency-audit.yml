@@ -34,7 +34,11 @@ jobs:
       - name: Audit declared test and runtime dependencies
         run: |
           mkdir -p reports
+          set +e
           python -m pip_audit --local --strict --format json --output reports/pip-audit.json
+          audit_status=$?
+          cat reports/pip-audit.json
+          exit "$audit_status"
 
       - name: Upload dependency audit evidence
         if: always()
