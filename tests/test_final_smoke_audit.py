@@ -29,6 +29,10 @@ def test_measure_reports_nearest_rank_p95_and_sample_count(monkeypatch):
     }
 
 
+def test_p95_uses_nearest_rank_for_small_samples():
+    assert final_smoke_audit._quantile95([1.0, 2.0]) == 2.0
+
+
 def test_cold_and_warm_measurement_runs_one_cold_and_requested_warm_samples():
     calls = []
 

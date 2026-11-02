@@ -5,6 +5,7 @@ No keys or network calls. Record medians/p95 without assuming a hard SLA.
 from __future__ import annotations
 
 import json
+import math
 import os
 import platform
 from pathlib import Path
@@ -16,7 +17,9 @@ from rag_engine import KnowledgeBase, answer_with_rag
 
 
 def _quantile95(values: list[float]) -> float:
-    return sorted(values)[int((len(values) - 1) * 0.95)]
+    if not values:
+        raise ValueError("values must not be empty")
+    return sorted(values)[math.ceil(0.95 * len(values)) - 1]
 
 
 def _total_memory_bytes() -> int | None:
@@ -51,6 +54,8 @@ def _total_memory_bytes() -> int | None:
 
 
 def measure(label: str, callback, *, n: int = 100) -> dict[str, float | int | str]:
+    if n < 1:
+        raise ValueError("n must be at least one")
     durations = []
     for _ in range(n):
         start = time.perf_counter()
