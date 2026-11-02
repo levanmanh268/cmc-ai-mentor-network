@@ -30,14 +30,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Secret guard
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git grep -nE 'gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----' -- .; then
-            echo "Potential credential detected in tracked files."
-            exit 1
-          fi
-          echo "No tracked secret pattern detected."
+        run: python -m scripts.secret_guard
 
       - name: Compile smoke check
         run: |
