@@ -30,7 +30,7 @@ python -m streamlit run app.py
 | General chat (fake API) | gửi 2 câu liên tiếp → history user/assistant, không fake offline | `tests/test_final_defense_probe.py` |
 | Groq consent/probe (fake API) | chưa đồng ý không gọi, đã đồng ý probe gọi provider, 401 không lộ key | `tests/test_final_defense_probe.py` |
 | Demo quota | sau 30 yêu cầu trong 1 session, input chat disabled (không phải server rate limit) | `tests/test_final_defense_probe.py` |
-| CPU latency sample | Một cold request + 100 warm samples/operation; p50/p95, phần cứng, dataset; không áp dụng cloud/LLM | `scripts/final_smoke_audit.py` |
+| CPU latency sample | Một cold request + 100 warm samples/operation; p50/p95, phần cứng, dataset; không áp dụng cloud/LLM | `scripts/final_smoke_audit.py`, `tests/test_final_smoke_audit.py` |
 | Secret guard | Fake credential patterns fail detection test; tracked files clean | `tests/test_secret_guard.py`, `scripts/secret_guard.py` |
 | NFR-09 retrieval fixture | 31 versioned cases: expected-source hit, no-evidence refusal, TF-IDF retrieval p50/p95; not semantic faithfulness or cloud latency | `tests/test_rag_evaluation.py`, `scripts/evaluate_rag.py` |
 | Release/docs | sơ đồ Mermaid | Chromium render cả hai phiên bản | `scripts/validate_mermaid.mjs`, CI |
