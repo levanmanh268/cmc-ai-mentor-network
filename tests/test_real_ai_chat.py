@@ -103,6 +103,27 @@ def test_api_errors_are_sanitized_and_never_expose_secrets(code, expected):
     assert "PRIVATE" not in res.answer
 
 
+@pytest.mark.parametrize("error_type", [TimeoutError, type(
+    "APITimeoutError", (Exception,), {}
+)])
+def test_timeout_errors_are_sanitized_and_never_expose_secrets(error_type):
+    class TimeoutClient:
+        class Completions:
+            def create(self, **kwargs):
+                raise error_type("PRIVATE: gsk_super_secret_token_123456")
+
+        chat = SimpleNamespace(completions=Completions())
+
+    result = generate_general_reply(
+        [{"role": "user", "content": "test"}],
+        client=TimeoutClient(),
+    )
+    assert result.status == "error"
+    assert "quá thời gian" in result.answer
+    assert "gsk_" not in result.answer
+    assert "PRIVATE" not in result.answer
+
+
 def test_invalid_model_response_does_not_claim_success():
     fake = FakeClient(" \t")
     res = generate_general_reply([{"role": "user", "content": "hello"}], client=fake)
@@ -122,6 +143,8 @@ def test_session_key_overrides_env_and_stays_out_of_history(monkeypatch):
     monkeypatch.setattr("llm_client.Groq", FakeGroq)
     assert isinstance(build_llm_client(api_key="session-key"), FakeGroq)
     assert seen["api_key"] == "session-key"
+    assert seen["timeout"] == 35.0
+    assert seen["max_retries"] == 1
     assert isinstance(build_llm_client(), FakeGroq)
     assert seen["api_key"] == "server-key"
 
