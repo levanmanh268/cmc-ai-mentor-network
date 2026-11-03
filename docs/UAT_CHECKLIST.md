@@ -16,6 +16,10 @@ Trước khi thử: Python 3.11+, chạy `run_windows.bat` (Windows) hoặc `pyt
 | UAT-08 | Xóa hồ sơ phiên | Profile trở về rỗng, kết quả matching cũ được reset | Chưa kiểm thử |
 | UAT-09 | Thoát và khởi động lại server | Không cam kết phục hồi session; hiển thị giới hạn lưu phiên | Chưa kiểm thử |
 | UAT-10 | Không có GROQ key, quay lại chat và mentor | Offline vẫn dùng được; không báo AI online | Chưa kiểm thử |
+| UAT-11 | Hỏi câu cần dữ kiện từ hai tài liệu và mở nguồn hiển thị | Nguồn được dẫn hỗ trợ nội dung; không có nguồn ngoài retrieval | Chưa kiểm thử |
+| UAT-12 | Tài liệu thử nghiệm chứa chỉ dẫn bỏ qua quy tắc và yêu cầu lộ bí mật | Trợ lý xem chỉ dẫn trong tài liệu là dữ liệu, không làm lộ thông tin | Chưa kiểm thử |
+| UAT-13 | Thu hồi consent sau một lượt kết nối AI | Lượt mới bị chặn; trạng thái và lịch sử giải thích rõ | Chưa kiểm thử |
+| UAT-14 | Provider lỗi hoặc timeout | Thông báo thân thiện, không hiện key/traceback, cho phép thử lại | Chưa kiểm thử |
 
 ## Cách ghi nhận nghiệm thu
 Người kiểm thử: ______  Ngày: ______  Thiết bị / browser: ______

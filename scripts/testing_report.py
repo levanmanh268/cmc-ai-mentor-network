@@ -80,7 +80,7 @@ def build_report(
         "",
         "## Scope / outstanding acceptance",
         "- Automated pytest + Streamlit AppTest: regression, fake-provider, retrieval and matching.",
-        "- Linux/Windows CI and Mermaid/render health have separate job results in the run.",
+        "- In GitHub Actions, Linux/Windows CI and Mermaid/render health have separate job results; this local report has no remote run link.",
         "- Local Chromium browser E2E is reported separately by the browser-e2e CI job and its own JUnit artifact; not included in this pytest report.",
         "- Public cloud browser UAT, accessibility, penetration, load and multi-user cloud testing: NOT VERIFIED by this report.",
         "- **Live Groq inference: NOT VERIFIED** unless separately proved on deployed service with private key, explicit consent and provider response.",

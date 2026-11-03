@@ -219,7 +219,7 @@ Bộ lọc theo field/available_for được áp dụng **trước** tính TF-ID
 
 - **Profile:** `{name, year, field_interest, goals, bio}` lưu theo phiên Streamlit, chưa có user ID/server database.
 - **Mentor:** `{id, name, title, company, field, experience_years, bio, strengths[], available_for[]}`; `validate_mentor` thực hiện kiểm tra/chuẩn hóa đầu vào.
-- **Retriever output:** `RetrievedChunk(source, text, score)`, score bằng cosine TF-IDF, ngưỡng mặc định `0.06`.
+- **Retriever output:** `RetrievedChunk(source, text, score)`, score bằng cosine TF-IDF, ngưỡng mặc định `0.08`.
 - **RAG output:** `RAGAnswer(answer, sources, mode, top_score)`, mode thuộc `no-evidence`, `offline-grounded`, `online-citations-unverified`, `offline-fallback`.
 - **Session state:** `user_profile`, `messages` (RAG), `general_messages` (trò chuyện model), `top_matches`, `match_explanations`, `favorite_mentors`, `active_mentor_filters`. Không phải database hay bộ nhớ lâu dài. Chức năng xóa chat chỉ xóa `messages`, đặt lại hồ sơ xóa kết quả matching cũ và giữ nguyên favorites.
 
@@ -230,7 +230,7 @@ Bộ lọc theo field/available_for được áp dụng **trước** tính TF-ID
 | Credentials local → Groq | `.env` ignored, `llm_client.py` khởi tạo client có điều kiện | Secret cũ trong lịch sử Git phải revoke; pattern scan không phải secret scanner toàn diện |
 | Markdown không tin cậy → Prompt LLM | prompt xem nguồn là dữ liệu; citation ID phải thuộc các đoạn retrieval; bỏ qua symlink/đường dẫn thoát root và Markdown file >2 MB | Prompt injection và hallucination ngữ nghĩa chưa được chứng minh loại bỏ; threshold là heuristic |
 | API network lỗi / thiếu key | offline deterministic snippets/explanation | Không có provider dự phòng tự động hay SLA online |
-| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.06` và ngưỡng OOV/query-term coverage tối thiểu `0.55` là heuristic trên corpus demo nhỏ; có nguy cơ false refusal với từ mới/đồng nghĩa, chưa có benchmark ngoài phân phối |
+| Similarity score thấp | refusal khi không có chunk vượt ngưỡng | `min_score=0.08` và ngưỡng OOV/query-term coverage tối thiểu `0.55` là heuristic hiệu chỉnh sơ bộ trên corpus demo nhỏ; có nguy cơ false refusal với từ mới/đồng nghĩa, chưa có benchmark ngoài phân phối |
 | Session bị ngắt/restart | Streamlit quản lý phiên hiện tại | Không có bảo đảm phục hồi lịch sử chat/profile |
 | Dataset lỗi | `MentorRepository` kiểm tra các field; CLI `mentor_data_diagnostics.py` kiểm tra trùng ID và sai định dạng | Bản CLI là chẩn đoán độc lập, không tự sửa dữ liệu; validator và CLI có chính sách chuẩn hóa/strict khác nhau cần tiếp tục đối chiếu |
 | GitHub CI | pytest và health Windows/Linux của ứng dụng gốc; Mermaid render v10/v11; các lab có workflow theo path riêng | Không đo tải đồng thời hay RAG claim accuracy; green ở một workflow không chứng minh lab khác đạt |

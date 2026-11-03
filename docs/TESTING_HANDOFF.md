@@ -101,3 +101,18 @@ Environment: Render URL ______ | Server Live: ______ | Secret không xuất hi�
 7. Mỗi FAIL ghi issue, steps-to-reproduce, input (không chứa key), expected, actual, screenshot.
 
 **Giới hạn quan trọng:** fake provider tests chỉ kiểm thử hành vi tích hợp; không kiểm chứng AI ngoài đời, không kiểm chứng semantic faithfulness, không chứng minh đa người dùng/cloud load. Bộ 14 truy vấn RAG là demo in-sample. Không báo cáo `100% bug-free`, `NotebookLM parity` hoặc `Groq online PASS` khi chưa có bằng chứng.
+
+## 5. Đối chiếu với các nguyên tắc trong chương Testing
+
+Repository không kèm sách hoặc thông tin ấn bản/chương được giao. Bảng này đối chiếu theo các khái niệm kiểm thử phần mềm phổ biến; không gán số trang hay trích dẫn cho một nguồn chưa được cung cấp.
+
+| Nguyên tắc kiểm thử | Áp dụng trong dự án | Bằng chứng |
+| --- | --- | --- |
+| Unit test và phân vùng tương đương | input rỗng, ngoài miền, provider error, thiếu nguồn | `tests/test_rag_engine.py`, `tests/test_quality_gates.py` |
+| Kiểm thử giá trị biên | profile length, `top_k`, kích thước context | profile/matching/chat tests |
+| Integration và end-to-end | Streamlit, retrieval, consent, matching, favorites | `tests/test_end_to_end_flows.py`, `e2e/browser_spec.py` |
+| Regression testing | test hồi quy chạy lại trong CI | các module `tests/test_*`; GitHub Actions |
+| Phi chức năng | privacy/secret checks, coverage, latency, scale trend | workflow CI và script benchmark |
+| TDD và code review | quy trình red-green trong `CONTRIBUTING.md`; PR template | cần PR history và reviewer để xác minh thực thi |
+
+Để đối chiếu chính xác thuật ngữ, cấu trúc hoặc yêu cầu riêng của môn học, cần tựa sách, ấn bản và nội dung chương.
