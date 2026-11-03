@@ -77,7 +77,7 @@ python -m playwright install chromium
 python -m pytest -q e2e/browser_spec.py --browser chromium --junitxml=reports/junit-browser.xml
 ```
 
-**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD), `testing-evidence-windows` (JUnit), và `testing-evidence-chromium` (JUnit/screenshots/traces nếu test fail). Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
+**CI:** GitHub → Actions → CI → run của commit cần chấm → job `test` / `windows-local` / `browser-e2e` → Artifacts `testing-evidence-linux` (JUnit + coverage XML + báo cáo MD), `testing-evidence-windows` (JUnit + coverage XML + báo cáo MD), và `testing-evidence-chromium` (JUnit + báo cáo MD + screenshots/traces nếu test fail). Mỗi job cố gắng tạo báo cáo với `if: always()` để giữ bằng chứng khi test/setup lỗi; thiếu hoặc XML lỗi không được báo là PASS, và job báo cáo trả lỗi nếu JUnit thiếu, không hợp lệ, có 0 test hoặc toàn bộ test bị skip. Bằng chứng trong artifacts chỉ hợp lệ cho SHA đó; retention 30 ngày.
 
 Bảng phân loại kết quả khi báo cáo với thầy:
 
@@ -87,7 +87,31 @@ Bảng phân loại kết quả khi báo cáo với thầy:
 - **BLOCKED:** thiếu secret/provider/network/quyền để thực thi; **không** đổi thành PASS.
 - **NOT RUN:** chưa có người thực hiện UAT / browser thật.
 
-## 4. Nghiệm thu bằng tay trước buổi bảo vệ
+## 4. CI configuration audit and API/LLM test gap review
+
+### CI configuration audit (Issues #78 / #86)
+
+| Area | Current configuration / finding |
+| --- | --- |
+| Triggers | Push and pull request targeting `main`; no deployment trigger is implied by this CI workflow. |
+| Runtime | Python 3.11 on Linux and Windows; Chromium E2E runs on Ubuntu with Playwright; Mermaid diagrams render with CLI 10.9.1 and 11.17.0. |
+| Commands | Compile smoke check, offline pytest, coverage/JUnit report, mentor/RAG diagnostics, Streamlit health, Chromium browser E2E and Mermaid validation. Commands are documented above. |
+| Secrets / permissions | CI explicitly sets `GROQ_API_KEY` to empty for test jobs and uses fake providers; workflow permissions are read-only for repository contents. No real Groq key belongs in CI logs or artifacts. |
+| Cache / artifacts | pip cache is enabled for Python setup; JUnit/coverage/Markdown reports and browser failure evidence are uploaded with 30-day retention. |
+| Failure visibility | Reporter exits non-zero when JUnit is missing, malformed, contains zero tests, contains failures/errors, or every case is skipped. Windows creates `reports/` before pytest; Windows and Chromium publish reports under `if: always()`. |
+| Branch protection | Not changed by this implementation. Required status checks should be enabled only after the repository leader approves the exact check names. |
+
+### API/LLM regression coverage review (Issue #82)
+
+- `tests/test_quality_gates.py`: bounded context/history (QG-03/QG-04), sanitized HTTP failures 400/401/403/404/429/500/502/503/504 (QG-06), timeout/network/generic exceptions (QG-07), blank provider output (QG-08), and output-size bound (QG-09).
+- `tests/test_real_ai_chat.py`: fake-provider multi-turn payload, session-key/server-key precedence, missing credentials, role validation, secret redaction, and UI consent gate.
+- `tests/test_final_defense_probe.py`: no provider call before consent, fake-provider probe path, and sanitized authentication failure.
+- `tests/test_llm_client.py`: missing/placeholder credentials plus explicit client timeout (35 seconds) and SDK retry configuration (one retry); tests do not make a network request.
+- `tests/test_testing_report.py`: missing/corrupt/zero-test/all-skipped JUnit must not be presented as PASS; failed and skipped cases remain distinct.
+
+**Live provider status:** real Groq inference is **BLOCKED / NOT VERIFIED** until an authorized tester provides a valid private credential, opts in, and captures a redacted provider response on the deployed service. Fake-client tests and green CI do not substitute for that evidence.
+
+## 5. Nghiệm thu bằng tay trước buổi bảo vệ
 
 Người kiểm thử: ______ | Ngày giờ: ______ | Git SHA: ______ | Trình duyệt: ______  
 Environment: Render URL ______ | Server Live: ______ | Secret không xuất hiện trong ảnh/log: ______
