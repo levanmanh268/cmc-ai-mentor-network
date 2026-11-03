@@ -118,7 +118,7 @@ class KnowledgeBase:
         query: str,
         *,
         k: int = 4,
-        min_score: float = 0.06,
+        min_score: float = 0.08,
     ) -> list[RetrievedChunk]:
         query = self._normalize(query)
         if not query or self._vectorizer is None or self._matrix is None:
