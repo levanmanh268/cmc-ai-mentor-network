@@ -24,6 +24,20 @@ Ngưỡng hoàn thành/thời gian tối đa (thống nhất với thầy **trư
 
 Số scenario hoàn thành thực tế: ___ / 10. Thời gian từng scenario: ______. Lỗi và issue ID: ______.
 
+### Tổng hợp tối thiểu 5 người tham gia (NFR-06)
+
+Ghi mã giả danh, không ghi tên/email hoặc hồ sơ thật. Mỗi dòng tương ứng một người; tính hoàn thành theo toàn bộ flow dashboard → RAG/source → tìm/lưu mentor. Chỉ kết luận theo ngưỡng đã thống nhất trước khi test.
+
+| Participant ID | OS / browser | Flow hoàn thành? | Thời gian | Khó khăn / lỗi / issue ID |
+| --- | --- | --- | --- | --- |
+| P1 | Not run | Not run | Not run | Not run |
+| P2 | Not run | Not run | Not run | Not run |
+| P3 | Not run | Not run | Not run | Not run |
+| P4 | Not run | Not run | Not run | Not run |
+| P5 | Not run | Not run | Not run | Not run |
+
+Kết quả NFR-06: **Not run**. Không ghi PASS nếu chưa đủ 5 người tham gia và chưa đối chiếu tiêu chí hoàn thành/thời gian đã được duyệt.
+
 **Không được tự chuyển cột trạng thái thành PASS** khi chưa có người kiểm thử. Screenshot/log không chứa API key và dữ liệu cá nhân thật.
 
 Theo dõi: [Issue #22](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/22), [#35](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/35).
