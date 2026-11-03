@@ -1,6 +1,6 @@
 # Issue-to-test traceability | TASK-30–79
 
-Evidence snapshot: PR #161 tested at code SHA `095981602b7e79e6d97d6162f46db64f39b26e73`; [CI run 41693809472](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41693809472) and [dependency audit 41693809694](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41693809694) PASS. PR #161 is not merged; this is not yet evidence for a `main` merge SHA. Human/admin gates remain explicitly marked.
+Evidence snapshot: PR #161 tested at code SHA `d50895c3c447fb1e667af02e338be261a9952c5d`; [CI run 41695395834](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41695395834) and [dependency audit 41695395775](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41695395775) PASS. PR #161 is not merged; this is not yet evidence for a `main` merge SHA. Human/admin gates remain explicitly marked.
 
 | Issue | Requirement / acceptance evidence | Current evidence | Evidence status |
 | --- | --- | --- | --- |
@@ -14,7 +14,7 @@ Evidence snapshot: PR #161 tested at code SHA `095981602b7e79e6d97d6162f46db64f3
 | TASK-37 | API timeout falls back safely | `test_task37_*` and existing provider failure tests | Automated with fake provider |
 | TASK-38 | Review evaluation cases and limitations | `scripts/evaluate_rag.py`, `docs/RAG_EVALUATION.md` | 31 synthetic in-sample cases; independent reviewer-labeled gold set remains pending (#83) |
 | TASK-39 | Recall@k, citation correctness, answer correctness | evaluator metrics; answer metric explicitly named proxy | 31-case demo smoke metric; citation mapping and answer evidence proxy do not prove semantic correctness |
-| TASK-40 | Evaluation report | `docs/RAG_EVALUATION_REPORT.md` | CI smoke report linked to run 41693809472; not an independent quality evaluation |
+| TASK-40 | Evaluation report | `docs/RAG_EVALUATION_REPORT.md` | CI smoke report linked to run 41695395834; not an independent quality evaluation |
 | TASK-41 | Profile to mentor end-to-end | `tests/test_end_to_end_flows.py::test_e2e02_*` | AppTest automated |
 | TASK-42 | User question to RAG answer | `test_e2e01_*`, browser E2E suite | AppTest and Chromium CI PASS on tested PR SHA |
 | TASK-43 | Clear chat without losing related data | task 21 regression test and UI helper tests | Automated |
@@ -33,7 +33,7 @@ Evidence snapshot: PR #161 tested at code SHA `095981602b7e79e6d97d6162f46db64f3
 | TASK-56 | Secret leakage scan | CI `git grep` patterns; `.env` ignored | `scripts.secret_guard` passed on tested PR head; Git-history scan and revocation of previously leaked key **not verified** |
 | TASK-57 | Consent and personal data transfer | `docs/PRIVACY_DATAFLOW.md`; consent regression tests | Code review/test evidence; user comprehension and network capture pending |
 | TASK-58 | Prompt injection | RAG test and general-chat system prompt tests | Prompt contract tested; live adversarial robustness not proven |
-| TASK-59 | Known dependency vulnerabilities | `.github/workflows/dependency-audit.yml`; `docs/DEPENDENCY_AUDIT_REPORT.md` | Dependency audit PASS on PR SHA (run 41693809694); no audit run on latest `main` SHA has been verified |
+| TASK-59 | Known dependency vulnerabilities | `.github/workflows/dependency-audit.yml`; `docs/DEPENDENCY_AUDIT_REPORT.md` | Dependency audit PASS on PR SHA (run 41695395775); no audit run on latest `main` SHA has been verified |
 | TASK-60 | External API errors/timeouts | fake-client failure tests | Automated; live network outages not simulated |
 | TASK-61 | RAG latency | `scripts/final_smoke_audit.py`, 100 warm samples | Local result in `docs/TEST_REPORT.md`; CPU only |
 | TASK-62 | Mentor ranking latency | same benchmark, 100 warm samples | Local result in `docs/TEST_REPORT.md`; demo pool only |
@@ -62,4 +62,4 @@ Evidence snapshot: PR #161 tested at code SHA `095981602b7e79e6d97d6162f46db64f3
 3. A group member must perform/sign off UAT. Automation cannot substitute for a human.
 4. A reviewer must review the PR and resolve/block any review threads.
 5. Provide the exact textbook/chapter if TASK-78 requires line-by-line alignment to a particular source.
-6. Classify the 25 skips recorded on the previous `main` CI run (issue #80); the current PR CI reports 0 skips.
+6. The 25 skips in previous `main` CI have been classified in `docs/TEST_REPORT.md`: 6 trainer API, 11 document-AI API, 6 retail API and 2 DOCX/PDF optional tests. The current PR Linux/Windows CI runs 0 skips; after merge rerun and verify on `main`.
