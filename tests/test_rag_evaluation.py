@@ -2,6 +2,30 @@
 from scripts.evaluate_rag import CASES, CASESET_VERSION, _score_citations, evaluate
 
 
+def test_all_expected_sources_must_be_cited_for_a_multi_document_case():
+    passed, correct, total = _score_citations(
+        expected_sources=["guide.md", "study.md"],
+        retrieved_sources=["guide.md", "study.md"],
+        cited_ids=[1, 2],
+        cited_sources=["guide.md", "study.md"],
+    )
+
+    assert passed
+    assert (correct, total) == (2, 2)
+
+
+def test_multi_document_case_fails_when_one_expected_source_is_not_cited():
+    passed, correct, total = _score_citations(
+        expected_sources=["guide.md", "study.md"],
+        retrieved_sources=["guide.md", "study.md"],
+        cited_ids=[1],
+        cited_sources=["guide.md"],
+    )
+
+    assert not passed
+    assert (correct, total) == (1, 1)
+
+
 def test_multi_source_citations_pass_when_expected_source_is_in_retrieved_results():
     passed, correct, total = _score_citations(
         expected_source="guide.md",
