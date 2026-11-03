@@ -1,6 +1,6 @@
 # Issue-to-test traceability | TASK-30–79
 
-Evidence snapshot: PR #161 tested at code SHA `d50895c3c447fb1e667af02e338be261a9952c5d`; [CI run 41695395834](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41695395834) and [dependency audit 41695395775](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41695395775) PASS. PR #161 is not merged; this is not yet evidence for a `main` merge SHA. Human/admin gates remain explicitly marked.
+Evidence snapshot: PR #161 tested at code SHA `7ff933c02073410f3e5486849c102bd1de999128`; [CI run 41697599095](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41697599095) and [dependency audit 41697599041](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41697599041) PASS. PR #161 is not merged; this is not yet evidence for a `main` merge SHA. Human/admin gates remain explicitly marked.
 
 | Issue | Requirement / acceptance evidence | Current evidence | Evidence status |
 | --- | --- | --- | --- |
@@ -14,7 +14,7 @@ Evidence snapshot: PR #161 tested at code SHA `d50895c3c447fb1e667af02e338be261a
 | TASK-37 | API timeout falls back safely | `test_task37_*` and existing provider failure tests | Automated with fake provider |
 | TASK-38 | Review evaluation cases and limitations | `scripts/evaluate_rag.py`, `docs/RAG_EVALUATION.md` | 31 synthetic in-sample cases; independent reviewer-labeled gold set remains pending (#83) |
 | TASK-39 | Recall@k, citation correctness, answer correctness | evaluator metrics; answer metric explicitly named proxy | 31-case demo smoke metric; citation mapping and answer evidence proxy do not prove semantic correctness |
-| TASK-40 | Evaluation report | `docs/RAG_EVALUATION_REPORT.md` | CI smoke report linked to run 41695395834; not an independent quality evaluation |
+| TASK-40 | Evaluation report | `docs/RAG_EVALUATION_REPORT.md` | CI smoke report linked to run 41697599095; not an independent quality evaluation |
 | TASK-41 | Profile to mentor end-to-end | `tests/test_end_to_end_flows.py::test_e2e02_*` | AppTest automated |
 | TASK-42 | User question to RAG answer | `test_e2e01_*`, browser E2E suite | AppTest and Chromium CI PASS on tested PR SHA |
 | TASK-43 | Clear chat without losing related data | task 21 regression test and UI helper tests | Automated |
@@ -33,14 +33,14 @@ Evidence snapshot: PR #161 tested at code SHA `d50895c3c447fb1e667af02e338be261a
 | TASK-56 | Secret leakage scan | CI `git grep` patterns; `.env` ignored | `scripts.secret_guard` passed on tested PR head; Git-history scan and revocation of previously leaked key **not verified** |
 | TASK-57 | Consent and personal data transfer | `docs/PRIVACY_DATAFLOW.md`; consent regression tests | Code review/test evidence; user comprehension and network capture pending |
 | TASK-58 | Prompt injection | RAG test and general-chat system prompt tests | Prompt contract tested; live adversarial robustness not proven |
-| TASK-59 | Known dependency vulnerabilities | `.github/workflows/dependency-audit.yml`; `docs/DEPENDENCY_AUDIT_REPORT.md` | Dependency audit PASS on PR SHA (run 41695395775); no audit run on latest `main` SHA has been verified |
+| TASK-59 | Known dependency vulnerabilities | `.github/workflows/dependency-audit.yml`; `docs/DEPENDENCY_AUDIT_REPORT.md` | Dependency audit PASS on PR SHA (run 41697599041); no audit run on latest `main` SHA has been verified |
 | TASK-60 | External API errors/timeouts | fake-client failure tests | Automated; live network outages not simulated |
 | TASK-61 | RAG latency | `scripts/final_smoke_audit.py`, 100 warm samples | Local result in `docs/TEST_REPORT.md`; CPU only |
 | TASK-62 | Mentor ranking latency | same benchmark, 100 warm samples | Local result in `docs/TEST_REPORT.md`; demo pool only |
 | TASK-63 | Increasing data scale | `scripts/benchmark_scaling.py`, 3/30/100 docs and 10/100/500 mentors | Synthetic local measurement; no SLA or production workload |
 | TASK-64 | Consecutive requests/session isolation | `test_task64_consecutive_requests_*`; multi-turn AppTest | Automated, sequential only |
-| TASK-65 | Test-first process for new functionality | test source for RAG changes | Regression tests exist; separate red-test then green-fix commit evidence remains outstanding |
-| TASK-66 | Regression test before bug fix | regression suites | Tests pass on PR SHA; red-before-fix ordering needs separate commit evidence |
+| TASK-65 | Test-first process for new functionality | test source for RAG changes | Red commit `110b19059beedafa265f304ff330faa28d9ae65e` failed two multi-source cases; green head `7ff933c02073410f3e5486849c102bd1de999128` passes CI run 41697599095 |
+| TASK-66 | Regression test before bug fix | regression suites | Red-before-fix and green-after-fix sequence is linked in `docs/TEST_REPORT.md` and commits `110b190` → `d495617`/`7ff933c` |
 | TASK-67 | New tests reviewed in PR | PR review history | Review required; existing changes-requested review targets old SHA and needs a new independent review |
 | TASK-68 | Review logic/boundaries/errors | tests and Ruff/compile gates | Automated coverage exists; human review pending |
 | TASK-69 | Resolve blocking review comments | PR review threads | Earlier review requested changes on old SHA; re-review and resolution are still required |
