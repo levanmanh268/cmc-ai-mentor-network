@@ -72,6 +72,29 @@ EXPECTED_TERMS = {
 }
 
 
+def _score_citations(
+    *,
+    expected_source: str,
+    retrieved_sources: list[str],
+    cited_ids: list[int],
+    cited_sources: list[str],
+) -> tuple[bool, int, int]:
+    """Score source mapping independently from semantic entailment.
+
+    A positive case passes when every citation ID maps to a source in the
+    retrieved top-k and the expected source is cited at least once. Multiple
+    retrieved sources are allowed; the metric does not judge whether every
+    cited passage entails a generated claim.
+    """
+    valid_mapping = (
+        len(cited_sources) == len(cited_ids)
+        and all(source in retrieved_sources for source in cited_sources)
+    )
+    case_pass = bool(cited_ids) and valid_mapping and expected_source in cited_sources
+    correct_citations = sum(source in retrieved_sources for source in cited_sources)
+    return case_pass, correct_citations, len(cited_ids)
+
+
 def _percentile(values: list[float], percentile: float) -> float:
     ordered = sorted(values)
     return ordered[max(0, math.ceil(percentile * len(ordered)) - 1)]
@@ -118,17 +141,14 @@ def evaluate(
             relevant_total += 1
             source_hit = expected in retrieved_sources
             relevant_hits += int(source_hit)
-            # A case may legitimately cite several retrieved documents. Require the
-            # expected document to appear, validate every citation ID, and count a
-            # citation as correctly grounded when it maps to a retrieved source.
-            citation_ok = (
-                bool(cited_ids)
-                and len(cited_sources) == len(cited_ids)
-                and expected in cited_sources
-                and all(source in retrieved_sources for source in cited_sources)
+            citation_ok, correct_count, total_count = _score_citations(
+                expected_source=expected,
+                retrieved_sources=retrieved_sources,
+                cited_ids=cited_ids,
+                cited_sources=cited_sources,
             )
-            citation_total += len(cited_ids)
-            citation_correct += sum(source in retrieved_sources for source in cited_sources)
+            citation_total += total_count
+            citation_correct += correct_count
 
             expected_terms = EXPECTED_TERMS[query]
             cited_text = " ".join(

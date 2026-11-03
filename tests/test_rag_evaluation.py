@@ -1,5 +1,65 @@
 """Offline retrieval benchmark must be stable on bundled demo knowledge base."""
-from scripts.evaluate_rag import CASES, CASESET_VERSION, evaluate
+from scripts.evaluate_rag import CASES, CASESET_VERSION, _score_citations, evaluate
+
+
+def test_multi_source_citations_pass_when_expected_source_is_in_retrieved_results():
+    passed, correct, total = _score_citations(
+        expected_source="guide.md",
+        retrieved_sources=["guide.md", "study.md"],
+        cited_ids=[1, 2],
+        cited_sources=["guide.md", "study.md"],
+    )
+
+    assert passed
+    assert (correct, total) == (2, 2)
+
+
+def test_multi_source_citations_fail_when_expected_source_is_missing():
+    passed, correct, total = _score_citations(
+        expected_source="guide.md",
+        retrieved_sources=["study.md", "matching.md"],
+        cited_ids=[1, 2],
+        cited_sources=["study.md", "matching.md"],
+    )
+
+    assert not passed
+    assert (correct, total) == (2, 2)
+
+
+def test_citation_with_unresolvable_id_fails_and_counts_as_incorrect():
+    passed, correct, total = _score_citations(
+        expected_source="guide.md",
+        retrieved_sources=["guide.md", "study.md"],
+        cited_ids=[1, 99],
+        cited_sources=["guide.md"],
+    )
+
+    assert not passed
+    assert (correct, total) == (1, 2)
+
+
+def test_citation_to_source_outside_retrieval_fails():
+    passed, correct, total = _score_citations(
+        expected_source="guide.md",
+        retrieved_sources=["guide.md"],
+        cited_ids=[1, 2],
+        cited_sources=["guide.md", "unretrieved.md"],
+    )
+
+    assert not passed
+    assert (correct, total) == (1, 2)
+
+
+def test_case_without_citations_fails_the_positive_citation_requirement():
+    passed, correct, total = _score_citations(
+        expected_source="guide.md",
+        retrieved_sources=["guide.md"],
+        cited_ids=[],
+        cited_sources=[],
+    )
+
+    assert not passed
+    assert (correct, total) == (0, 0)
 
 
 def test_rag_evaluation_protocol_and_thresholds():
