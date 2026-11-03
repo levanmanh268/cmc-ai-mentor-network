@@ -28,7 +28,7 @@ def test_multi_document_case_fails_when_one_expected_source_is_not_cited():
 
 def test_multi_source_citations_pass_when_expected_source_is_in_retrieved_results():
     passed, correct, total = _score_citations(
-        expected_source="guide.md",
+        expected_sources=["guide.md"],
         retrieved_sources=["guide.md", "study.md"],
         cited_ids=[1, 2],
         cited_sources=["guide.md", "study.md"],
@@ -40,7 +40,7 @@ def test_multi_source_citations_pass_when_expected_source_is_in_retrieved_result
 
 def test_multi_source_citations_fail_when_expected_source_is_missing():
     passed, correct, total = _score_citations(
-        expected_source="guide.md",
+        expected_sources=["guide.md"],
         retrieved_sources=["study.md", "matching.md"],
         cited_ids=[1, 2],
         cited_sources=["study.md", "matching.md"],
@@ -52,7 +52,7 @@ def test_multi_source_citations_fail_when_expected_source_is_missing():
 
 def test_citation_with_unresolvable_id_fails_and_counts_as_incorrect():
     passed, correct, total = _score_citations(
-        expected_source="guide.md",
+        expected_sources=["guide.md"],
         retrieved_sources=["guide.md", "study.md"],
         cited_ids=[1, 99],
         cited_sources=["guide.md"],
@@ -64,7 +64,7 @@ def test_citation_with_unresolvable_id_fails_and_counts_as_incorrect():
 
 def test_citation_to_source_outside_retrieval_fails():
     passed, correct, total = _score_citations(
-        expected_source="guide.md",
+        expected_sources=["guide.md"],
         retrieved_sources=["guide.md"],
         cited_ids=[1, 2],
         cited_sources=["guide.md", "unretrieved.md"],
@@ -76,7 +76,7 @@ def test_citation_to_source_outside_retrieval_fails():
 
 def test_case_without_citations_fails_the_positive_citation_requirement():
     passed, correct, total = _score_citations(
-        expected_source="guide.md",
+        expected_sources=["guide.md"],
         retrieved_sources=["guide.md"],
         cited_ids=[],
         cited_sources=[],
