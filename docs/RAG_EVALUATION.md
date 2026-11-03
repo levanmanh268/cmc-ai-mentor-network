@@ -25,4 +25,4 @@ Tập này chỉ dùng 3 tài liệu demo, câu hỏi được thiết kế theo
 
 Ngưỡng retrieval TF-IDF là heuristic đã hiệu chỉnh trên corpus demo; cần tập holdout độc lập để đo false refusal và false grounding. Các số latency là mô tả trên máy chạy, không phải SLA hoặc production estimate.
 
-Tracking: [Issue #17](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/17).
+Follow-up cho benchmark độc lập có reviewer gán nhãn: [Issue #83](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/83). Regression kiểm tra citation đa nguồn: [Issue #163](https://github.com/levanmanh268/cmc-ai-mentor-network/issues/163).
