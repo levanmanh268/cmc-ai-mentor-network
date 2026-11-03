@@ -88,13 +88,19 @@ def test_case_without_citations_fails_the_positive_citation_requirement():
 
 def test_rag_evaluation_protocol_and_thresholds():
     result = evaluate(warm_repeats=2)
-    assert CASESET_VERSION == "nfr-09-v1"
+    assert CASESET_VERSION == "nfr-09-v2"
     assert len(CASES) >= 30
     assert result["positive_total"] >= 15
     assert result["no_evidence_total"] >= 10
     assert result["metric_scope"] == "retrieval-citation-answer-evidence-proxy-and-no-evidence-refusal"
     assert result["k"] == 3
     assert result["retrieval_recall_at_k"] == 1.0, result["rows"]
+    multi_source = next(
+        row for row in result["rows"]
+        if row["query"] == "RAG tách bước truy xuất tài liệu liên quan và sinh câu trả lời"
+    )
+    assert multi_source["expected"] == ["ai_project_guide.md", "ai_study_guide.md"]
+    assert set(multi_source["expected"]).issubset(multi_source["cited_sources"])
     assert result["citation_correctness"] >= 0.9, result["rows"]
     assert result["answer_correctness_proxy"] == 1.0, result["rows"]
     assert result["no_evidence_pass"] == result["no_evidence_total"], result["rows"]

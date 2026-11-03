@@ -1,6 +1,6 @@
 # RAG Evaluation Report
 
-**Dataset:** `nfr-09-v1`, 31 synthetic cases over three bundled demo Markdown documents (18 supported, 13 outside the corpus).  
+**Dataset:** `nfr-09-v2`, 31 synthetic cases over three bundled demo Markdown documents (18 supported, 13 outside the corpus).  
 **Run:** [CI run 41695395834](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/41695395834), tested code SHA `d50895c3c447fb1e667af02e338be261a9952c5d`.  
 **Method:** deterministic TF-IDF retrieval and offline excerpts; no API key, network, or live LLM.  
 **Command:** `python -m scripts.evaluate_rag`; protocol: [RAG_EVALUATION.md](RAG_EVALUATION.md).

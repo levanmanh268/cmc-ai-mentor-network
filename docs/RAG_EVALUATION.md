@@ -9,7 +9,7 @@ python -m scripts.evaluate_rag
 python -m pytest tests/test_rag_evaluation.py -q
 ```
 
-Bộ `nfr-09-v1` có **31 ca tổng cộng**: 18 câu có nguồn kỳ vọng và 13 câu ngoài tài liệu. Đây là các synthetic regression cases viết theo corpus hiện tại, không có blind split hoặc người gán nhãn độc lập.
+Bộ `nfr-09-v2` có **31 ca tổng cộng**: 18 câu có nguồn kỳ vọng và 13 câu ngoài tài liệu. Một ca hỏi tổng hợp yêu cầu cả `ai_project_guide.md` và `ai_study_guide.md` nằm trong top-k và được trích dẫn. Đây là các synthetic regression cases viết theo corpus hiện tại, không có blind split hoặc người gán nhãn độc lập.
 
 - **Retrieval Recall@3 / Hit@3:** số câu có tài liệu kỳ vọng trong top 3.
 - **Citation source-mapping precision:** số citation ID ánh xạ được tới nguồn nằm trong top-k truy xuất chia cho tổng citation ID. Một ca dương tính chỉ PASS nếu mọi ID đều ánh xạ hợp lệ và nguồn kỳ vọng xuất hiện ít nhất một lần; có thể trích nhiều nguồn được truy xuất.

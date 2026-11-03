@@ -11,7 +11,7 @@ import time
 from rag_engine import KnowledgeBase, answer_with_rag
 
 ROOT = Path(__file__).resolve().parents[1]
-CASESET_VERSION = "nfr-09-v1"
+CASESET_VERSION = "nfr-09-v2"
 LATENCY_REPEATS = 100
 
 # Synthetic, in-sample prompts against the three bundled demo documents.
@@ -21,7 +21,7 @@ CASES = (
     ("Tạo branch riêng từ main", "ai_project_guide.md"),
     ("Pull Request dùng Closes issue-number", "ai_project_guide.md"),
     ("debug kiểm tra ingestion retrieval prompt model", "ai_study_guide.md"),
-    ("RAG tách bước truy xuất tài liệu liên quan và sinh câu trả lời", "ai_project_guide.md"),
+    ("RAG tách bước truy xuất tài liệu liên quan và sinh câu trả lời", ("ai_project_guide.md", "ai_study_guide.md")),
     ("API key chưa cấu hình API mất kết nối và input rỗng", "ai_project_guide.md"),
     ("Câu hỏi có bằng chứng câu không bằng chứng và gây nhiễu", "ai_study_guide.md"),
     ("Metric đánh giá baseline trước tối ưu mô hình", "ai_study_guide.md"),
@@ -74,7 +74,7 @@ EXPECTED_TERMS = {
 
 def _score_citations(
     *,
-    expected_source: str,
+    expected_sources: list[str],
     retrieved_sources: list[str],
     cited_ids: list[int],
     cited_sources: list[str],
@@ -82,15 +82,19 @@ def _score_citations(
     """Score source mapping independently from semantic entailment.
 
     A positive case passes when every citation ID maps to a source in the
-    retrieved top-k and the expected source is cited at least once. Multiple
-    retrieved sources are allowed; the metric does not judge whether every
-    cited passage entails a generated claim.
+    retrieved top-k and every expected source is cited. Multiple expected
+    sources are supported; the metric does not judge whether every cited
+    passage entails a generated claim.
     """
     valid_mapping = (
         len(cited_sources) == len(cited_ids)
         and all(source in retrieved_sources for source in cited_sources)
     )
-    case_pass = bool(cited_ids) and valid_mapping and expected_source in cited_sources
+    case_pass = (
+        bool(cited_ids)
+        and valid_mapping
+        and set(expected_sources).issubset(cited_sources)
+    )
     correct_citations = sum(source in retrieved_sources for source in cited_sources)
     return case_pass, correct_citations, len(cited_ids)
 
@@ -121,6 +125,13 @@ def evaluate(
     no_evidence_total = no_evidence_pass = 0
 
     for query, expected in CASES:
+        expected_sources = (
+            []
+            if expected is None
+            else [expected]
+            if isinstance(expected, str)
+            else list(expected)
+        )
         start = time.perf_counter()
         hits = kb.search(query, k=k)
         first_search_ms.append((time.perf_counter() - start) * 1000)
@@ -137,12 +148,12 @@ def evaluate(
             for index in cited_ids
             if 1 <= index <= len(response.sources)
         ]
-        if expected is not None:
+        if expected_sources:
             relevant_total += 1
-            source_hit = expected in retrieved_sources
+            source_hit = all(source in retrieved_sources for source in expected_sources)
             relevant_hits += int(source_hit)
             citation_ok, correct_count, total_count = _score_citations(
-                expected_source=expected,
+                expected_sources=expected_sources,
                 retrieved_sources=retrieved_sources,
                 cited_ids=cited_ids,
                 cited_sources=cited_sources,
@@ -173,7 +184,7 @@ def evaluate(
 
         rows.append({
             "query": query,
-            "expected": expected or "NO_EVIDENCE",
+            "expected": expected_sources or "NO_EVIDENCE",
             "top_k": retrieved_sources,
             "cited_sources": cited_sources,
             "mode": response.mode,
