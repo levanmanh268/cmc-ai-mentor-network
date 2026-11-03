@@ -118,11 +118,17 @@ def evaluate(
             relevant_total += 1
             source_hit = expected in retrieved_sources
             relevant_hits += int(source_hit)
-            citation_ok = bool(cited_ids) and len(cited_sources) == len(cited_ids) and all(
-                source == expected for source in cited_sources
+            # A case may legitimately cite several retrieved documents. Require the
+            # expected document to appear, validate every citation ID, and count a
+            # citation as correctly grounded when it maps to a retrieved source.
+            citation_ok = (
+                bool(cited_ids)
+                and len(cited_sources) == len(cited_ids)
+                and expected in cited_sources
+                and all(source in retrieved_sources for source in cited_sources)
             )
             citation_total += len(cited_ids)
-            citation_correct += sum(source == expected for source in cited_sources)
+            citation_correct += sum(source in retrieved_sources for source in cited_sources)
 
             expected_terms = EXPECTED_TERMS[query]
             cited_text = " ".join(
