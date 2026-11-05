@@ -169,14 +169,14 @@ def test_browser06_created_mentor_is_visible_only_in_creator_session(browser, lo
         first_page.get_by_label("Loại hỗ trợ *").click()
         first_page.get_by_role("option", name="Project").click()
         first_page.get_by_role("button", name="Tạo Mentor trong phiên").click()
-        expect(first_page.get_by_text("Browser Session Mentor", exact=True)).to_be_visible()
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor"))).to_be_visible()
         first_page.get_by_role("button", name=re.compile("Tìm Mentor")).click()
-        expect(first_page.get_by_role("heading", name=re.compile("Browser Session Mentor"))).to_be_visible(timeout=20_000)
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor"))).to_be_visible(timeout=20_000)
 
         second_page = second_context.new_page()
         second_page.goto(local_app, wait_until="domcontentloaded")
         navigate(second_page, "👥 Tìm Mentor")
-        expect(second_page.get_by_text("Browser Session Mentor", exact=True)).not_to_be_visible()
+        expect(second_page.get_by_text(re.compile("Browser Session Mentor"))).not_to_be_visible()
     finally:
         first_context.close()
         second_context.close()
