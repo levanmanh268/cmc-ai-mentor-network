@@ -112,3 +112,24 @@ def test_explanation_has_deterministic_fallback_without_llm():
 
     assert "82.5%" in explanation
     assert "Mentor Test" in explanation
+
+
+def test_session_mentor_pool_participates_in_filtering_and_matching():
+    custom = {
+        "id": 99,
+        "name": "Session Mentor",
+        "title": "RAG Engineer",
+        "company": "Demo",
+        "field": "NLP & LLM",
+        "experience_years": 3,
+        "bio": "Mentors RAG projects",
+        "strengths": ["RAG", "Python"],
+        "available_for": ["Project"],
+    }
+    results = get_top_matches(
+        {"field_interest": "RAG", "goals": "RAG project"},
+        field_filter="NLP & LLM",
+        support_filter="Project",
+        mentor_pool=[custom],
+    )
+    assert [item["mentor"]["name"] for item in results] == ["Session Mentor"]
