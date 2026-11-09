@@ -29,4 +29,4 @@ def safe_markdown_label(value: Any, *, max_length: int = 500) -> str:
     raw = "" if value is None else str(value)
     raw = re.sub(r"[\x00-\x1f\x7f]+", " ", raw).strip()[:max(0, max_length)]
     raw = html.escape(raw, quote=True)
-    return re.sub(r"([\\`*_{}\[\]()#+.!|>~\\-])", r"\\\1", raw)
+    return re.sub(r"([\\`*_{}\[\]()#+!|>~\\-])", r"\\\1", raw)
