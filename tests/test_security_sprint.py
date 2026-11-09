@@ -62,6 +62,9 @@ def test_sec04_dynamic_markdown_label_escapes_html_and_formatting():
     assert "\\[" in rendered
 
 
+def test_sec04_source_filename_preserves_dot_for_ui_traceability():
+    assert safe_markdown_label("legacy.md") == "legacy.md"
+
 def test_sec04_dynamic_label_cannot_start_new_heading_or_inject_newline():
     rendered = safe_markdown_label("Mentor\n# forged title\t**trusted**")
     assert "\n" not in rendered
