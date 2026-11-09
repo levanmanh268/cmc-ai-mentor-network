@@ -20,6 +20,7 @@
 | Base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | Test commit SHA | `1e8277cb66cda32038311490ba041e395ae382fa` |
 | CI-tested security-base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
+| Full-suite local test SHA | `510cb18098340e26537e3d24c3a7d8b6c443d69f` |
 | OS / Python | Windows / Python 3.14.10 |
 | Chạy | Offline, fake provider, dữ liệu tổng hợp; không có API key thật |
 | CI run | PENDING |
@@ -46,11 +47,15 @@ python -m pytest -q tests/test_issue_87_security_sanity.py tests/test_security_s
 
 python -m scripts.secret_guard
 No tracked secret pattern detected.
+
+python -m pytest -q
+335 passed, 26 skipped in 10.87s
 ```
 
 | Môi trường/job | PASS | FAIL | ERROR | SKIP | SHA / URL |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Local Windows, security-related test set | 107 | 0 | 0 | 0 | `1e8277cb66cda32038311490ba041e395ae382fa` |
+| Local Windows, full test suite | 335 | 0 | 0 | 26 | `510cb18098340e26537e3d24c3a7d8b6c443d69f` |
 | Secret guard local | 1 | 0 | 0 | 0 | Test commit SHA ở trên |
 | GitHub CI Linux on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | GitHub CI Windows on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
@@ -58,7 +63,7 @@ No tracked secret pattern detected.
 
 CI Linux và Windows trên integration base PR #182 hoàn tất thành công. CI hiện tại không tạo run cho PR #192: workflow `.github/workflows/ci.yml` chỉ kích hoạt `pull_request` có base `main`, trong khi PR này phải dùng base integration `security/sprint-sec01-sec13-20261109` vì PR #182 chưa merge. Vì vậy, CI xanh của base không được tính là CI xanh trên head mới của #192; cần chạy CI sau khi base được cập nhật hoặc người maintainers kích hoạt một cách phù hợp.
 
-Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 107 bao gồm các testcase bảo mật hiện có trên integration base; không phải 107 bài pentest độc lập.
+26 test skip trong full suite cục bộ; không kết luận chúng liên quan đến security nếu chưa phân tích từng skip. Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 107 bao gồm các testcase bảo mật hiện có trên integration base; không phải 107 bài pentest độc lập.
 
 ## 5. Rủi ro và giới hạn chưa xác minh
 
