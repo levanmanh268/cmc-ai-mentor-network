@@ -19,7 +19,8 @@
 | Branch | `test/issue-87-security-sanity` |
 | Base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | Test commit SHA | `1e8277cb66cda32038311490ba041e395ae382fa` |
-| Report commit / CI-tested SHA | PENDING |
+| Report commit SHA | `d0590d318c11822386cb24ac38190e78407f8bd4` |
+| CI-tested security-base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | OS / Python | Windows / Python 3.14.10 |
 | Chạy | Offline, fake provider, dữ liệu tổng hợp; không có API key thật |
 | CI run | PENDING |
@@ -52,8 +53,11 @@ No tracked secret pattern detected.
 | --- | ---: | ---: | ---: | ---: | --- |
 | Local Windows, security-related test set | 107 | 0 | 0 | 0 | `1e8277cb66cda32038311490ba041e395ae382fa` |
 | Secret guard local | 1 | 0 | 0 | 0 | Test commit SHA ở trên |
-| GitHub CI Linux | PENDING | — | — | — | PENDING |
-| GitHub CI Windows | PENDING | — | — | — | PENDING |
+| GitHub CI Linux on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
+| GitHub CI Windows on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
+| GitHub CI for PR #192 head | NOT RUN | — | — | — | No check runs created |
+
+CI Linux và Windows trên integration base PR #182 hoàn tất thành công. CI hiện tại không tạo run cho PR #192: workflow `.github/workflows/ci.yml` chỉ kích hoạt `pull_request` có base `main`, trong khi PR này phải dùng base integration `security/sprint-sec01-sec13-20261109` vì PR #182 chưa merge. Vì vậy, CI xanh của base không được tính là CI xanh trên head mới của #192; cần chạy CI sau khi base được cập nhật hoặc người maintainers kích hoạt một cách phù hợp.
 
 Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 107 bao gồm các testcase bảo mật hiện có trên integration base; không phải 107 bài pentest độc lập.
 
@@ -68,6 +72,7 @@ Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 107 bao gồm các t
 ## 6. Bàn giao
 
 - **PR:** https://github.com/levanmanh268/cmc-ai-mentor-network/pull/192
-- **CI run URL:** PENDING.
-- **Kết luận:** NEEDS REVIEW; chờ CI trên PR và independent review.
-- **Việc tiếp theo:** Xác nhận CI đúng head SHA, xin review độc lập, cập nhật URL/kết quả. Chỉ xem xét pentest cloud trong môi trường được cho phép.
+- **CI run URL trên security base:** https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271 (PASS tại SHA `c8eebeb`; không phải head PR #192).
+- **CI run cho head PR #192:** NOT RUN do workflow chỉ nhắm base `main`.
+- **Kết luận:** NEEDS REVIEW / CI; chờ CI phù hợp với head PR và independent review.
+- **Việc tiếp theo:** Sau khi PR #182 được tích hợp vào `main`, cập nhật base/chạy CI trên head PR #192; xin review độc lập. Chỉ xem xét pentest cloud trong môi trường được cho phép.
