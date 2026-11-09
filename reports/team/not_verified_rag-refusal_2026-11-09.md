@@ -5,11 +5,11 @@
 - **Người thực hiện:** AI assistant trong phiên làm việc này; danh tính thành viên không được xác minh.
 - **GitHub username:** NOT VERIFIED.
 - **Vai trò:** RAG / kiểm thử.
-- **Ngày giờ thực hiện (GMT+7):** 2026-11-09, khoảng 09:06.
+- **Ngày giờ thực hiện (GMT+7):** 2026-11-09, khoảng 09:06–09:12.
 - **Issue:** #187.
 - **Pull Request:** https://github.com/levanmanh268/cmc-ai-mentor-network/pull/189
 - **Người review độc lập:** PENDING.
-- **Tình trạng tổng:** NEEDS REVIEW (CI và review độc lập chưa có kết quả).
+- **Tình trạng tổng:** NEEDS REVIEW (CI đã PASS; review độc lập đang chờ).
 
 ## 2. Mã nguồn và môi trường
 
@@ -50,10 +50,12 @@ python -m pytest -q tests/test_rag_refusal_security.py tests/test_quality_gates.
 | Môi trường/job | PASS | FAIL | ERROR | SKIP | SHA | URL log/artifact |
 | --- | ---: | ---: | ---: | ---: | --- | --- |
 | Local Windows, ba module test liên quan | 68 | 0 | 0 | 0 | `f58860d5945eebefcf2c7e0cb9ca3ad0948718e2` | Kết quả console cục bộ, không có URL |
-| GitHub CI Linux | — | — | — | — | — | PENDING; PR chưa có status/check run |
-| GitHub CI Windows | — | — | — | — | — | PENDING; PR chưa có status/check run |
+| GitHub CI Linux (`test`, `ubuntu-latest`) | 1 job | 0 | 0 | — | `c3bb3cc0c2e426917d387ee7b66f5ff41c9d4335` | [Actions run 42549395828](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828) |
+| GitHub CI Windows (`windows-local`) | 1 job | 0 | 0 | — | `c3bb3cc0c2e426917d387ee7b66f5ff41c9d4335` | [Actions run 42549395828](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828) |
 
-**Coverage:** NOT MEASURED.
+CI run trên được kiểm tra hoàn tất với cả hai job `test` và `windows-local` thành công; các job Chromium E2E và Mermaid trong cùng run cũng thành công. Run này kiểm tra head `c3bb3cc`; các commit sau đó chỉ thêm/chỉnh báo cáo, không đổi test hay code sản phẩm.
+
+**Coverage:** Không đo riêng trong lần chạy cục bộ này; CI tạo coverage artifact nhưng chưa đánh giá artifact.
 
 **RAG metrics:** NOT MEASURED; đây là guard test, không phải đánh giá semantic RAG.
 **Skip:** Không có trong lệnh kiểm thử đã ghi ở trên.
@@ -70,14 +72,15 @@ python -m pytest -q tests/test_rag_refusal_security.py tests/test_quality_gates.
 - Kết quả chỉ xác nhận nhánh xử lý `no-evidence` và kiểm tra thành viên citation ID trong bộ test offline.
 - `validate_citation_ids` không kiểm tra citation có hỗ trợ ngữ nghĩa cho từng khẳng định hay không.
 - Các test này **không chứng minh AI không hallucinate**, không đánh giá chất lượng suy luận hoặc độ đúng ngữ nghĩa.
-- Live Groq inference, prompt injection trực tiếp, human UAT, coverage và CI Linux/Windows: NOT RUN / PENDING.
-- Review độc lập và CI của PR #189: PENDING.
+- Live Groq inference, prompt injection trực tiếp và human UAT: NOT RUN.
+- CI Linux/Windows: PASS theo Actions run đã nêu cho head `c3bb3cc`.
+- Review độc lập của PR #189: PENDING.
 
 ## 7. Kết luận và bàn giao
 
-**Kết luận:** NEEDS REVIEW. Năm test mới và 63 test liên quan khác PASS cục bộ; chưa đủ bằng chứng để xác nhận CI hoặc review độc lập.
+**Kết luận:** NEEDS REVIEW. Năm test mới và 63 test liên quan khác PASS cục bộ; CI Linux/Windows đã PASS, review độc lập vẫn đang chờ.
 
 - **PR:** https://github.com/levanmanh268/cmc-ai-mentor-network/pull/189
-- **CI run URL:** PENDING.
-- **Việc tiếp theo:** Chạy CI trên PR, yêu cầu review độc lập, cập nhật URL và kết quả CI sau khi có.
+- **CI run URL:** https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828
+- **Việc tiếp theo:** Yêu cầu review độc lập; CI Linux/Windows của head `c3bb3cc` đã PASS.
 - **Merge SHA / CI trên main:** PENDING.
