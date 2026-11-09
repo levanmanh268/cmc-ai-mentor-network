@@ -2,10 +2,10 @@
 
 ## 1. Thông tin báo cáo
 
-- **Người thực hiện:** AI assistant trong phiên làm việc này; danh tính thành viên không được xác minh.
-- **GitHub username:** NOT VERIFIED.
+- **Người thực hiện:** AI assistant trong phiên làm việc này; báo cáo được nộp bằng tài khoản GitHub đã xác thực @phucnguyen221.
+- **GitHub username:** @phucnguyen221.
 - **Vai trò:** RAG / kiểm thử.
-- **Ngày giờ thực hiện (GMT+7):** 2026-11-09, khoảng 09:06–09:12.
+- **Ngày giờ thực hiện (GMT+7):** 2026-11-09, khoảng 09:06–09:16.
 - **Issue:** #187.
 - **Pull Request:** https://github.com/levanmanh268/cmc-ai-mentor-network/pull/189
 - **Người review độc lập:** PENDING.
@@ -50,10 +50,10 @@ python -m pytest -q tests/test_rag_refusal_security.py tests/test_quality_gates.
 | Môi trường/job | PASS | FAIL | ERROR | SKIP | SHA | URL log/artifact |
 | --- | ---: | ---: | ---: | ---: | --- | --- |
 | Local Windows, ba module test liên quan | 68 | 0 | 0 | 0 | `f58860d5945eebefcf2c7e0cb9ca3ad0948718e2` | Kết quả console cục bộ, không có URL |
-| GitHub CI Linux (`test`, `ubuntu-latest`) | 1 job | 0 | 0 | — | `c3bb3cc0c2e426917d387ee7b66f5ff41c9d4335` | [Actions run 42549395828](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828) |
-| GitHub CI Windows (`windows-local`) | 1 job | 0 | 0 | — | `c3bb3cc0c2e426917d387ee7b66f5ff41c9d4335` | [Actions run 42549395828](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828) |
+| GitHub CI Linux (`test`, `ubuntu-latest`) | 1 job | 0 | 0 | — | `a36e802fff152ecb5c130593354c15be3cf9a30e` | [Actions run 42549746494](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549746494) |
+| GitHub CI Windows (`windows-local`) | 1 job | 0 | 0 | — | `a36e802fff152ecb5c130593354c15be3cf9a30e` | [Actions run 42549746494](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549746494) |
 
-CI run trên được kiểm tra hoàn tất với cả hai job `test` và `windows-local` thành công; các job Chromium E2E và Mermaid trong cùng run cũng thành công. Run này kiểm tra head `c3bb3cc`; các commit sau đó chỉ thêm/chỉnh báo cáo, không đổi test hay code sản phẩm.
+CI run trên được kiểm tra hoàn tất với cả hai job `test` và `windows-local` thành công; các job Chromium E2E và Mermaid trong cùng run cũng thành công. Run này kiểm tra head `a36e802`; thay đổi báo cáo/đường dẫn hiện tại không đổi test hay code sản phẩm.
 
 **Coverage:** Không đo riêng trong lần chạy cục bộ này; CI tạo coverage artifact nhưng chưa đánh giá artifact.
 
@@ -81,6 +81,6 @@ CI run trên được kiểm tra hoàn tất với cả hai job `test` và `wind
 **Kết luận:** NEEDS REVIEW. Năm test mới và 63 test liên quan khác PASS cục bộ; CI Linux/Windows đã PASS, review độc lập vẫn đang chờ.
 
 - **PR:** https://github.com/levanmanh268/cmc-ai-mentor-network/pull/189
-- **CI run URL:** https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549395828
+- **CI run URL:** https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42549746494
 - **Việc tiếp theo:** Yêu cầu review độc lập; CI Linux/Windows của head `c3bb3cc` đã PASS.
 - **Merge SHA / CI trên main:** PENDING.
