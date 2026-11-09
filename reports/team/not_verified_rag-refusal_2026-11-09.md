@@ -53,8 +53,9 @@ python -m pytest -q tests/test_rag_refusal_security.py tests/test_quality_gates.
 | GitHub CI Linux | — | — | — | — | — | PENDING; PR chưa có status/check run |
 | GitHub CI Windows | — | — | — | — | — | PENDING; PR chưa có status/check run |
 
-**Coverage:** NOT MEASURED.  
-**RAG metrics:** NOT MEASURED; đây là guard test, không phải đánh giá semantic RAG.  
+**Coverage:** NOT MEASURED.
+
+**RAG metrics:** NOT MEASURED; đây là guard test, không phải đánh giá semantic RAG.
 **Skip:** Không có trong lệnh kiểm thử đã ghi ở trên.
 
 ## 5. TDD và thay đổi sản phẩm
