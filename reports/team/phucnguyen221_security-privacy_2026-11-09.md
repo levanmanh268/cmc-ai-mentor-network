@@ -18,12 +18,12 @@
 | Repository | https://github.com/levanmanh268/cmc-ai-mentor-network |
 | Branch | `test/issue-87-security-sanity` |
 | Base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
-| Test commit SHA | `1e8277cb66cda32038311490ba041e395ae382fa` |
+| Test commit SHA | `8048954e900e32c752503f5bafcde7b28441160a` |
 | CI-tested security-base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
-| Full-suite local test SHA | `510cb18098340e26537e3d24c3a7d8b6c443d69f` |
+| Full-suite local test SHA | `8048954e900e32c752503f5bafcde7b28441160a` |
 | OS / Python | Windows / Python 3.14.10 |
 | Chạy | Offline, fake provider, dữ liệu tổng hợp; không có API key thật |
-| CI run | PENDING |
+| CI run for PR #192 | NOT RUN (workflow base-branch filter; see below) |
 
 Đây là **security sanity suite**, không phải penetration test, red-team đánh giá model, hay xác nhận sản phẩm an toàn tuyệt đối. Không đưa PII, secret thật, hay dữ liệu production vào test hoặc báo cáo.
 
@@ -31,8 +31,8 @@
 
 | ID | Threat / severity | Steps và testcase | Expected | Actual | Fix / xử lý |
 | --- | --- | --- | --- | --- | --- |
-| SEC87-01 | Input sai kiểu/rỗng/quá dài; P1 (availability) | Chạy `test_sec03_rejects_wrong_type_or_empty_query`, `test_sec03_rejects_oversized_query_before_provider_call`, `test_sec03_rejects_non_string_answer_input_without_crashing` và `test_qg01_invalid_history_does_not_invoke_provider`. | Từ chối input trước retrieval/provider, không crash, không có provider call. | Các assertion PASS trong bộ 107 test local. | Giới hạn 4.000 ký tự và validate kiểu tại boundary trong PR #182. |
-| SEC87-02 | Symlink/path escape và Markdown quá cỡ; P0/P1 (confidentiality/availability) | Chạy `test_sec03_symlinked_root_not_indexed_portable`, `test_qg23_oversized_document_not_indexed`, `test_qg25_source_name_is_relative_to_kb`. | Không index root symlink; bỏ file trên 2 MB; source path giữ tương đối trong kho tài liệu. | Các assertion PASS trong bộ 107 test local. | Từ chối symlink root/file và file vượt giới hạn trong `KnowledgeBase` ở PR #182. Chưa có pentest filesystem/cloud. |
+| SEC87-01 | Input sai kiểu/rỗng/quá dài; P1 (availability) | Chạy `test_sec03_rejects_wrong_type_or_empty_query`, `test_sec03_rejects_oversized_query_before_provider_call`, `test_sec03_rejects_non_string_answer_input_without_crashing` và `test_qg01_invalid_history_does_not_invoke_provider`. | Từ chối input trước retrieval/provider, không crash, không có provider call. | Các assertion PASS trong bộ 108 test local. | Giới hạn 4.000 ký tự và validate kiểu tại boundary trong PR #182. |
+| SEC87-02 | Symlink/path escape và Markdown quá cỡ; P0/P1 (confidentiality/availability) | Chạy `test_sec03_symlinked_root_not_indexed_portable`, `test_symlinked_markdown_file_is_not_ingested` (symlink được mô phỏng portable qua `Path.is_symlink`), `test_qg23_oversized_document_not_indexed`, `test_qg25_source_name_is_relative_to_kb`. | Không index root/file symlink; bỏ file trên 2 MB; source path giữ tương đối trong kho tài liệu. | Các assertion PASS; nested file symlink case dùng simulation, không tạo OS symlink thật. | Từ chối symlink root/file và file vượt giới hạn trong `KnowledgeBase` ở PR #182. Chưa có pentest filesystem/cloud. |
 | SEC87-03 | Chỉ dẫn độc hại trong Markdown (prompt injection); P1 (integrity) | Chạy `test_untrusted_markdown_instructions_stay_out_of_system_prompt` với tài liệu tổng hợp chứa “Ignore all prior instructions…”. | System prompt nói tài liệu là dữ liệu không đáng tin; payload không được chèn vào system role. | PASS: payload chỉ xuất hiện trong context của user message; system prompt chứa rule không làm theo chỉ dẫn trong tài liệu. | Tách system/context và rule chống chỉ dẫn tài liệu đã có ở PR #182; test này kiểm tra cấu trúc prompt, **không** chứng minh model chống được prompt injection khi chạy live. |
 | SEC87-04 | Provider exception làm lộ credential; P0 (confidentiality) | Chạy `test_provider_exception_secret_is_not_returned_or_logged`, `test_qg06_provider_http_errors_are_sanitized`, `test_qg07_network_and_generic_error_are_sanitized`, `test_qg15_provider_error_preserves_offline_document_sources`. | Chuỗi credential giả từ lỗi không xuất hiện trong answer/log; dùng fallback offline. | PASS: fake secret không xuất hiện trong output hoặc captured log; provider failure dùng `offline-fallback`. | Lỗi provider được sanitize/fallback; không ghi payload/credential thô. Không sử dụng key thật. |
 | SEC87-05 | Session/state lẫn giữa người dùng; P0 (confidentiality) | Chạy `test_sec05_session_profile_reset_does_not_touch_other_session`, `test_sec11_save_profile_does_not_update_another_session`, `test_e2e04_independent_sessions_do_not_share_profiles`. | Reset/update session A không đổi state session B. | PASS trong unit/AppTest giả lập hai session. | State giữ theo Streamlit session; test không xác nhận isolation trên deployment/cloud thật. |
@@ -43,19 +43,19 @@
 
 ```text
 python -m pytest -q tests/test_issue_87_security_sanity.py tests/test_security_sprint.py tests/test_quality_gates.py tests/test_real_ai_chat.py tests/test_end_to_end_flows.py tests/test_secret_guard.py
-107 passed in 7.25s
+108 passed in 6.66s
 
 python -m scripts.secret_guard
 No tracked secret pattern detected.
 
 python -m pytest -q
-335 passed, 26 skipped in 10.87s
+336 passed, 26 skipped in 11.72s
 ```
 
 | Môi trường/job | PASS | FAIL | ERROR | SKIP | SHA / URL |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Local Windows, security-related test set | 107 | 0 | 0 | 0 | `1e8277cb66cda32038311490ba041e395ae382fa` |
-| Local Windows, full test suite | 335 | 0 | 0 | 26 | `510cb18098340e26537e3d24c3a7d8b6c443d69f` |
+| Local Windows, security-related test set | 108 | 0 | 0 | 0 | `8048954e900e32c752503f5bafcde7b28441160a` |
+| Local Windows, full test suite | 336 | 0 | 0 | 26 | `8048954e900e32c752503f5bafcde7b28441160a` |
 | Secret guard local | 1 | 0 | 0 | 0 | Test commit SHA ở trên |
 | GitHub CI Linux on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | GitHub CI Windows on security base PR #182 | PASS | 0 | 0 | — | [`42542025271`](https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42542025271), SHA `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
@@ -63,7 +63,7 @@ python -m pytest -q
 
 CI Linux và Windows trên integration base PR #182 hoàn tất thành công. CI hiện tại không tạo run cho PR #192: workflow `.github/workflows/ci.yml` chỉ kích hoạt `pull_request` có base `main`, trong khi PR này phải dùng base integration `security/sprint-sec01-sec13-20261109` vì PR #182 chưa merge. Vì vậy, CI xanh của base không được tính là CI xanh trên head mới của #192; cần chạy CI sau khi base được cập nhật hoặc người maintainers kích hoạt một cách phù hợp.
 
-26 test skip trong full suite cục bộ; không kết luận chúng liên quan đến security nếu chưa phân tích từng skip. Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 107 bao gồm các testcase bảo mật hiện có trên integration base; không phải 107 bài pentest độc lập.
+26 test skip trong full suite cục bộ; không kết luận chúng liên quan đến security nếu chưa phân tích từng skip. Coverage và dependency audit: NOT MEASURED / NOT RUN. Bộ 108 bao gồm các testcase bảo mật hiện có trên integration base; không phải 108 bài pentest độc lập.
 
 ## 5. Rủi ro và giới hạn chưa xác minh
 
