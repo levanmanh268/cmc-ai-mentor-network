@@ -19,7 +19,6 @@
 | Branch | `test/issue-87-security-sanity` |
 | Base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | Test commit SHA | `1e8277cb66cda32038311490ba041e395ae382fa` |
-| Report commit SHA | `d0590d318c11822386cb24ac38190e78407f8bd4` |
 | CI-tested security-base SHA | `c8eebeb475034fffaaf93bd1cc9ca3ad0948718e2` |
 | OS / Python | Windows / Python 3.14.10 |
 | Chạy | Offline, fake provider, dữ liệu tổng hợp; không có API key thật |
