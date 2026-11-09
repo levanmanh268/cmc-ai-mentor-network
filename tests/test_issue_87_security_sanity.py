@@ -46,6 +46,34 @@ def test_untrusted_markdown_instructions_stay_out_of_system_prompt(tmp_path):
     assert "Ignore all prior instructions" in messages[1]["content"]
 
 
+def test_symlinked_markdown_file_is_not_ingested(tmp_path, monkeypatch):
+    root = tmp_path / "knowledge_base"
+    root.mkdir()
+    (tmp_path / "outside.md").write_text(
+        "External confidential scholarship application details.", encoding="utf-8"
+    )
+    (root / "safe.md").write_text(
+        "Scholarship application deadline procedure.", encoding="utf-8"
+    )
+    linked_file = root / "linked.md"
+    linked_file.write_text(
+        "External confidential scholarship application details.", encoding="utf-8"
+    )
+    original_is_symlink = Path.is_symlink
+    monkeypatch.setattr(
+        Path,
+        "is_symlink",
+        lambda path: path == linked_file or original_is_symlink(path),
+    )
+
+    knowledge_base = KnowledgeBase(root)
+
+    assert knowledge_base.document_count == 1
+    assert {chunk.source for chunk in knowledge_base.search("Scholarship application")} == {
+        "safe.md"
+    }
+
+
 def test_provider_exception_secret_is_not_returned_or_logged(tmp_path, caplog):
     root = tmp_path / "knowledge_base"
     root.mkdir()
