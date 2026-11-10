@@ -39,7 +39,7 @@ public sealed class PortalStore : IAsyncDisposable
             Username = Uri.UnescapeDataString(credentials[0]),
             Password = Uri.UnescapeDataString(credentials[1]),
             Database = Uri.UnescapeDataString(url.AbsolutePath.TrimStart('/')),
-            SslMode = SslMode.Prefer,
+            SslMode = SslMode.Require,
             Timeout = 8,
             CommandTimeout = 8,
             MaxPoolSize = 12,
