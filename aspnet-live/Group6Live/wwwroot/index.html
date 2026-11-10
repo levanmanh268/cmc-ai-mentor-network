@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#0b1426"/>
+  <meta name="description" content="CMC AI Mentor Network Group 6: dữ liệu PostgreSQL và cập nhật thời gian thực qua ASP.NET Core."/>
+  <title>CMC AI Mentor Network | Live Portal</title>
+  <link rel="stylesheet" href="/styles.css"/>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="/" aria-label="Trang chủ Group 6"><span class="logo-icon">✳</span> CMC <span class="logo-muted">AI Mentor Network</span></a>
+    <div class="top-right"><span id="connection-dot" class="dot pending"></span><span id="connection-text" aria-live="polite">Đang kiểm tra PostgreSQL...</span></div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow"><span class="light-pill">GROUP 06</span> ASP.NET Core 10 • PostgreSQL • SSE</div>
+      <h1>Học cùng nhau.<br><span>Đồng bộ tức thì.</span></h1>
+      <p>Nơi sinh viên đăng nhu cầu học tập và tìm mentor. Bài đăng được lưu trên PostgreSQL, cập nhật cho các trình duyệt đang mở qua sự kiện thời gian thực.</p>
+      <div class="hero-actions"><a href="#create" class="primary-link">Đăng yêu cầu học tập</a><a href="#mentors" class="secondary-link">Khám phá mentor</a></div>
+      <div class="stats">
+        <div><span class="stat-number" id="request-count">⋯</span><span class="stat-label">Yêu cầu đã lưu</span></div>
+        <div><span class="stat-number" id="mentor-count">⋯</span><span class="stat-label">Mentor demo trong DB</span></div>
+        <div><span class="stat-number" id="mode-count">SSE</span><span class="stat-label">Đồng bộ qua sự kiện</span></div>
+      </div>
+    </section>
+    <section id="unavailable" class="status-panel hidden" role="status">
+      <strong>Chưa kết nối database.</strong> Backend ASP.NET đang chạy, nhưng tính năng lưu dữ liệu không khả dụng. Không có dữ liệu giả được ghi nhận là đã lưu.
+    </section>
+    <div class="columns">
+      <section class="panel" id="create">
+        <div class="heading"><span class="section-tag">01 / GỬI YÊU CẦU</span><h2>Chia sẻ điều bạn muốn học</h2></div>
+        <form id="post-form" novalidate>
+          <label for="nickname">Tên hiển thị <span class="muted">(có thể để trống)</span></label>
+          <input id="nickname" name="nickname" maxlength="36" autocomplete="off" placeholder="VD: Bạn AI K4"/>
+          <label for="topic">Chủ đề quan tâm</label>
+          <select id="topic" name="topic">
+            <option value="AI">AI / Machine Learning</option>
+            <option value="RAG">RAG / LLM</option>
+            <option value="Mentor">Tìm mentor</option>
+            <option value="Career">Hướng nghiệp</option>
+            <option value="Other">Khác</option>
+          </select>
+          <label for="message">Nội dung <span class="muted">(5 đến 380 ký tự)</span></label>
+          <textarea id="message" name="message" rows="5" maxlength="380" minlength="5" placeholder="Mình muốn tìm mentor để xây dựng một dự án RAG có nguồn trích dẫn..." required></textarea>
+          <div class="form-footer"><span id="length">0 / 380</span><span class="privacy">Không nhập số điện thoại, email, mật khẩu hoặc thông tin cá nhân nhạy cảm.</span></div>
+          <button id="submit" type="submit">Lưu vào PostgreSQL</button>
+          <div id="form-result" class="message" aria-live="polite"></div>
+        </form>
+        <div class="explain"><span>✦</span><p>Không cần đăng nhập cho bản demo. Bài viết hiển thị công khai, có kiểm tra đầu vào và giới hạn số lần gửi. Không có quyền sửa hoặc xóa bài của người khác.</p></div>
+      </section>
+      <section class="panel feed" id="feed">
+        <div class="heading"><span class="section-tag">02 / LIVE BOARD</span><h2>Yêu cầu mới nhất <span class="live-tag">LIVE</span></h2><p>Cập nhật trên mọi cửa sổ đang mở. Thử mở trang bằng hai trình duyệt.</p></div>
+        <div id="post-list" class="post-list" aria-live="polite"><div class="placeholder">Đang tải dữ liệu từ PostgreSQL...</div></div>
+        <p id="refreshed-at" class="updated"></p>
+      </section>
+    </div>
+    <section class="panel mentor-panel" id="mentors">
+      <div class="heading"><span class="section-tag">03 / MENTOR DIRECTORY</span><h2>Mentor minh họa</h2><p>Dữ liệu minh họa được khởi tạo trong bảng PostgreSQL. Không phải tài khoản người thật.</p></div>
+      <div id="mentor-list" class="mentor-grid"><div class="placeholder">Đang tải mentor...</div></div>
+    </section>
+    <section class="tech-note">
+      <strong>Phạm vi kiểm chứng:</strong> Website này triển khai luồng đọc/ghi dữ liệu thật, không phải một hệ thống đăng nhập nhiều vai trò hoặc ứng dụng dành cho sản xuất. Realtime SSE hoạt động trong một instance; khi mất kết nối sẽ tự kết nối lại, có polling dự phòng. Phiên bản demo miễn phí cần cấu hình Postgres còn hiệu lực và kiểm tra vận hành.
+    </section>
+  </main>
+  <footer>CMC AI Mentor Network · Nhóm 6 · Software Engineering · <a href="/health/live" target="_blank" rel="noreferrer">ASP.NET health</a> · <a href="/health/ready" target="_blank" rel="noreferrer">Database readiness</a></footer>
+</body>
+</html>
