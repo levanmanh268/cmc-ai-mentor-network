@@ -1,5 +1,6 @@
 using Xunit;
 using Group6Live;
+using Npgsql;
 
 namespace Group6Live.Tests;
 
@@ -60,5 +61,24 @@ public sealed class PortalValidationTests
         Assert.True(PortalValidation.TryValidate(new NewRequest("Bạn B", "AI", content), out var draft, out _));
         Assert.Equal(content, draft!.Message);
         // Browser renders via textContent, not innerHTML; this test only checks backend integrity.
+    }
+
+    [Fact]
+    public void PostgreSqlUrlRequiresTlsAndDecodesCredentials()
+    {
+        var connection = PortalStore.NormalizeConnectionString(
+            "postgresql://group6_user:p%40ssword@db.example.test:5432/group6_live");
+        var parsed = new NpgsqlConnectionStringBuilder(connection);
+        Assert.Equal("group6_user", parsed.Username);
+        Assert.Equal("p@ssword", parsed.Password);
+        Assert.Equal("group6_live", parsed.Database);
+        Assert.Equal(SslMode.Require, parsed.SslMode);
+    }
+
+    [Fact]
+    public void LocalDbConnectionStringCanUseTestOnlyNonTls()
+    {
+        const string local = "Host=127.0.0.1;Database=test;SSL Mode=Disable";
+        Assert.Equal(local, PortalStore.NormalizeConnectionString(local));
     }
 }
