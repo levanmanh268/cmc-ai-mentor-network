@@ -1,3 +1,4 @@
+using Xunit;
 using Group6Live;
 
 namespace Group6Live.Tests;
