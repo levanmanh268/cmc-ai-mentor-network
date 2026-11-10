@@ -9,7 +9,7 @@
 - Issue: #186
 - Pull Request: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/195
 - Reviewer độc lập: @levanmanh268 (được yêu cầu; review đang chờ)
-- Tình trạng: READY FOR REVIEW; CI và review chưa hoàn tất
+- Tình trạng: CI PASS; READY FOR REVIEW; review độc lập đang chờ
 
 ## 2. Mã nguồn và môi trường
 
@@ -33,7 +33,7 @@
 | TC-02 | Chạy `python -m pytest -q tests/test_source_score_sanitization.py tests/test_ui_helpers.py` | Kiểm thử mới và hành vi helper hiện có đều đạt | 15 passed | PASS | Lệnh pytest local |
 | TC-03 | Chạy `python -m pytest -q` trên Windows | Toàn bộ suite đạt | 315 passed, 26 skipped, 2 failed. Hai test `test_architecture_docs` không khởi chạy được `git` (`WinError 2`) trong full-suite run | FAIL môi trường | Lệnh pytest local |
 | TC-04 | Chạy riêng `python -m pytest -q tests/test_architecture_docs.py` khi Git có trên PATH | Kiểm tra tài liệu kiến trúc đạt | 8 passed | PASS | Lệnh pytest local |
-| TC-05 | GitHub Actions trên PR #195 | Các job liên quan đạt | Đang chạy tại thời điểm ghi báo cáo | PENDING | https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42870573757 |
+| TC-05 | GitHub Actions trên PR #195 | Linux regression, Windows tests, browser E2E và hai Mermaid jobs đạt | 5/5 jobs thành công trên PR head `454cdb5c72189ceb4686e21d51e87a1fdc4affcf` | PASS | https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42870851189 |
 
 ## 4. Thay đổi và giới hạn
 
@@ -41,13 +41,13 @@
 - Giữ hành vi chấp nhận chuỗi số hợp lệ và clamp điểm hữu hạn vào `[0.0, 1.0]`.
 - Không gọi LLM/provider, không dùng dữ liệu cá nhân hoặc credential thật.
 - Hai lỗi của full-suite run chỉ ghi nhận là lỗi khởi chạy tiến trình `git`; chưa xác định nguyên nhân cụ thể. Không tuyên bố full suite đạt.
-- UAT người dùng, CI Windows/Linux, review độc lập và kiểm tra trên `main`: PENDING.
+- CI Linux/Windows: PASS trên PR head `454cdb5c72189ceb4686e21d51e87a1fdc4affcf`. Review độc lập, UAT người dùng và kiểm tra trên `main`: PENDING.
 
 ## 5. Kết luận và bàn giao
 
-**Kết luận:** READY FOR REVIEW. Thay đổi và kiểm thử hồi quy đã push lên PR #195; issue chưa được đóng. Chờ CI xanh và review độc lập trước khi merge.
+**Kết luận:** READY FOR REVIEW. CI Linux/Windows và các workflow liên quan đã xanh trên PR #195; issue chưa được đóng. Chờ review độc lập trước khi merge.
 
 - SHA đã kiểm thử local: `3b47b05d5e1652e6246ba2849834b0d22a9c99b4`
-- CI run: https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42870573757 (pending)
+- CI run: https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42870851189 (5/5 jobs passed)
 - Merge SHA / CI hậu merge: PENDING
 - Pull Request: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/195
