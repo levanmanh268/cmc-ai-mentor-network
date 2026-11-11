@@ -81,4 +81,35 @@ public sealed class PortalValidationTests
         const string local = "Host=127.0.0.1;Database=test;SSL Mode=Disable";
         Assert.Equal(local, PortalStore.NormalizeConnectionString(local));
     }
+
+    [Fact]
+    public void AcceptsValidCommunityMentorSuggestion()
+    {
+        var submitted = new MentorSubmission("Mentor Demo", "AI Engineer", "CMCU",
+            "NLP & LLM", 4, "Dạy các môn AI, RAG và kiểm thử phần mềm.",
+            new[] { "RAG", "Python" }, new[] { "Project" });
+        Assert.True(MentorSubmissionValidator.TryValidate(submitted, out var cleaned, out _));
+        Assert.Equal("Mentor Demo", cleaned!.Name);
+    }
+
+    [Fact]
+    public void MentorSuggestionRejectsInvalidExperienceAndPrivateControlChars()
+    {
+        var input = new MentorSubmission("A", "Engineer", "Demo", "AI",
+            -1, "Hỗ trợ dự án AI", new[] { "AI" }, new[] { "Project" });
+        Assert.False(MentorSubmissionValidator.TryValidate(input, out _, out _));
+        Assert.False(MentorSubmissionValidator.TryValidate(
+            input with { ExperienceYears = 2, Name = "bad\u0000name" }, out _, out _));
+    }
+
+    [Fact]
+    public void MentorSuggestionRejectsFakeSupportAndEmptySkills()
+    {
+        var original = new MentorSubmission("A", "Engineer", "Demo", "AI",
+            2, "Hỗ trợ dự án AI", new[] { "AI" }, new[] { "Project" });
+        Assert.False(MentorSubmissionValidator.TryValidate(
+            original with { AvailableFor = new[] { "Untrusted role" } }, out _, out _));
+        Assert.False(MentorSubmissionValidator.TryValidate(
+            original with { Strengths = Array.Empty<string>() }, out _, out _));
+    }
 }
