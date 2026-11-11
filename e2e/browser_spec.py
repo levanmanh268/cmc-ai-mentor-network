@@ -123,7 +123,9 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
     else:
         pytest.fail("RAG mode dropdown could not reach grounded mode after 3 UI attempts")
     expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
-    chat = page.locator('[data-testid="stChatInput"] textarea')
+    # Streamlit may briefly keep the disabled general-chat textarea in DOM.
+    # Select the active grounded RAG textbox rather than both textareas.
+    chat = page.locator('[data-testid="stChatInput"] textarea:not([disabled])').first
     expect(chat).to_be_enabled()
     chat.fill("Issue và Pull Request sau commit?")
     chat.press("Enter")
