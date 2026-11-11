@@ -5,7 +5,7 @@ namespace Group6Live;
 /// <summary>
 /// PostgreSQL persistence. Never falls back to an in-memory "database".
 /// </summary>
-public sealed class PortalStore : IAsyncDisposable
+public sealed partial class PortalStore : IAsyncDisposable
 {
     private readonly NpgsqlDataSource? _source;
     private readonly SemaphoreSlim _initLock = new(1, 1);
@@ -69,6 +69,20 @@ public sealed class PortalStore : IAsyncDisposable
                 );
                 CREATE INDEX IF NOT EXISTS idx_group6_live_requests_recent
                   ON group6_live.requests (id DESC);
+                CREATE TABLE IF NOT EXISTS group6_live.mentor_suggestions (
+                    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    title VARCHAR(100) NOT NULL,
+                    company VARCHAR(120) NOT NULL,
+                    field VARCHAR(80) NOT NULL,
+                    experience_years INTEGER NOT NULL CHECK (experience_years >= 0 AND experience_years <= 80),
+                    bio VARCHAR(600) NOT NULL,
+                    strengths TEXT[] NOT NULL,
+                    available_for TEXT[] NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+                CREATE INDEX IF NOT EXISTS idx_group6_live_mentor_suggestions_recent
+                  ON group6_live.mentor_suggestions (id DESC);
                 CREATE TABLE IF NOT EXISTS group6_live.mentors (
                     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                     name VARCHAR(80) NOT NULL,
