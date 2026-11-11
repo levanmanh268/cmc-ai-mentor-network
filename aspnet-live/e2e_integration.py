@@ -86,6 +86,29 @@ def main():
             assert all(m["name"].startswith("Mentor Demo") for m in mentors)
             tests.append("postgres_mentor_seed")
 
+            before_mentors = request("/api/mentor-suggestions")
+            assert isinstance(before_mentors, list)
+            new_mentor = request("/api/mentor-suggestions", method="POST", expected=201, data={
+                "name": "Mentor CI Demo", "title": "AI Engineer",
+                "company": "Test Campus", "field": "NLP & LLM",
+                "experienceYears": 2,
+                "bio": "Mentor giả lập để kiểm tra đồng bộ và lưu trữ.",
+                "strengths": ["RAG", "Python"], "availableFor": ["Project"]
+            })
+            assert new_mentor["id"] > 0
+            assert new_mentor["verificationStatus"] == "unverified"
+            listed = request("/api/mentor-suggestions")
+            assert any(m["id"] == new_mentor["id"] for m in listed)
+            tests.append("persisted_unverified_mentor_suggestion")
+            bad_mentor = request("/api/mentor-suggestions", method="POST", expected=400, data={
+                "name": "Bad", "title": "AI", "company": "Test",
+                "field": "NLP", "experienceYears": -1,
+                "bio": "Không hợp lệ", "strengths": ["RAG"],
+                "availableFor": ["Project"]
+            })
+            assert "error" in bad_mentor
+            tests.append("mentor_suggestion_validation")
+
             initial = request("/api/requests")
             assert isinstance(initial, list)
             item = request("/api/requests", method="POST", expected=201, data={
@@ -132,6 +155,9 @@ def main():
             assert any(x["id"] == item["id"] for x in after_restart)
             assert any(x["id"] == item2["id"] for x in after_restart)
             tests.append("postgres_persistence_after_process_restart")
+            mentor_after_restart = request("/api/mentor-suggestions")
+            assert any(x["id"] == new_mentor["id"] for x in mentor_after_restart)
+            tests.append("community_mentor_persistence_after_restart")
         finally:
             stop(proc)
     evidence = {"status": "PASS", "storage": "real-postgresql", "cases": tests, "count": len(tests)}
