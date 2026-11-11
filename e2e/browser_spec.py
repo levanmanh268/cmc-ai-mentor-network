@@ -168,7 +168,7 @@ def test_browser06_created_mentor_is_visible_only_in_creator_session(browser, lo
         first_page.get_by_label("Kỹ năng / thế mạnh *", exact=True).fill("RAG, Python")
         first_page.get_by_label("Loại hỗ trợ *", exact=True).click()
         first_page.get_by_role("option", name="Project").click()
-        first_page.get_by_role("button", name="Tạo Mentor trong phiên").click()
+        first_page.locator('[data-testid="stFormSubmitButton"] button').first.click()
         expect(first_page.get_by_text(re.compile("Browser Session Mentor")).first).to_be_visible()
         first_page.get_by_role("button", name=re.compile("Tìm Mentor")).click()
         expect(first_page.get_by_text(re.compile("Browser Session Mentor")).first).to_be_visible(timeout=20_000)
