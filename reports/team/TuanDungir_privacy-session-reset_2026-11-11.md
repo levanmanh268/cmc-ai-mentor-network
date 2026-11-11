@@ -7,9 +7,9 @@
 - Vai trò: QA / privacy
 - Ngày: 2026-11-11
 - Issue: #188
-- Pull Request: PENDING
+- Pull Request: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/197
 - Reviewer độc lập: PENDING
-- Tình trạng: READY FOR REVIEW; CI và review đang chờ
+- Tình trạng: CI PASS; READY FOR REVIEW; review độc lập đang chờ
 
 ## 2. Mã nguồn và môi trường
 
@@ -31,7 +31,7 @@
 | --- | --- | --- | --- | --- | --- |
 | TC-01 | `python -m pytest -q tests/test_privacy_session_reset.py tests/test_profile_helpers.py tests/test_ui_helpers.py` | Reset hồ sơ A xóa profile/matching A, giữ favorites/chat A và không sửa session B; clear chat xóa messages A, giữ favorites/profile A và không sửa session B | 15 passed | PASS | Lệnh pytest local |
 | TC-02 | `python -m pytest -q` | Toàn bộ repository suite đạt | 308 passed, 26 skipped; 2 test kiến trúc thất bại vì full-suite process không khởi chạy được `git` (`WinError 2`) | FAIL môi trường | Lệnh pytest local |
-| TC-03 | GitHub Actions trên PR | CI Linux/Windows và các workflow bắt buộc đạt | Chưa tạo PR tại thời điểm ghi báo cáo | PENDING | PENDING |
+| TC-03 | GitHub Actions trên PR | CI Linux/Windows và các workflow bắt buộc đạt | 5/5 jobs thành công trên PR SHA `24befa91c71b08e1d32ee29a840fe591db276152` | PASS | https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42932441796 |
 
 ## 4. Phạm vi và giới hạn
 
@@ -42,9 +42,9 @@
 
 ## 5. Kết luận và bàn giao
 
-**Kết luận:** READY FOR REVIEW. Hai test session-reset và các test helper liên quan đạt; CI và review độc lập vẫn pending.
+**Kết luận:** READY FOR REVIEW. Hai test session-reset, các test helper liên quan và CI Linux/Windows đều đạt; review độc lập vẫn pending.
 
 - Commit test: `52466a719d911823c6b922aed4625800861c9dca`
-- CI run: PENDING
-- PR: PENDING
+- CI run: https://github.com/levanmanh268/cmc-ai-mentor-network/actions/runs/42932441796 (5/5 jobs passed)
+- PR: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/197
 - Merge SHA / CI trên `main`: PENDING
