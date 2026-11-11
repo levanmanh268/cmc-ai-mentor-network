@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bibeoshop | Điện thoại nổi bật</title>
+<style>
+:root {
+    --primary-color: #2563eb;
+    --background-color: #f3f6fc;
+    --spacing: 20px;
+    --text-color: #172033;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.5;
+}
+header {
+    background: #fff;
+    padding: 16px 6%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 2px 12px #14234112;
+}
+.logo { color: var(--primary-color); font-size: 25px; font-weight: 800; }
+.header-cart {
+    display: flex; align-items: center; gap: 9px;
+    background: #eaf1ff; color: var(--primary-color);
+    padding: 9px 14px; border-radius: 30px; font-weight: 700;
+}
+.header-cart svg { width: 23px; height: 23px; }
+#cart-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 24px; height: 24px; padding: 0 6px;
+    color: #fff; background: var(--primary-color); border-radius: 50%;
+}
+main { max-width: 1200px; margin: auto; padding: 38px 24px; }
+.page-heading { margin-bottom: 26px; }
+.page-heading h1 { font-size: clamp(27px, 4vw, 36px); margin-bottom: 7px; }
+.page-heading p { color: #667085; }
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing);
+}
+.product-card {
+    background: #fff; border-radius: 15px; overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 14px #14234112;
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+.product-card:hover {
+    transform: translateY(-7px);
+    box-shadow: 0 15px 30px #14234125;
+}
+.product-image {
+    height: 220px; padding: 14px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: #edf2ff;
+}
+.product-image img {
+    width: 100%; height: 100%; object-fit: contain;
+    transition: transform .3s ease;
+}
+.product-card:hover .product-image img { transform: scale(1.08); }
+.product-info { padding: 17px; display: flex; flex-direction: column; flex: 1; }
+.tag {
+    align-self: flex-start; color: var(--primary-color); background: #eaf1ff;
+    border-radius: 5px; padding: 4px 8px; font-size: 11px;
+    font-weight: 800; margin-bottom: 10px;
+}
+.product-name { font-size: 17px; margin-bottom: 8px; }
+.description { color: #667085; font-size: 13px; margin-bottom: 14px; }
+.price { color: var(--primary-color); font-size: 19px; font-weight: 800; margin-top: auto; margin-bottom: 14px; }
+.add-to-cart {
+    width: 100%; padding: 11px 10px; border: 0; border-radius: 8px;
+    color: #fff; background: var(--primary-color); font-weight: 700;
+    cursor: pointer; transition: background .2s;
+}
+.add-to-cart:hover { background: #1d4ed8; }
+.cart-section {
+    margin-top: 38px; padding: 24px; background: #fff;
+    border-radius: 16px; box-shadow: 0 4px 14px #14234112;
+}
+.cart-section h2 { margin-bottom: 15px; font-size: 23px; }
+.mini-cart {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+}
+.mini-cart p { margin: 4px 0; }
+.unit-price { color: #667085; }
+.quantity-control { display: flex; align-items: center; gap: 8px; }
+.quantity-control button {
+    width: 38px; height: 38px; border: 1px solid #d0d5dd;
+    border-radius: 8px; background: #fff; font-size: 22px; cursor: pointer;
+}
+.quantity-control button:hover { background: #eaf1ff; }
+#quantity {
+    width: 58px; height: 38px; text-align: center;
+    border: 1px solid #d0d5dd; border-radius: 8px; font-size: 16px;
+}
+.total { margin-top: 17px; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+.total strong { color: var(--primary-color); font-size: 22px; }
+footer { text-align: center; padding: 25px; color: #667085; }
+
+/* MODAL POPUP */
+.modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0, 0, 0, .58);
+    align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal-dialog {
+    width: min(100%, 420px); position: relative; background: #fff;
+    border-radius: 16px; padding: 32px 25px 25px;
+    text-align: center; box-shadow: 0 20px 60px #0003;
+    animation: pop-in .2s ease-out;
+}
+@keyframes pop-in {
+    from { opacity: 0; transform: translateY(10px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-close-x {
+    position: absolute; top: 9px; right: 13px; border: 0;
+    background: transparent; font-size: 27px; cursor: pointer; color: #667085;
+}
+.modal-check {
+    width: 58px; height: 58px; margin: 0 auto 15px;
+    border-radius: 50%; display: grid; place-items: center;
+    background: #dcfce7; color: #15803d; font-size: 30px;
+}
+.modal-dialog h2 { font-size: 22px; margin-bottom: 9px; }
+.modal-dialog p { color: #667085; margin-bottom: 22px; }
+.modal-close-button {
+    border: 0; border-radius: 8px; padding: 11px 25px;
+    background: var(--primary-color); color: #fff; font-weight: 700; cursor: pointer;
+}
+.modal-close-button:hover { background: #1d4ed8; }
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+    header { padding: 14px 16px; }
+    .logo { font-size: 21px; }
+    main { padding: 26px 16px; }
+    .product-grid { grid-template-columns: 1fr; gap: 16px; }
+    .product-image { height: 260px; }
+    .mini-cart { grid-template-columns: 1fr; }
+    .quantity-control { justify-content: flex-start; }
+    .cart-section { padding: 18px; }
+}
+</style>
+</head>
+<body>
+<header>
+    <div class="logo">Bibeoshop</div>
+    <div class="header-cart" aria-label="Giỏ hàng">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"></path>
+        </svg>
+        Giỏ hàng <span id="cart-count">0</span>
+    </div>
+</header>
+
+<main>
+    <section class="page-heading">
+        <h1>Điện thoại nổi bật</h1>
+        <p>Khám phá các mẫu điện thoại hiện đại với mức giá hấp dẫn tại Bibeoshop.</p>
+    </section>
+
+    <section class="product-grid" aria-label="Danh sách điện thoại">
+        <article class="product-card">
+            <div class="product-image">
+                <img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=700&q=85"
+                     alt="Điện thoại thông minh màu tối" loading="lazy">
+            </div>
+            <div class="product-info">
+                <span class="tag">BÁN CHẠY</span>
+                <h2 class="product-name">iphone 15 promax</h2>
+                <p class="description">Màn hình sắc nét, camera chụp ảnh ấn tượng.</p>
+                <p class="price">12.990.000 VNĐ</p>
+                <button class="add-to-cart" data-name="iphone 15 promax">🛒 Thêm vào giỏ</button>
+            </div>
+        </article>
+
+        <article class="product-card">
+            <div class="product-image">
+                <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=85"
+                     alt="Điện thoại thông minh" loading="lazy">
+            </div>
+            <div class="product-info">
+                <span class="tag">MỚI RA MẮT</span>
+                <h2 class="product-name">iphone xs max</h2>
+                <p class="description">Thiết kế hiện đại, hiệu năng mượt mà.</p>
+                <p class="price">16.490.000 VNĐ</p>
+                <button class="add-to-cart" data-name="iphone xs max">🛒 Thêm vào giỏ</button>
+            </div>
+        </article>
+
+        <article class="product-card">
+            <div class="product-image">
+                <img src="https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=700&q=85"
+                     alt="Điện thoại thông minh màn hình lớn" loading="lazy">
+            </div>
+            <div class="product-info">
+                <span class="tag">ƯU ĐÃI</span>
+                <h2 class="product-name">samsung S24 ultra</h2>
+                <p class="description">Pin bền bỉ, màn hình lớn cho nhu cầu giải trí.</p>
+                <p class="price">8.490.000 VNĐ</p>
+                <button class="add-to-cart" data-name="samsung S24 ultra">🛒 Thêm vào giỏ</button>
+            </div>
+        </article>
+
+        <article class="product-card">
+            <div class="product-image">
+                <img src="https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&w=700&q=85"
+                     alt="Điện thoại thông minh với cụm camera" loading="lazy">
+            </div>
+            <div class="product-info">
+                <span class="tag">GIÁ TỐT</span>
+                <h2 class="product-name">iphone 11</h2>
+                <p class="description">Nhỏ gọn, thời trang, phù hợp mọi nhu cầu.</p>
+                <p class="price">6.990.000 VNĐ</p>
+                <button class="add-to-cart" data-name="iphone 11">🛒 Thêm vào giỏ</button>
+            </div>
+        </article>
+    </section>
+
+    <section class="cart-section">
+        <h2>🛒 Giỏ hàng mini</h2>
+        <div class="mini-cart">
+            <div>
+                <h3>iphone 15 promax</h3>
+                <p class="unit-price">Đơn giá: <strong id="unit-price">15000000</strong> VNĐ</p>
+            </div>
+            <div class="quantity-control" aria-label="Điều chỉnh số lượng">
+                <button type="button" id="decrease" aria-label="Giảm số lượng">−</button>
+                <input id="quantity" type="number" value="1" min="1" max="999" aria-label="Số lượng">
+                <button type="button" id="increase" aria-label="Tăng số lượng">+</button>
+            </div>
+        </div>
+        <div class="total">
+            <p>Tổng tiền: <strong id="total-price">15000000</strong> VNĐ</p>
+        </div>
+    </section>
+</main>
+
+<footer>© 2026 Bibeoshop - Công nghệ dành cho bạn.</footer>
+
+<div class="modal-overlay" id="success-modal" role="dialog" aria-modal="true"
+     aria-labelledby="modal-title" aria-hidden="true">
+    <div class="modal-dialog">
+        <button class="modal-close-x" id="close-x" type="button" aria-label="Đóng">×</button>
+        <div class="modal-check" aria-hidden="true">✓</div>
+        <h2 id="modal-title">Thành công!</h2>
+        <p>Đã thêm sản phẩm vào giỏ hàng thành công!</p>
+        <button class="modal-close-button" id="close-modal" type="button">Đóng</button>
+    </div>
+</div>
+
+<script>
+const unitPrice = 15000000;
+const quantityInput = document.getElementById("quantity");
+const totalPrice = document.getElementById("total-price");
+
+function updateTotal() {
+    let quantity = Number.parseInt(quantityInput.value, 10);
+
+    if (!Number.isFinite(quantity) || quantity < 1) quantity = 1;
+    if (quantity > 999) quantity = 999;
+
+    quantityInput.value = quantity;
+    totalPrice.textContent = unitPrice * quantity;
+}
+
+document.getElementById("increase").addEventListener("click", function () {
+    quantityInput.value = Number(quantityInput.value) + 1;
+    updateTotal();
+});
+
+document.getElementById("decrease").addEventListener("click", function () {
+    quantityInput.value = Math.max(1, Number(quantityInput.value) - 1);
+    updateTotal();
+});
+
+quantityInput.addEventListener("input", updateTotal);
+quantityInput.addEventListener("change", updateTotal);
+
+const modal = document.getElementById("success-modal");
+const closeModalButton = document.getElementById("close-modal");
+const closeXButton = document.getElementById("close-x");
+const cartCountDisplay = document.getElementById("cart-count");
+let cartCount = 0;
+
+function openModal() {
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+    closeModalButton.focus();
+}
+
+function closeModal() {
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+}
+
+document.querySelectorAll(".add-to-cart").forEach(function (button) {
+    button.addEventListener("click", function () {
+        cartCount += 1;
+        cartCountDisplay.textContent = cartCount;
+        openModal();
+    });
+});
+
+closeModalButton.addEventListener("click", closeModal);
+closeXButton.addEventListener("click", closeModal);
+
+modal.addEventListener("click", function (event) {
+    if (event.target === modal) closeModal();
+});
+document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && modal.classList.contains("show")) {
+        closeModal();
+    }
+});
+</script>
+</body>
+</html>
