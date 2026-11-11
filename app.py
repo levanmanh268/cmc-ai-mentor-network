@@ -476,7 +476,16 @@ elif page == "👥 Tìm Mentor":
 
     # Curated mentors, unverified shared suggestions and private drafts coexist.
     # Remote IDs are negative, so they never overwrite the original positive IDs.
-    mentor_pool = [*base_mentors, *shared_mentors, *st.session_state.draft_mentors]
+    include_unverified = st.checkbox(
+        "Tính cả đề xuất mentor chưa xác minh vào matching (chỉ để demo)",
+        value=False,
+        key="include_unverified_mentor_matches",
+    ) if shared_mentors else False
+    mentor_pool = [
+        *base_mentors,
+        *(shared_mentors if include_unverified else []),
+        *st.session_state.draft_mentors,
+    ]
 
     if backend_configured:
         st.subheader("🌐 Đề xuất mentor dùng chung")
