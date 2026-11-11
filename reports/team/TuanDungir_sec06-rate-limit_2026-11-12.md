@@ -5,7 +5,7 @@
 - Người thực hiện: Dương Tuấn Dũng (@TuanDungir)
 - Issue: #174
 - Pull Request triển khai liên quan: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/182
-- PR cập nhật evidence: PENDING
+- PR cập nhật evidence: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/201
 - Reviewer độc lập: PENDING
 - Tình trạng: BLOCKED — chờ review độc lập cho evidence PR; CI code hiện có đã đạt trên PR #182
 

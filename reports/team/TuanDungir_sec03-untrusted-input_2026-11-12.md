@@ -5,7 +5,7 @@
 - Người thực hiện: Dương Tuấn Dũng (@TuanDungir)
 - Issue: #171
 - PR code/security controls: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/182
-- PR bằng chứng issue #171/#174: PENDING
+- PR bằng chứng issue #171/#174: https://github.com/levanmanh268/cmc-ai-mentor-network/pull/201
 - Reviewer độc lập: PENDING
 - Tình trạng: BLOCKED — chờ CI/review độc lập cho PR bằng chứng; controls được triển khai ở PR #182
 
