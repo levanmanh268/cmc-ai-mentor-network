@@ -394,15 +394,36 @@ elif page == "👥 Tìm Mentor":
         delete_mentor_draft,
     )
     from mentors_data import get_mentor_repository
+    from mentor_api import (
+        MentorApiUnavailable, api_base_url, list_shared_mentor_suggestions,
+        publish_mentor_suggestion,
+    )
 
-    base_mentors = get_mentor_repository().list()
+    @st.cache_data(ttl=8, show_spinner=False)
+    def cached_shared_mentors():
+        return list_shared_mentor_suggestions()
+
+    base_mentors = get_mentor_repository().list()  # original curated mentor catalog
+    shared_mentors = []
+    backend_configured = bool(api_base_url())
+    if backend_configured:
+        try:
+            shared_mentors = cached_shared_mentors()
+        except MentorApiUnavailable:
+            st.warning(
+                "Backend PostgreSQL chưa sẵn sàng. Mentor mẫu và bản nháp phiên "
+                "vẫn hoạt động; chưa thể lưu dữ liệu dùng chung."
+            )
+    else:
+        st.caption("Chế độ demo theo phiên: chưa cấu hình backend lưu dữ liệu dùng chung.")
     if "draft_mentors" not in st.session_state:
         st.session_state.draft_mentors = []
 
     st.subheader("Tạo Mentor bản nháp trong phiên")
     st.caption(
-        "Mentor mới chỉ tồn tại trong phiên Streamlit này, không được lưu vào database "
-        "hay danh sách dùng chung và sẽ mất khi phiên kết thúc. Chỉ nhập dữ liệu demo có quyền sử dụng."
+        "Bản nháp mentor được tạo trong phiên Streamlit. Sau khi có PostgreSQL riêng và "
+        "backend hoạt động, có thể chọn gửi đề xuất lên bảng công khai. "
+        "Chỉ nhập dữ liệu demo hoặc thông tin được phép công bố."
     )
     with st.form("create_mentor_draft", clear_on_submit=True):
         draft_name = st.text_input("Tên mentor *", max_chars=100, key="mentor_draft_name")
@@ -442,7 +463,7 @@ elif page == "👥 Tìm Mentor":
                     "strengths": draft_strengths,
                     "available_for": draft_support,
                 },
-                base_mentors=base_mentors,
+                base_mentors=[*base_mentors, *shared_mentors],
                 allowed_fields=[mentor["field"] for mentor in base_mentors],
             )
         except (TypeError, ValueError) as exc:
@@ -453,13 +474,63 @@ elif page == "👥 Tìm Mentor":
             st.success(f"Đã tạo bản nháp Mentor {created['name']} trong phiên này.")
             st.rerun()
 
-    mentor_pool = [*base_mentors, *st.session_state.draft_mentors]
+    # Curated mentors, unverified shared suggestions and private drafts coexist.
+    # Remote IDs are negative, so they never overwrite the original positive IDs.
+    mentor_pool = [*base_mentors, *shared_mentors, *st.session_state.draft_mentors]
+
+    if backend_configured:
+        st.subheader("🌐 Đề xuất mentor dùng chung")
+        st.caption(
+            "Đây là hồ sơ do người dùng đề xuất, CHƯA được xác minh danh tính hay chuyên môn. "
+            "Danh sách tự cập nhật khoảng 10 giây khi cơ sở dữ liệu hoạt động."
+        )
+
+        @st.fragment(run_every="10s")
+        def live_shared_mentor_board():
+            try:
+                latest = list_shared_mentor_suggestions()
+            except MentorApiUnavailable:
+                st.info("Đang chờ kết nối PostgreSQL; thử lại tự động.")
+                return
+            if not latest:
+                st.info("Chưa có đề xuất mentor nào được lưu trên database.")
+            for mentor in latest:
+                st.text(
+                    f"[Chưa xác minh] {mentor['name']} • {mentor['title']} "
+                    f"• {mentor['company']} • {mentor['field']}"
+                )
+
+        live_shared_mentor_board()
+
     if st.session_state.draft_mentors:
         st.markdown("**Bản nháp trong phiên**")
         for draft in st.session_state.draft_mentors:
             st.text(f"{draft['name']} • {draft['title']} • {draft['company']}")
             if st.button("Xóa bản nháp", key=f"delete_draft_{draft['id']}"):
                 st.session_state.pending_draft_delete = draft["id"]
+            if backend_configured:
+                public_consent = st.checkbox(
+                    "Tôi xác nhận đây là dữ liệu demo/được phép công bố công khai.",
+                    key=f"consent_publish_{draft['id']}",
+                )
+                if st.button("Đăng đề xuất mentor lên PostgreSQL", key=f"publish_{draft['id']}"):
+                    if not public_consent:
+                        st.error("Cần xác nhận trước khi công bố mentor.")
+                    else:
+                        try:
+                            publish_mentor_suggestion(draft)
+                        except MentorApiUnavailable as exc:
+                            st.error(str(exc))
+                        else:
+                            st.session_state.draft_mentors = [
+                                item for item in st.session_state.draft_mentors
+                                if int(item["id"]) != int(draft["id"])
+                            ]
+                            st.session_state.top_matches = []
+                            st.session_state.match_explanations = {}
+                            cached_shared_mentors.clear()
+                            st.success("Đề xuất đã lưu trên PostgreSQL. Hồ sơ đang ở trạng thái chưa xác minh.")
+                            st.rerun()
 
         if st.session_state.get("pending_draft_delete") is not None:
             @st.dialog("Xóa Mentor bản nháp?")
