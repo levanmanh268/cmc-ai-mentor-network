@@ -32,9 +32,14 @@ app.Use(async (context, next) =>
         "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
     await next();
 });
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// ASP.NET is strictly the persistence API behind the EXISTING Streamlit UI.
+// Visiting its root sends users back to the original CMC AI Mentor Network.
 app.UseRateLimiter();
+app.MapGet("/", () => Results.Content(
+    "<!doctype html><html lang=\"vi\"><head><meta charset=\"utf-8\"><title>CMC AI Mentor Network</title>" +
+    "<meta http-equiv=\"refresh\" content=\"0; url=https://cmc-ai-mentor-network-group6.onrender.com\"></head>" +
+    "<body><p>Ứng dụng chính: <a href=\"https://cmc-ai-mentor-network-group6.onrender.com\">" +
+    "CMC AI Mentor Network</a></p></body></html>", "text/html; charset=utf-8"));
 
 app.MapGet("/health/live", () => Results.Ok(new
 {
