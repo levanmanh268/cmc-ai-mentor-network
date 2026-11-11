@@ -156,7 +156,13 @@ class KnowledgeBase:
 def _context_from_results(results: list[RetrievedChunk]) -> str:
     blocks = []
     for i, item in enumerate(results, start=1):
-        blocks.append(f"[S{i}] SOURCE={item.source}\n{item.text}")
+        untrusted_text = re.sub(
+            r"\[S([0-9]+)\]",
+            lambda match: f"［S{match.group(1)}］",
+            item.text,
+            flags=re.IGNORECASE,
+        )
+        blocks.append(f"[S{i}] SOURCE={item.source}\n{untrusted_text}")
     return "\n\n".join(blocks)
 
 
@@ -170,6 +176,12 @@ def _offline_answer(results: list[RetrievedChunk]) -> str:
     snippets = []
     for i, item in enumerate(results[:3], start=1):
         excerpt = item.text[:280].strip()
+        excerpt = re.sub(
+            r"\[S([0-9]+)\]",
+            lambda match: f"［S{match.group(1)}］",
+            excerpt,
+            flags=re.IGNORECASE,
+        )
         if len(item.text) > 280:
             excerpt += "…"
         snippets.append(f"[S{i}] {excerpt}")
