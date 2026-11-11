@@ -109,10 +109,19 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
             except PlaywrightTimeoutError:
                 page.keyboard.press("Escape")
                 continue
-        option.click()
-        break
+        try:
+            # React-Aria options can detach during Streamlit rerenders.
+            # Bound each attempt instead of waiting 30s on a stale locator.
+            option.click(timeout=2_500, force=True)
+            expect(
+                page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))
+            ).to_be_visible(timeout=8_000)
+            break
+        except (PlaywrightTimeoutError, AssertionError):
+            page.keyboard.press("Escape")
+            continue
     else:
-        pytest.fail("RAG mode dropdown did not expose the option after 3 UI attempts")
+        pytest.fail("RAG mode dropdown could not reach grounded mode after 3 UI attempts")
     expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
     chat = page.locator('[data-testid="stChatInput"] textarea')
     expect(chat).to_be_enabled()
