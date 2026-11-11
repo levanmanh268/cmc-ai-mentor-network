@@ -101,6 +101,35 @@ app.MapGet("/api/mentors", async (PortalStore store, ILogger<Program> log, Cance
     }
 });
 
+// These records are unverified public suggestions, separate from the curated mentor list.
+app.MapGet("/api/mentor-suggestions", async (PortalStore store, ILogger<Program> log, CancellationToken ct) =>
+{
+    try { return Results.Ok(await store.MentorSuggestionsAsync(ct)); }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        log.LogWarning("Mentor suggestion lookup failed: {Type}", ex.GetType().Name);
+        return Results.Json(new { error = "Database is not available" }, statusCode: 503);
+    }
+});
+
+app.MapPost("/api/mentor-suggestions", async (
+    MentorSubmission input, PortalStore store, LiveBus bus, ILogger<Program> log, CancellationToken ct) =>
+{
+    if (!MentorSubmissionValidator.TryValidate(input, out var cleaned, out var reason))
+        return Results.BadRequest(new { error = reason });
+    try
+    {
+        var saved = await store.CreateSuggestionAsync(cleaned!, ct);
+        bus.PublishChange();
+        return Results.Created($"/api/mentor-suggestions/{saved.Id}", saved);
+    }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        log.LogWarning("Mentor suggestion insert failed: {Type}", ex.GetType().Name);
+        return Results.Json(new { error = "Database is not available" }, statusCode: 503);
+    }
+}).RequireRateLimiting("public-write");
+
 app.MapPost("/api/requests", async (
     NewRequest input, PortalStore store, LiveBus bus, ILogger<Program> log, CancellationToken ct) =>
 {
