@@ -1,0 +1,50 @@
+name: Python dependency audit
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install repository test/runtime dependencies
+        run: python -m pip install -r requirements-test.txt
+
+      - name: Install pip-audit and patched build tooling
+        run: python -m pip install --upgrade "pip>=26.2" "setuptools>=84.1.0" pip-audit
+
+      - name: Audit declared test and runtime dependencies
+        run: |
+          mkdir -p reports
+          set +e
+          python -m pip_audit --local --strict --format json --output reports/pip-audit.json
+          audit_status=$?
+          cat reports/pip-audit.json
+          exit "$audit_status"
+
+      - name: Upload dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-${{ github.sha }}
+          path: reports/pip-audit.json
+          if-no-files-found: warn
+          retention-days: 30
