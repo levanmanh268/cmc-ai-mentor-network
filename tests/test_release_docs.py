@@ -54,3 +54,18 @@ def test_readme_has_release_navigation_and_documented_process():
     process = RELEASE_PROCESS.read_text(encoding="utf-8")
     assert "Closed Issue" in process
     assert "GitHub Release" in process
+
+
+def test_readme_support_matrix_covers_windows_linux_python_and_ci():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "## Ma trận môi trường hỗ trợ" in readme
+    for marker in (
+        "Windows 11",
+        "Ubuntu Linux",
+        "Python 3.11+",
+        "Chromium",
+        "run_windows.bat",
+        ".github/workflows/ci.yml",
+        "Streamlit",
+    ):
+        assert marker in readme, f"Missing support matrix marker: {marker}"

@@ -124,6 +124,19 @@ Ngoài ứng dụng môn học dùng Streamlit ở thư mục gốc, repository 
 
 Yêu cầu: **Python 3.11+**.
 
+## Ma trận môi trường hỗ trợ
+
+| Môi trường | Status | Bằng chứng / cách chạy |
+| --- | --- | --- |
+| Windows 11 / Server | Hỗ trợ chính thức cho local demo | `run_windows.bat` tạo `.venv`, cài dependency và khởi chạy Streamlit trên `http://localhost:8501` |
+| Ubuntu Linux (GitHub Actions `ubuntu-latest`) | Hỗ trợ chính thức cho CI tự động | `.github/workflows/ci.yml` chạy pytest, compile smoke, secret guard, Streamlit health check và các job kiểm tra Mermaid |
+| Windows GitHub Actions (`windows-latest`) | Hỗ trợ chính thức cho regression | `.github/workflows/ci.yml` chạy pytest Windows và kiểm tra startup Streamlit trên Windows |
+| Python runtime | 3.11+ | Tất cả hướng dẫn và CI đều cài Python 3.11; không cam kết hỗ trợ 3.10 hoặc thấp hơn |
+| Trình duyệt | Local browser default + Chromium-backed automation | Streamlit chạy trong browser local; CI cũng render Mermaid và E2E browser test có thể chạy trên Chromium khi cần |
+| Chế độ chạy | Offline-first, có opt-in Groq online | Nếu thiếu API key, chỉ RAG offline và matching hoạt động; người dùng phải bật đồng ý mới gửi request tới Groq |
+
+> **Giới hạn cam kết:** repo này không tuyên bố hỗ trợ mọi distro Linux, mọi phiên bản browser, hay mọi thiết bị Mac/ARM. Mục tiêu hiện tại là `Windows 11` và `Ubuntu latest` trên GitHub Actions, với Python 3.11+ và browser hiện hành của Streamlit/Chromium. Mọi lỗi tương thích khác phải được ghi nhận rõ trong issue cùng bằng chứng chạy và log.
+
 ### Windows: cách đơn giản nhất (khuyến nghị)
 
 Tải repo về hoặc `git clone`, rồi **nhấp đúp `run_windows.bat`** trong thư mục gốc. Trình khởi chạy tự tạo `.venv`, cài các thư viện và chạy Streamlit. Nếu trình duyệt không tự bật, mở **http://localhost:8501**. Không cần tạo `.env` khi chỉ muốn dùng offline demo.
