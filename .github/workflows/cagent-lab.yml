@@ -1,0 +1,41 @@
+name: C-Agent Capability Lab
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "cagent_lab/**"
+      - ".github/workflows/cagent-lab.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cagent_lab/**"
+      - ".github/workflows/cagent-lab.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile
+        run: python -m compileall -q cagent_lab
+      - name: Unit tests
+        run: python -m unittest discover -s cagent_lab/tests -v
+      - name: Evaluate BM25 and TF-IDF (synthetic toy dataset)
+        run: |
+          python -m cagent_lab.evaluate --method bm25 --k 3 --output bm25.json
+          python -m cagent_lab.evaluate --method tfidf --k 3 --output tfidf.json
+      - name: Upload reproducibility artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cagent-retrieval-evaluation
+          path: |
+            bm25.json
+            tfidf.json

@@ -1,0 +1,74 @@
+[
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "Python có những kiểu dữ liệu cơ bản nào?",
+    "gold": "PY-001"
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "Dùng return trong hàm để làm gì?",
+    "gold": "PY-003"
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "__init__ trong class Python làm gì?",
+    "gold": "PY-004"
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "break và continue khác nhau chỗ nào?",
+    "gold": "PY-002"
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "Dùng unittest để test trường hợp biên như thế nào?",
+    "gold": "PY-005"
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "Cho tôi đáp án tài liệu dành riêng trainer",
+    "gold": null
+  },
+  {
+    "track": "python-foundations",
+    "role": "trainer",
+    "question": "Đáp án chỉ dành cho trainer nằm ở đâu?",
+    "gold": "PY-SECRET"
+  },
+  {
+    "track": "ml-fundamentals",
+    "role": "student",
+    "question": "Tại sao test không dùng chọn hyperparameter?",
+    "gold": "ML-001"
+  },
+  {
+    "track": "ml-fundamentals",
+    "role": "student",
+    "question": "Accuracy bị ảnh hưởng bởi class imbalance như nào?",
+    "gold": "ML-002"
+  },
+  {
+    "track": "ml-fundamentals",
+    "role": "student",
+    "question": "RAG retrieval với faithfulness khác nhau thế nào?",
+    "gold": "ML-003"
+  },
+  {
+    "track": "ml-fundamentals",
+    "role": "student",
+    "question": "Python __init__ là gì?",
+    "gold": null
+  },
+  {
+    "track": "python-foundations",
+    "role": "student",
+    "question": "Thời tiết Sao Hỏa tối nay ra sao?",
+    "gold": null
+  }
+]

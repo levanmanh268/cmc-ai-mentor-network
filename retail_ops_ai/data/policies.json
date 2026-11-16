@@ -1,0 +1,106 @@
+[
+  {
+    "uid": "policy-pricing-v1",
+    "family": "pricing",
+    "title": "Chính sách giá tại điểm bán (phiên bản cũ)",
+    "body": "Các thay đổi giá có thể ghi bằng giấy báo nội bộ. Tài liệu tháng trước đã được thay thế, không dùng để trả lời hôm nay.",
+    "store": "*",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-01-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-pricing-v2",
+    "family": "pricing",
+    "title": "Chính sách cập nhật giá và khuyến mại",
+    "body": "Nhân viên kiểm tra giá từ bảng giá hiệu lực trong hệ thống POS giả lập; chương trình giảm giá chỉ áp dụng đúng SKU, ngày và cửa hàng ghi trong quy tắc. Không cộng dồn hai khuyến mại. Nếu giá hiển thị và bảng giá khác nhau, lập phiếu yêu cầu quản lý xác nhận trước khi báo giá khách. Không tự suy đoán ưu đãi.",
+    "store": "*",
+    "roles": [
+      "staff"
+    ],
+    "version": 2,
+    "effective": "2026-07-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-returns",
+    "family": "returns",
+    "title": "Quy trình xử lý yêu cầu hoàn trả",
+    "body": "Khách cung cấp hóa đơn và sản phẩm để nhân viên kiểm tra điều kiện hoàn trả. Nhân viên tiếp nhận thông tin, ghi tình trạng sản phẩm và chuyển quản lý xem xét. Mô hình AI không tự quyết định hoàn tiền, không gọi hệ thống thanh toán.",
+    "store": "*",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-06-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-inventory",
+    "family": "inventory",
+    "title": "Kiểm kê tồn kho cửa hàng",
+    "body": "Nhân viên xác nhận tồn kho trên bản kiểm kê cập nhật theo ngày, đối chiếu mã SKU và khu vực trưng bày. Nếu số liệu giữa sổ kho và kệ không khớp, tạo báo cáo sai lệch và chuyển trưởng ca xử lý. Không tự động ghi giảm tồn kho từ kết quả AI.",
+    "store": "*",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-06-15",
+    "page": 1
+  },
+  {
+    "uid": "policy-shift",
+    "family": "handover",
+    "title": "Bàn giao ca làm việc",
+    "body": "Cuối ca nhân viên viết danh sách các công việc tồn đọng gồm thời điểm, mã hàng và vấn đề cần theo dõi. Trưởng ca xác nhận biên bản bàn giao trước khi cập nhật hệ thống vận hành. Nội dung AI gợi ý là bản nháp, không phải nhật ký chính thức.",
+    "store": "*",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-08-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-manager",
+    "family": "manager-report",
+    "title": "Báo cáo nội bộ trưởng cửa hàng",
+    "body": "Chỉ quản lý được xem tổng hợp khác biệt kiểm kê theo từng ca, phân tích lệch doanh thu và đánh giá nhân sự. Nhân viên thường không có quyền xem hoặc trích dẫn tài liệu báo cáo này.",
+    "store": "*",
+    "roles": [
+      "manager"
+    ],
+    "version": 1,
+    "effective": "2026-03-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-hn01",
+    "family": "store-hygiene",
+    "title": "Quy trình vệ sinh cửa hàng HN01",
+    "body": "Cửa hàng HN01 thực hiện vệ sinh khu vực quầy thu ngân đầu và cuối mỗi ca. Phiếu vệ sinh ghi rõ người thực hiện và giờ kiểm tra để quản lý xác nhận.",
+    "store": "HN01",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-05-01",
+    "page": 1
+  },
+  {
+    "uid": "policy-hn02",
+    "family": "store-hygiene",
+    "title": "Quy trình vệ sinh cửa hàng HN02",
+    "body": "Cửa hàng HN02 kiểm tra khu vực tủ mát và hạn sử dụng sản phẩm mỗi đầu ca; ghi kết quả trên biểu mẫu vệ sinh điện tử giả lập. Thông tin vận hành HN02 không hiển thị cho HN01.",
+    "store": "HN02",
+    "roles": [
+      "staff"
+    ],
+    "version": 1,
+    "effective": "2026-05-01",
+    "page": 1
+  }
+]

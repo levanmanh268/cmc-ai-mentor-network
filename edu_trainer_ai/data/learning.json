@@ -1,0 +1,99 @@
+{
+  "questions": [
+    {
+      "id": "PY-Q1",
+      "track": "python-foundations",
+      "module": "01-intro",
+      "prompt": "Kiểu dữ liệu nào thể hiện số nguyên?",
+      "options": {
+        "A": "int",
+        "B": "str",
+        "C": "dict",
+        "D": "float"
+      },
+      "correct": "A"
+    },
+    {
+      "id": "PY-Q2",
+      "track": "python-foundations",
+      "module": "02-control",
+      "prompt": "Từ khóa nào thoát vòng lặp?",
+      "options": {
+        "A": "continue",
+        "B": "break",
+        "C": "pass",
+        "D": "return"
+      },
+      "correct": "B"
+    },
+    {
+      "id": "PY-Q3",
+      "track": "python-foundations",
+      "module": "03-functions",
+      "prompt": "Từ khóa nào dùng để định nghĩa hàm?",
+      "options": {
+        "A": "function",
+        "B": "let",
+        "C": "def",
+        "D": "class"
+      },
+      "correct": "C"
+    },
+    {
+      "id": "ML-Q1",
+      "track": "ml-fundamentals",
+      "module": "01-data",
+      "prompt": "Tập nào dùng chọn siêu tham số?",
+      "options": {
+        "A": "test",
+        "B": "validation",
+        "C": "production",
+        "D": "none"
+      },
+      "correct": "B"
+    },
+    {
+      "id": "ML-Q2",
+      "track": "ml-fundamentals",
+      "module": "02-metrics",
+      "prompt": "Metric nào liên quan false negatives?",
+      "options": {
+        "A": "recall",
+        "B": "lossless",
+        "C": "entropy",
+        "D": "latency"
+      },
+      "correct": "A"
+    }
+  ],
+  "rubrics": [
+    {
+      "id": "PY-R1",
+      "track": "python-foundations",
+      "criteria": [
+        {
+          "criterion": "Định nghĩa hàm",
+          "evidence": "def return"
+        },
+        {
+          "criterion": "Biết kiểm thử",
+          "evidence": "unittest assert test"
+        }
+      ]
+    },
+    {
+      "id": "ML-R1",
+      "track": "ml-fundamentals",
+      "criteria": [
+        {
+          "criterion": "Chia tập dữ liệu",
+          "evidence": "train validation test"
+        },
+        {
+          "criterion": "Ngăn data leakage",
+          "evidence": "leakage siêu tham số"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "snapshot_date": "2026-10-12",
+  "products": {
+    "SNK-001": {
+      "name": "Bánh quy mẫu",
+      "price_vnd": 15000
+    },
+    "DRK-002": {
+      "name": "Nước uống mẫu",
+      "price_vnd": 12000
+    },
+    "MIL-003": {
+      "name": "Sữa hộp mẫu",
+      "price_vnd": 22000
+    },
+    "COF-004": {
+      "name": "Cà phê đóng chai mẫu",
+      "price_vnd": 19000
+    }
+  },
+  "stock": {
+    "HN01": {
+      "SNK-001": 15,
+      "DRK-002": 8,
+      "MIL-003": 0,
+      "COF-004": 12
+    },
+    "HN02": {
+      "SNK-001": 3,
+      "DRK-002": 11,
+      "MIL-003": 5,
+      "COF-004": 2
+    }
+  },
+  "promotions": [
+    {
+      "id": "DEMO-OCT10",
+      "sku": "SNK-001",
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "discount_rate": "0.10",
+      "store": "HN01"
+    },
+    {
+      "id": "DEMO-DRINK5",
+      "sku": "DRK-002",
+      "start": "2026-10-10",
+      "end": "2026-10-20",
+      "discount_rate": "0.05",
+      "store": "*"
+    }
+  ]
+}

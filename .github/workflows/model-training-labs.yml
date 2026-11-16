@@ -1,0 +1,62 @@
+name: Model Pre- and Post-training Labs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'model_pretraining_lab/**'
+      - 'model_posttraining_lab/**'
+      - '.github/workflows/model-training-labs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'model_pretraining_lab/**'
+      - 'model_posttraining_lab/**'
+      - '.github/workflows/model-training-labs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-training:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile modules
+        run: python -m compileall -q model_pretraining_lab model_posttraining_lab
+      - name: Run pre-training tests
+        run: python -m unittest discover -s model_pretraining_lab/tests -v
+      - name: Run post-training tests
+        run: python -m unittest discover -s model_posttraining_lab/tests -v
+      - name: Real from-scratch causal bigram pre-training
+        run: python -m model_pretraining_lab.core --output-dir artifacts/pretraining --epochs 5
+      - name: Real SFT and DPO from saved pretrained checkpoint
+        run: python -m model_posttraining_lab.core --pretrained artifacts/pretraining/tiny_pretrained.json --output-dir artifacts/posttraining
+      - name: Verify numerical and leakage invariants
+        shell: python
+        run: |
+          import json, math
+          with open('artifacts/pretraining/metrics.json',encoding='utf-8') as f: p=json.load(f)
+          with open('artifacts/posttraining/metrics.json',encoding='utf-8') as f: q=json.load(f)
+          assert p['train_nll_final'] < p['train_nll_initial']
+          assert p['test_docs'] == 2 and p['val_docs'] == 2
+          assert q['train_examples'] == 8 and q['test_examples'] == 2
+          assert math.isfinite(q['validation_preference_margin_after_dpo'])
+          print('Verified real optimization and train/validation/test partitions')
+      - name: Upload metrics (Ubuntu/Python 3.11 only)
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-training-lab-metrics
+          path: |
+            artifacts/pretraining/metrics.json
+            artifacts/posttraining/metrics.json

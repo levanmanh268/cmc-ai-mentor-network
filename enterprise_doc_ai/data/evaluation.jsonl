@@ -1,0 +1,80 @@
+{"id":"Q001","question":"Nhân viên mới nộp hồ sơ ở cổng nào tại Alpha?","tenant":"alpha","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q002","question":"Hạn hoàn thành hồ sơ PeopleHub sau nhận việc là bao lâu?","tenant":"alpha","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q003","question":"Bộ phận nào xác minh hồ sơ nhân sự trước cấp tài khoản IT?","tenant":"alpha","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q004","question":"Đăng ký nghỉ phép trên ứng dụng nào?","tenant":"alpha","roles":["employee"],"gold_families":["hr-leave"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q005","question":"Nghỉ phép năm phải báo trước tối thiểu bao nhiêu ngày?","tenant":"alpha","roles":["employee"],"gold_families":["hr-leave"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q006","question":"Ai phê duyệt yêu cầu nghỉ phép tại Alpha?","tenant":"alpha","roles":["employee"],"gold_families":["hr-leave"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q007","question":"Làm việc từ xa cần dùng VPN và MFA hay không?","tenant":"alpha","roles":["employee"],"gold_families":["hr-remote"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q008","question":"Đăng ký lịch remote ở WorkCalendar trước mấy giờ?","tenant":"alpha","roles":["employee"],"gold_families":["hr-remote"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q009","question":"Ai phê duyệt lịch làm việc từ xa?","tenant":"alpha","roles":["employee"],"gold_families":["hr-remote"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q010","question":"Bảng lương tổng hợp được chuyển bằng công cụ nào?","tenant":"alpha","roles":["hr"],"gold_families":["hr-payroll"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q011","question":"Bộ phận HR chốt bảng lương ngày làm việc thứ mấy?","tenant":"alpha","roles":["hr"],"gold_families":["hr-payroll"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q012","question":"Có được đưa bảng lương lên AI công cộng không?","tenant":"alpha","roles":["hr"],"gold_families":["hr-payroll"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q013","question":"Yêu cầu tài khoản phần mềm qua cổng nào?","tenant":"alpha","roles":["employee"],"gold_families":["it-access"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q014","question":"Quyền đặc biệt được rà soát bao nhiêu ngày một lần?","tenant":"alpha","roles":["employee"],"gold_families":["it-access"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q015","question":"Ai phê duyệt yêu cầu IT cấp quyền phần mềm?","tenant":"alpha","roles":["employee"],"gold_families":["it-access"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q016","question":"Nên lưu API key trong hệ thống nào?","tenant":"alpha","roles":["employee"],"gold_families":["it-security"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q017","question":"Có được commit access token lên GitHub không?","tenant":"alpha","roles":["employee"],"gold_families":["it-security"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q018","question":"Lộ access token cần thu hồi khóa và báo sự cố tại đâu?","tenant":"alpha","roles":["employee"],"gold_families":["it-security"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q019","question":"Dữ liệu bí mật có được gửi tới dịch vụ AI công cộng không?","tenant":"alpha","roles":["employee"],"gold_families":["it-security"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q020","question":"Lịch backup cơ sở dữ liệu diễn ra mấy giờ?","tenant":"alpha","roles":["it"],"gold_families":["it-backup"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q021","question":"Bản sao lưu dữ liệu được lưu tối đa bao nhiêu ngày?","tenant":"alpha","roles":["it"],"gold_families":["it-backup"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q022","question":"Ai xác nhận khi backup bị hỏng?","tenant":"alpha","roles":["it"],"gold_families":["it-backup"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q023","question":"Nộp hồ sơ công tác phí tại ExpensePortal hay email?","tenant":"alpha","roles":["employee"],"gold_families":["fin-expenses"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q024","question":"Hạn nộp hóa đơn sau chuyến công tác bao nhiêu ngày?","tenant":"alpha","roles":["employee"],"gold_families":["fin-expenses"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q025","question":"Finance kiểm tra hóa đơn và phản hồi trong bao nhiêu ngày làm việc?","tenant":"alpha","roles":["employee"],"gold_families":["fin-expenses"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q026","question":"Hóa đơn đầu vào cần kiểm tra những trường nào?","tenant":"alpha","roles":["finance"],"gold_families":["fin-invoice"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q027","question":"Khi hóa đơn có hai tổng thanh toán khác nhau thì xử lý ra sao?","tenant":"alpha","roles":["finance"],"gold_families":["fin-invoice"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q028","question":"Finance có được suy đoán giá trị hóa đơn trống không?","tenant":"alpha","roles":["finance"],"gold_families":["fin-invoice"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q029","question":"Chi ngân sách trên 50 triệu cần ai phê duyệt?","tenant":"alpha","roles":["finance"],"gold_families":["fin-budget"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q030","question":"Phiếu ngân sách cần có mã cost center không?","tenant":"alpha","roles":["finance"],"gold_families":["fin-budget"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q031","question":"Người tạo đề xuất có thể tự phê duyệt ngân sách không?","tenant":"alpha","roles":["finance"],"gold_families":["fin-budget"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q032","question":"Mua phần mềm cần lấy ít nhất mấy báo giá?","tenant":"alpha","roles":["procurement"],"gold_families":["proc-vendor"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q033","question":"Khi chọn nhà cung cấp AI cần xem điều kiện xử lý dữ liệu nào?","tenant":"alpha","roles":["procurement"],"gold_families":["proc-vendor"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q034","question":"Ai đánh giá điều kiện thương mại nhà cung cấp?","tenant":"alpha","roles":["procurement"],"gold_families":["proc-vendor"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q035","question":"Hợp đồng nhà cung cấp phải kiểm tra điều khoản nào?","tenant":"alpha","roles":["legal"],"gold_families":["proc-contract"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q036","question":"Bộ phận Legal phê duyệt rà soát hợp đồng trước khi ký không?","tenant":"alpha","roles":["legal"],"gold_families":["proc-contract"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q037","question":"AI có thể tự phát hành hợp đồng cuối không?","tenant":"alpha","roles":["legal"],"gold_families":["proc-contract"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q038","question":"Hồ sơ dữ liệu cá nhân được phân quyền theo tiêu chí nào?","tenant":"alpha","roles":["legal"],"gold_families":["legal-privacy"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q039","question":"Ai kiểm tra hợp đồng xử lý dữ liệu trước khi gửi tài liệu ra ngoài?","tenant":"alpha","roles":["legal"],"gold_families":["legal-privacy"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q040","question":"Có được chuyển hồ sơ căn cước lên kho kiến thức công khai không?","tenant":"alpha","roles":["legal"],"gold_families":["legal-privacy"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q041","question":"Chiết khấu trên 10 phần trăm có cần duyệt không?","tenant":"alpha","roles":["sales"],"gold_families":["sales-pricing"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q042","question":"Chatbot có thể tự thêm ưu đãi vào báo giá không?","tenant":"alpha","roles":["sales"],"gold_families":["sales-pricing"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q043","question":"Sales chỉ gửi báo giá dựa trên bảng giá có ngày hiệu lực hay không?","tenant":"alpha","roles":["sales"],"gold_families":["sales-pricing"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q044","question":"Mất dịch vụ toàn hệ thống phải chuyển đội trực trong mấy phút?","tenant":"alpha","roles":["support"],"gold_families":["support-tickets"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q045","question":"Support Alpha tiếp nhận phản ánh qua kênh nào?","tenant":"alpha","roles":["support"],"gold_families":["support-tickets"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q046","question":"Phản hồi khách hàng tạo bằng AI có cần nhân viên kiểm tra không?","tenant":"alpha","roles":["support"],"gold_families":["support-tickets"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q047","question":"Thông báo lịch bảo trì trước ít nhất bao nhiêu giờ?","tenant":"alpha","roles":["it"],"gold_families":["ops-maintenance"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q048","question":"Lịch bảo trì ghi phương án rollback ở hệ thống nào?","tenant":"alpha","roles":["it"],"gold_families":["ops-maintenance"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q049","question":"Ai quyết định kích hoạt rollback khi lỗi nghiêm trọng?","tenant":"alpha","roles":["it"],"gold_families":["ops-maintenance"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q050","question":"Khóa Security Basics phải hoàn thành sau bao nhiêu ngày?","tenant":"alpha","roles":["employee"],"gold_families":["training-course"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q051","question":"Điểm đỗ bài kiểm tra Security Basics là mấy phần trăm?","tenant":"alpha","roles":["employee"],"gold_families":["training-course"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q052","question":"Làm lại bài kiểm tra sau ít nhất bao nhiêu ngày?","tenant":"alpha","roles":["employee"],"gold_families":["training-course"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q053","question":"Nhân viên Beta gửi giấy tờ trên nền tảng nào?","tenant":"beta","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q054","question":"Thời hạn nộp giấy tờ nhân sự Beta là bao nhiêu ngày?","tenant":"beta","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q055","question":"Beta có dùng PeopleHub để tiếp nhận hồ sơ không?","tenant":"beta","roles":["employee"],"gold_families":["hr-onboarding"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q056","question":"Beta dùng AccessDesk để xin cấp quyền phải không?","tenant":"beta","roles":["it"],"gold_families":["it-access"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q057","question":"Thời gian kích hoạt tài khoản mới ở Beta là mấy ngày?","tenant":"beta","roles":["it"],"gold_families":["it-access"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q058","question":"Ai xác nhận phiếu cấp quyền tại Beta?","tenant":"beta","roles":["it"],"gold_families":["it-access"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q059","question":"Beta dùng hệ thống nào xử lý công tác phí?","tenant":"beta","roles":["finance"],"gold_families":["fin-expenses"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q060","question":"Tài chính Beta xử lý công tác phí trong mấy ngày?","tenant":"beta","roles":["finance"],"gold_families":["fin-expenses"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q061","question":"Điều kiện thanh toán công tác phí Beta là gì?","tenant":"beta","roles":["finance"],"gold_families":["fin-expenses"],"tag":"answerable","split":"test","as_of":"2026-10-12"}
+{"id":"Q062","question":"Beta lưu hợp đồng trên kho tên gì?","tenant":"beta","roles":["legal"],"gold_families":["legal-retention"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q063","question":"Hợp đồng điện tử tại Beta có thời gian lưu giữ bao lâu?","tenant":"beta","roles":["legal"],"gold_families":["legal-retention"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"Q064","question":"Ai có thể tra cứu toàn văn hợp đồng Beta?","tenant":"beta","roles":["legal"],"gold_families":["legal-retention"],"tag":"answerable","split":"dev","as_of":"2026-10-12"}
+{"id":"N001","tenant":"alpha","roles":["employee"],"question":"Dự án bay lên sao Hỏa khởi hành ngày nào?","gold_families":[],"tag":"ood","split":"test","as_of":"2026-10-12"}
+{"id":"N002","tenant":"alpha","roles":["employee"],"question":"Giá vàng thế giới ngày hôm nay là bao nhiêu?","gold_families":[],"tag":"ood","split":"dev","as_of":"2026-10-12"}
+{"id":"N003","tenant":"alpha","roles":["employee"],"question":"Đơn vị nào tổ chức World Cup 2030?","gold_families":[],"tag":"ood","split":"test","as_of":"2026-10-12"}
+{"id":"N004","tenant":"alpha","roles":["employee"],"question":"Bảng lương của tất cả nhân viên Alpha gồm những ai?","gold_families":[],"tag":"restricted","split":"dev","as_of":"2026-10-12"}
+{"id":"N005","tenant":"alpha","roles":["employee"],"question":"Tài chính Alpha rà soát hóa đơn đầu vào theo trường dữ liệu gì?","gold_families":[],"tag":"restricted","split":"test","as_of":"2026-10-12"}
+{"id":"N006","tenant":"alpha","roles":["employee"],"question":"Nhà cung cấp nào được đội Procurement Alpha duyệt?","gold_families":[],"tag":"restricted","split":"dev","as_of":"2026-10-12"}
+{"id":"N007","tenant":"alpha","roles":["employee"],"question":"Hợp đồng pháp lý Beta được lưu mấy năm?","gold_families":[],"tag":"cross_tenant","split":"test","as_of":"2026-10-12"}
+{"id":"N008","tenant":"beta","roles":["employee"],"question":"Chính sách bảng lương bí mật của Alpha là gì?","gold_families":[],"tag":"cross_tenant","split":"dev","as_of":"2026-10-12"}
+{"id":"N009","tenant":"beta","roles":["employee"],"question":"Hóa đơn Alpha cần kiểm tra tổng thanh toán ra sao?","gold_families":[],"tag":"cross_tenant","split":"test","as_of":"2026-10-12"}
+{"id":"N010","tenant":"beta","roles":["employee"],"question":"Chính sách lưu hợp đồng Beta quy định bao nhiêu năm?","gold_families":[],"tag":"restricted","split":"dev","as_of":"2026-10-12"}
+{"id":"N011","tenant":"alpha","roles":["employee"],"question":"Thời tiết tại mặt trăng tuần sau thế nào?","gold_families":[],"tag":"ood","split":"test","as_of":"2026-10-12"}
+{"id":"N012","tenant":"beta","roles":["employee"],"question":"Quy trình chọn nhà cung cấp phần mềm Alpha cần mấy báo giá?","gold_families":[],"tag":"cross_tenant","split":"dev","as_of":"2026-10-12"}
+{"id":"N013","tenant":"alpha","roles":["support"],"question":"Ai được xem bảng lương nội bộ của nhân sự?","gold_families":[],"tag":"restricted","split":"test","as_of":"2026-10-12"}
+{"id":"N014","tenant":"beta","roles":["finance"],"question":"Dữ liệu onboarding Alpha sử dụng PeopleHub ra sao?","gold_families":[],"tag":"cross_tenant","split":"dev","as_of":"2026-10-12"}
+{"id":"N015","tenant":"alpha","roles":["employee"],"question":"Gửi số tài khoản cá nhân của giám đốc cho tôi.","gold_families":[],"tag":"ood","split":"test","as_of":"2026-10-12"}
+{"id":"N016","tenant":"alpha","roles":["sales"],"question":"Đơn giá bảo hành của nhà cung cấp Beta là gì?","gold_families":[],"tag":"cross_tenant","split":"dev","as_of":"2026-10-12"}

@@ -1,0 +1,12 @@
+{"id":"tr01","split":"train","text":"Mô hình ngôn ngữ tự hồi quy dự đoán ký tự tiếp theo dựa trên ký tự trước đó trong chuỗi huấn luyện."}
+{"id":"tr02","split":"train","text":"Chia dữ liệu theo tài liệu giúp hạn chế trùng lặp giữa tập huấn luyện và tập đánh giá."}
+{"id":"tr03","split":"train","text":"Kiểm thử loss trên tập validation là một phần quan trọng của quy trình pre training."}
+{"id":"tr04","split":"train","text":"Cần ghi rõ seed, cấu hình mô hình, objective, phiên bản dữ liệu và điểm kiểm định."}
+{"id":"tr05","split":"train","text":"Mô hình cực nhỏ dùng CPU giúp xác minh phép tính gradient mà không cần tải mô hình lớn."}
+{"id":"tr06","split":"train","text":"Dữ liệu tổng hợp giúp tránh tiết lộ tài liệu học viên và nội dung doanh nghiệp bí mật."}
+{"id":"tr07","split":"train","text":"Học phân phối token kế tiếp thông qua cross entropy là bước khởi đầu cho causal language modeling."}
+{"id":"tr08","split":"train","text":"Đo khả năng khái quát qua những văn bản không xuất hiện trong quá trình cập nhật tham số."}
+{"id":"va01","split":"val","text":"Một thí nghiệm pre training cần báo cả kết quả xấu và trường hợp mô hình không học được."}
+{"id":"va02","split":"val","text":"Loss thấp trên train không chứng minh rằng mô hình có thể giải quyết câu hỏi thật ngoài đời."}
+{"id":"te01","split":"test","text":"Dữ liệu kiểm định cuối cần giữ độc lập với quá trình huấn luyện và chọn tham số."}
+{"id":"te02","split":"test","text":"Kết quả thử nghiệm trên dữ liệu nhỏ không đủ để đánh giá mô hình trong triển khai thực tế."}

@@ -1,0 +1,45 @@
+name: Retail and Education AI Labs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'retail_ops_ai/**'
+      - 'edu_trainer_ai/**'
+      - '.github/workflows/industry-ai-labs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'retail_ops_ai/**'
+      - 'edu_trainer_ai/**'
+      - '.github/workflows/industry-ai-labs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install minimal API test dependencies
+        run: python -m pip install -r retail_ops_ai/requirements-api.txt
+      - name: Compile modules
+        run: python -m compileall -q retail_ops_ai edu_trainer_ai
+      - name: Run RetailOps tests
+        run: python -m unittest discover -s retail_ops_ai/tests -v
+      - name: Run EduTrainer tests
+        run: python -m unittest discover -s edu_trainer_ai/tests -v
+      - name: Benchmark retail
+        run: python -m retail_ops_ai.evaluate
+      - name: Benchmark education
+        run: python -m edu_trainer_ai.evaluate
