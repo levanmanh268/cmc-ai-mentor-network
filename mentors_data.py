@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import Any
 
 REQUIRED_FIELDS = (
@@ -125,8 +127,28 @@ def validate_mentor(mentor: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class MentorRepository:
-    def __init__(self, mentors_data: Iterable[Mapping[str, Any]]):
+    def __init__(
+        self,
+        mentors_data: Iterable[Mapping[str, Any]],
+        storage_path: str | Path | None = None,
+    ):
+        self._storage_path = Path(storage_path) if storage_path is not None else None
         self._mentors = [validate_mentor(mentor) for mentor in mentors_data]
+        self._default_ids = {mentor["id"] for mentor in self._mentors}
+        if self._storage_path is not None and self._storage_path.exists():
+            saved_mentors = json.loads(self._storage_path.read_text(encoding="utf-8"))
+            if not isinstance(saved_mentors, list):
+                raise ValueError("Saved mentor data must be a JSON list")
+            for mentor_data in saved_mentors:
+                mentor = validate_mentor(mentor_data)
+                self._append_unique(mentor)
+
+    def _append_unique(self, mentor: dict[str, Any]) -> None:
+        if mentor["id"] < 1:
+            raise ValueError("mentor id must be positive")
+        if any(existing["id"] == mentor["id"] for existing in self._mentors):
+            raise ValueError(f"mentor id {mentor['id']} already exists")
+        self._mentors.append(mentor)
 
     def list(self) -> list[dict[str, Any]]:
         return [dict(mentor) for mentor in self._mentors]
@@ -137,6 +159,31 @@ class MentorRepository:
                 return dict(mentor)
         return None
 
+    def add(self, mentor_data: Mapping[str, Any]) -> dict[str, Any]:
+        mentor_data = dict(mentor_data)
+        mentor_data["id"] = max(
+            (mentor["id"] for mentor in self._mentors),
+            default=0,
+        ) + 1
+        mentor = validate_mentor(mentor_data)
+        self._append_unique(mentor)
+
+        if self._storage_path is not None:
+            saved_mentors = [
+                item for item in self._mentors if item["id"] not in self._default_ids
+            ]
+            try:
+                self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+                self._storage_path.write_text(
+                    json.dumps(saved_mentors, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            except OSError:
+                self._mentors.pop()
+                raise
+
+        return dict(mentor)
+
 
 def get_mentor_repository() -> MentorRepository:
     return _default_repository
@@ -146,5 +193,6 @@ def get_mentors() -> list[dict[str, Any]]:
     return _default_repository.list()
 
 
-_default_repository = MentorRepository(RAW_MENTORS)
+MENTORS_STORAGE_PATH = Path(__file__).with_name("data") / "mentors.json"
+_default_repository = MentorRepository(RAW_MENTORS, MENTORS_STORAGE_PATH)
 mentors = get_mentors()

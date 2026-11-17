@@ -6,7 +6,7 @@ from matching_engine import (
     get_top_matches,
     parse_student_year,
 )
-from mentors_data import validate_mentor
+from mentors_data import RAW_MENTORS, MentorRepository, validate_mentor
 
 
 def test_parse_student_year_is_safe():
@@ -86,6 +86,27 @@ def test_mentor_validation_rejects_missing_and_invalid_data():
 
     assert valid["strengths"] == ["RAG", "LLM"]
     assert valid["available_for"] == ["Project", "CV Review"]
+
+
+def test_new_mentor_is_saved_and_loaded_with_next_available_id(tmp_path):
+    storage_path = tmp_path / "mentors.json"
+    repository = MentorRepository(RAW_MENTORS, storage_path)
+
+    mentor = repository.add({
+        "name": "Mentor mới",
+        "title": "AI Engineer",
+        "company": "Demo",
+        "field": "NLP",
+        "experience_years": 2,
+        "bio": "Hỗ trợ sinh viên làm project AI.",
+        "strengths": "Python, RAG",
+        "available_for": "Project, CV Review",
+    })
+
+    assert mentor["id"] == 6
+    reloaded = MentorRepository(RAW_MENTORS, storage_path)
+    assert reloaded.get_by_id(6)["name"] == "Mentor mới"
+    assert reloaded.get_by_id(6)["strengths"] == ["Python", "RAG"]
 
 
 def test_explanation_has_deterministic_fallback_without_llm():

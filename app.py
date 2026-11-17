@@ -449,6 +449,56 @@ elif page == "👥 Tìm Mentor":
                 st.session_state.favorite_mentors.append(mentor)
                 st.success(f"Đã lưu {mentor['name']}.")
 
+    with st.expander("➕ Tạo mentor mới"):
+        with st.form("create_mentor_form", clear_on_submit=True):
+            name = st.text_input("Họ và tên *", max_chars=100)
+            title = st.text_input("Chức danh *", max_chars=120)
+            company = st.text_input("Công ty / tổ chức *", max_chars=120)
+            field = st.text_input("Lĩnh vực chuyên môn *", max_chars=120)
+            experience_years = st.number_input(
+                "Số năm kinh nghiệm *", min_value=0, max_value=80, step=1
+            )
+            bio = st.text_area("Giới thiệu kinh nghiệm *", max_chars=1000)
+            strengths = st.text_input(
+                "Thế mạnh (phân cách bằng dấu phẩy) *",
+                placeholder="RAG, LLM, Python",
+            )
+            available_for = st.text_input(
+                "Có thể hỗ trợ (phân cách bằng dấu phẩy) *",
+                placeholder="Project, Thực tập, CV Review",
+            )
+            submitted = st.form_submit_button("➕ Thêm mentor")
+
+        if submitted:
+            strength_list = [item.strip() for item in strengths.split(",") if item.strip()]
+            support_list = [
+                item.strip() for item in available_for.split(",") if item.strip()
+            ]
+            if (
+                any(not value.strip() for value in (name, title, company, field, bio))
+                or not strength_list
+                or not support_list
+            ):
+                st.error("Vui lòng điền đầy đủ các trường bắt buộc.")
+            else:
+                mentor_fields = {
+                    "name": name,
+                    "title": title,
+                    "company": company,
+                    "field": field,
+                    "experience_years": experience_years,
+                    "bio": bio,
+                    "strengths": strength_list,
+                    "available_for": support_list,
+                }
+                try:
+                    mentor = get_mentor_repository().add(mentor_fields)
+                except (TypeError, ValueError, OSError) as exc:
+                    st.error(f"Không thể lưu mentor: {exc}")
+                else:
+                    st.success(f"Đã thêm mentor {mentor['name']}.")
+                    st.rerun()
+
     if st.session_state.favorite_mentors:
         st.divider()
         st.subheader("❤️ Mentor đã lưu")
