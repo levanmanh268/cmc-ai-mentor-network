@@ -359,7 +359,8 @@ elif page == "💬 AI Assistant":
                     with st.expander("Nguồn truy xuất", expanded=True):
                         for source in source_payload:
                             st.markdown(
-                                f"**{source['name']}** • relevance={source['score']:.3f}"
+                                f"**{safe_markdown_label(source['name'])}** • "
+                                f"relevance={source['score']:.3f}"
                             )
                             if source["excerpt"]:
                                 st.caption(source["excerpt"])
