@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, MutableMapping
 
 
@@ -38,10 +39,15 @@ def source_history_payload(source: Any) -> dict[str, Any]:
         score = getattr(source, "score", 0.0)
         excerpt = getattr(source, "text", "") or ""
 
-    try:
-        score = float(score)
-    except (TypeError, ValueError):
+    if isinstance(score, bool):
         score = 0.0
+    else:
+        try:
+            score = float(score)
+        except (TypeError, ValueError):
+            score = 0.0
+        if not math.isfinite(score):
+            score = 0.0
 
     excerpt = str(excerpt).strip()
     return {
