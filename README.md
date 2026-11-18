@@ -265,7 +265,7 @@ python mentor_data_diagnostics.py
 python -m scripts.evaluate_rag
 ```
 
-Các tài liệu kiểm thử: [Test Plan](docs/TEST_PLAN.md), [Baseline kiểm thử](docs/TESTING_BASELINE_2026-10-28.md), [UAT Checklist](docs/UAT_CHECKLIST.md), [RAG Evaluation](docs/RAG_EVALUATION.md), [Đối chiếu chương Testing](docs/TESTING_CHAPTER_MAPPING.md), [Privacy & Dataflow](docs/PRIVACY_DATAFLOW.md).
+Các tài liệu kiểm thử: [Test Plan](docs/TEST_PLAN.md), [Baseline kiểm thử](docs/TESTING_BASELINE_2026-10-28.md), [UAT Checklist](docs/UAT_CHECKLIST.md), [RAG Evaluation](docs/RAG_EVALUATION.md), [Đối chiếu chương Testing](docs/TESTING_CHAPTER_MAPPING.md), [Privacy & Dataflow](docs/PRIVACY_DATAFLOW.md), [Privacy data inventory SEC-10](docs/privacy/data-inventory.md), [Personal data controls SEC-11](docs/privacy/data-controls.md).
 
 
 GitHub Actions tự động chạy trên Pull Request và trên `main`:
