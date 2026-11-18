@@ -71,14 +71,22 @@ def measure(label: str, callback, *, n: int = 100) -> dict[str, float | int | st
     }
 
 
-def measure_cold_and_warm(label: str, callback, *, n: int = 100) -> dict[str, object]:
+def measure_cold_and_warm(
+    label: str, callback, *, n: int = 100, warmups: int = 0
+) -> dict[str, object]:
+    if warmups < 0:
+        raise ValueError("warmups cannot be negative")
     start = time.perf_counter()
     result = callback()
     assert result is not None, f"{label}: cold operation returned None"
     cold_ms = (time.perf_counter() - start) * 1000
+    for _ in range(warmups):
+        result = callback()
+        assert result is not None, f"{label}: warmup operation returned None"
     return {
         "operation": label,
         "cold_ms": round(cold_ms, 3),
+        "warmups_excluded": warmups,
         "warm": measure(label, callback, n=n),
     }
 
@@ -95,14 +103,17 @@ def main() -> None:
         measure_cold_and_warm(
             "offline-rag GitHub question",
             lambda: answer_with_rag("GitHub issue branch commit", kb, client=None),
+            warmups=10,
         ),
         measure_cold_and_warm(
             "offline-rag out-of-domain refusal",
             lambda: answer_with_rag("công thức quang hợp thực vật", kb, client=None),
+            warmups=10,
         ),
         measure_cold_and_warm(
             "mentor ranking demo data",
             lambda: get_top_matches(profile, top_k=3),
+            warmups=10,
         ),
     ]
     print(json.dumps({
@@ -117,7 +128,7 @@ def main() -> None:
             "chunks": kb.chunk_count,
         },
         "results": metrics,
-        "limitations": "Cold is the first request after process imports and knowledge-base loading. No browser/network/provider latency; no load/concurrency/SLA claim.",
+        "limitations": "Cold is first operation after imports and knowledge-base loading. Warm timings exclude 10 warmup calls. No browser/network/provider latency; no load/concurrency/SLA claim.",
     }, ensure_ascii=False, indent=2))
 
 

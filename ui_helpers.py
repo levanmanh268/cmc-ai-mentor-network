@@ -61,3 +61,8 @@ def normalize_saved_source(source: Any) -> dict[str, Any] | None:
 def clear_chat_history(session_state: MutableMapping[str, Any]) -> None:
     """Clear only the chat message list, preserving profile and favorites."""
     session_state["messages"] = []
+
+
+def clear_general_chat_history(session_state: MutableMapping[str, Any]) -> None:
+    """Clear only the general AI conversation, preserving other session state."""
+    session_state["general_messages"] = []

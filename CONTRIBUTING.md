@@ -46,6 +46,13 @@ python -m pytest -q
 
 Nếu test fail, không commit kiểu "cho xong". Tìm nguyên nhân gốc, sửa, chạy lại đến khi xanh.
 
+### Test-first cho feature và bug tái hiện được
+
+1. Thêm test mô tả acceptance criteria hoặc tái hiện bug; chạy test riêng và xác nhận nó đỏ vì hành vi đang thiếu/sai.
+2. Sửa code tối thiểu để test xanh; chạy test liên quan rồi toàn bộ suite.
+3. Loại bỏ nguyên nhân test đỏ giả (sai fixture/assertion) và ghi kết quả vào PR.
+4. Nếu không có commit/test log chứng minh thứ tự red-green, chỉ ghi nhận test coverage, không tuyên bố đã chứng minh TDD.
+
 ## 4. Commit
 
 Commit message ngắn, có loại thay đổi và tham chiếu issue:
