@@ -109,12 +109,23 @@ def test_browser03_offline_chat_blocked_and_grounded_rag(page, local_app):
             except PlaywrightTimeoutError:
                 page.keyboard.press("Escape")
                 continue
-        option.click()
-        break
+        try:
+            # React-Aria options can detach during Streamlit rerenders.
+            # Bound each attempt instead of waiting 30s on a stale locator.
+            option.click(timeout=2_500, force=True)
+            expect(
+                page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))
+            ).to_be_visible(timeout=8_000)
+            break
+        except (PlaywrightTimeoutError, AssertionError):
+            page.keyboard.press("Escape")
+            continue
     else:
-        pytest.fail("RAG mode dropdown did not expose the option after 3 UI attempts")
+        pytest.fail("RAG mode dropdown could not reach grounded mode after 3 UI attempts")
     expect(page.get_by_role("heading", name=re.compile("Grounded AI Assistant"))).to_be_visible(timeout=20_000)
-    chat = page.locator('[data-testid="stChatInput"] textarea')
+    # Streamlit may briefly keep the disabled general-chat textarea in DOM.
+    # Select the active grounded RAG textbox rather than both textareas.
+    chat = page.locator('[data-testid="stChatInput"] textarea:not([disabled])').first
     expect(chat).to_be_enabled()
     chat.fill("Issue và Pull Request sau commit?")
     chat.press("Enter")
@@ -148,6 +159,35 @@ def test_browser05_favorites_are_isolated_across_browser_sessions(browser, local
         navigate(second_page, "👥 Tìm Mentor")
         expect(second_page.get_by_role("heading", name=re.compile("Tìm Mentor phù hợp"))).to_be_visible(timeout=30_000)
         expect(second_page.get_by_role("heading", name=re.compile("Mentor đã lưu"))).not_to_be_visible()
+    finally:
+        first_context.close()
+        second_context.close()
+
+
+def test_browser06_created_mentor_is_visible_only_in_creator_session(browser, local_app):
+    first_context = browser.new_context()
+    second_context = browser.new_context()
+    try:
+        first_page = first_context.new_page()
+        first_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(first_page, "👥 Tìm Mentor")
+        first_page.get_by_label("Tên mentor *", exact=True).fill("Browser Session Mentor")
+        first_page.get_by_label("Chức danh *", exact=True).fill("RAG Engineer")
+        first_page.get_by_label("Đơn vị *", exact=True).fill("Demo Lab")
+        first_page.get_by_label("Lĩnh vực *", exact=True).fill("Recommendation System")
+        first_page.get_by_label("Giới thiệu *", exact=True).fill("Mentor demo for browser E2E.")
+        first_page.get_by_label("Kỹ năng / thế mạnh *", exact=True).fill("RAG, Python")
+        first_page.get_by_label("Loại hỗ trợ *", exact=True).click()
+        first_page.get_by_role("option", name="Project").click()
+        first_page.locator('[data-testid="stFormSubmitButton"] button').first.click()
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor")).first).to_be_visible()
+        first_page.get_by_role("button", name=re.compile("Tìm Mentor")).click()
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor")).first).to_be_visible(timeout=20_000)
+
+        second_page = second_context.new_page()
+        second_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(second_page, "👥 Tìm Mentor")
+        expect(second_page.get_by_text(re.compile("Browser Session Mentor")).first).not_to_be_visible()
     finally:
         first_context.close()
         second_context.close()

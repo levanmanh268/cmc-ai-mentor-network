@@ -388,27 +388,198 @@ elif page == "👥 Tìm Mentor":
     with st.expander("Hồ sơ dùng để matching"):
         st.json(student_profile)
 
+    from mentor_helpers import (
+        ALLOWED_SUPPORT_TYPES,
+        add_mentor_draft,
+        delete_mentor_draft,
+    )
     from mentors_data import get_mentor_repository
+    from mentor_api import (
+        MentorApiUnavailable, api_base_url, list_shared_mentor_suggestions,
+        publish_mentor_suggestion,
+    )
 
-    mentor_pool = get_mentor_repository().list()
+    @st.cache_data(ttl=8, show_spinner=False)
+    def cached_shared_mentors():
+        return list_shared_mentor_suggestions()
+
+    base_mentors = get_mentor_repository().list()  # original curated mentor catalog
+    shared_mentors = []
+    backend_configured = bool(api_base_url())
+    if backend_configured:
+        try:
+            shared_mentors = cached_shared_mentors()
+        except MentorApiUnavailable:
+            st.warning(
+                "Backend PostgreSQL chưa sẵn sàng. Mentor mẫu và bản nháp phiên "
+                "vẫn hoạt động; chưa thể lưu dữ liệu dùng chung."
+            )
+    else:
+        st.caption("Chế độ demo theo phiên: chưa cấu hình backend lưu dữ liệu dùng chung.")
+    if "draft_mentors" not in st.session_state:
+        st.session_state.draft_mentors = []
+
+    st.subheader("Tạo Mentor bản nháp trong phiên")
+    st.caption(
+        "Bản nháp mentor được tạo trong phiên Streamlit. Sau khi có PostgreSQL riêng và "
+        "backend hoạt động, có thể chọn gửi đề xuất lên bảng công khai. "
+        "Chỉ nhập dữ liệu demo hoặc thông tin được phép công bố."
+    )
+    with st.form("create_mentor_draft", clear_on_submit=True):
+        draft_name = st.text_input("Tên mentor *", max_chars=100, key="mentor_draft_name")
+        draft_title = st.text_input("Chức danh *", max_chars=100, key="mentor_draft_title")
+        draft_company = st.text_input("Đơn vị *", max_chars=120, key="mentor_draft_company")
+        draft_field = st.text_input(
+            "Lĩnh vực *", max_chars=80,
+            help="Dùng một lĩnh vực hiện có để Mentor xuất hiện đúng trong bộ lọc.",
+            key="mentor_draft_field",
+        )
+        draft_experience = st.number_input(
+            "Số năm kinh nghiệm *", min_value=0, max_value=80, step=1, value=0,
+            key="mentor_draft_experience",
+        )
+        draft_bio = st.text_area("Giới thiệu *", max_chars=600, key="mentor_draft_bio")
+        draft_strengths = st.text_input(
+            "Kỹ năng / thế mạnh *", max_chars=400,
+            help="Nhập các kỹ năng, phân cách bằng dấu phẩy.",
+            key="mentor_draft_strengths",
+        )
+        draft_support = st.multiselect(
+            "Loại hỗ trợ *", ALLOWED_SUPPORT_TYPES, key="mentor_draft_support"
+        )
+        create_draft = st.form_submit_button("Tạo Mentor trong phiên")
+
+    if create_draft:
+        try:
+            created = add_mentor_draft(
+                st.session_state,
+                {
+                    "name": draft_name,
+                    "title": draft_title,
+                    "company": draft_company,
+                    "field": draft_field,
+                    "experience_years": int(draft_experience),
+                    "bio": draft_bio,
+                    "strengths": draft_strengths,
+                    "available_for": draft_support,
+                },
+                base_mentors=[*base_mentors, *shared_mentors],
+                allowed_fields=[mentor["field"] for mentor in base_mentors],
+            )
+        except (TypeError, ValueError) as exc:
+            st.error(f"Không thể tạo Mentor: {exc}")
+        else:
+            st.session_state.top_matches = []
+            st.session_state.match_explanations = {}
+            st.success(f"Đã tạo bản nháp Mentor {created['name']} trong phiên này.")
+            st.rerun()
+
+    # Curated mentors, unverified shared suggestions and private drafts coexist.
+    # Remote IDs are negative, so they never overwrite the original positive IDs.
+    include_unverified = st.checkbox(
+        "Tính cả đề xuất mentor chưa xác minh vào matching (chỉ để demo)",
+        value=False,
+        key="include_unverified_mentor_matches",
+    ) if shared_mentors else False
+    mentor_pool = [
+        *base_mentors,
+        *(shared_mentors if include_unverified else []),
+        *st.session_state.draft_mentors,
+    ]
+
+    if backend_configured:
+        st.subheader("🌐 Đề xuất mentor dùng chung")
+        st.caption(
+            "Đây là hồ sơ do người dùng đề xuất, CHƯA được xác minh danh tính hay chuyên môn. "
+            "Danh sách tự cập nhật khoảng 10 giây khi cơ sở dữ liệu hoạt động."
+        )
+
+        @st.fragment(run_every="10s")
+        def live_shared_mentor_board():
+            try:
+                latest = list_shared_mentor_suggestions()
+            except MentorApiUnavailable:
+                st.info("Đang chờ kết nối PostgreSQL; thử lại tự động.")
+                return
+            if not latest:
+                st.info("Chưa có đề xuất mentor nào được lưu trên database.")
+            for mentor in latest:
+                st.text(
+                    f"[Chưa xác minh] {mentor['name']} • {mentor['title']} "
+                    f"• {mentor['company']} • {mentor['field']}"
+                )
+
+        live_shared_mentor_board()
+
+    if st.session_state.draft_mentors:
+        st.markdown("**Bản nháp trong phiên**")
+        for draft in st.session_state.draft_mentors:
+            st.text(f"{draft['name']} • {draft['title']} • {draft['company']}")
+            if st.button("Xóa bản nháp", key=f"delete_draft_{draft['id']}"):
+                st.session_state.pending_draft_delete = draft["id"]
+            if backend_configured:
+                public_consent = st.checkbox(
+                    "Tôi xác nhận đây là dữ liệu demo/được phép công bố công khai.",
+                    key=f"consent_publish_{draft['id']}",
+                )
+                if st.button("Đăng đề xuất mentor lên PostgreSQL", key=f"publish_{draft['id']}"):
+                    if not public_consent:
+                        st.error("Cần xác nhận trước khi công bố mentor.")
+                    else:
+                        try:
+                            publish_mentor_suggestion(draft)
+                        except MentorApiUnavailable as exc:
+                            st.error(str(exc))
+                        else:
+                            st.session_state.draft_mentors = [
+                                item for item in st.session_state.draft_mentors
+                                if int(item["id"]) != int(draft["id"])
+                            ]
+                            st.session_state.top_matches = []
+                            st.session_state.match_explanations = {}
+                            cached_shared_mentors.clear()
+                            st.success("Đề xuất đã lưu trên PostgreSQL. Hồ sơ đang ở trạng thái chưa xác minh.")
+                            st.rerun()
+
+        if st.session_state.get("pending_draft_delete") is not None:
+            @st.dialog("Xóa Mentor bản nháp?")
+            def confirm_delete_draft():
+                draft_id = st.session_state.pending_draft_delete
+                st.write("Chỉ bản nháp trong phiên hiện tại sẽ bị xóa. Mentor mẫu không bị thay đổi.")
+                confirmed = st.checkbox("Tôi xác nhận xóa bản nháp", key="confirm_delete_draft")
+                if st.button("Xóa bản nháp đã chọn", type="primary", disabled=not confirmed):
+                    delete_mentor_draft(st.session_state, draft_id)
+                    st.session_state.favorite_mentors = [
+                        item for item in st.session_state.favorite_mentors
+                        if int(item["id"]) != int(draft_id)
+                    ]
+                    st.session_state.top_matches = []
+                    st.session_state.match_explanations = {}
+                    st.session_state.pending_draft_delete = None
+                    st.rerun()
+
+            confirm_delete_draft()
     field_choices = ["Tất cả", *sorted({mentor["field"] for mentor in mentor_pool})]
     support_choices = ["Tất cả", *sorted({
         support for mentor in mentor_pool for support in mentor["available_for"]
     })]
-    field_filter = st.selectbox("Lọc theo lĩnh vực", field_choices)
-    support_filter = st.selectbox("Lọc theo loại hỗ trợ", support_choices)
+    field_filter = st.selectbox("Lọc theo lĩnh vực", field_choices, key="mentor_field_filter")
+    support_filter = st.selectbox(
+        "Lọc theo loại hỗ trợ", support_choices, key="mentor_support_filter"
+    )
     active_filters = (field_filter, support_filter)
     if st.session_state.get("active_mentor_filters") != active_filters:
         st.session_state.top_matches = []
         st.session_state.match_explanations = {}
         st.session_state.active_mentor_filters = active_filters
 
-    if st.button("🔍 Tìm Mentor", type="primary"):
+    if st.button("🔍 Tìm Mentor", type="primary", key="search_mentors"):
         with st.spinner("Đang xếp hạng mentor..."):
             st.session_state.top_matches = get_top_matches(
                 student_profile, top_k=3,
                 field_filter=None if field_filter == "Tất cả" else field_filter,
                 support_filter=None if support_filter == "Tất cả" else support_filter,
+                mentor_pool=mentor_pool,
             )
             st.session_state.match_explanations = {}
             if not st.session_state.top_matches:
@@ -421,12 +592,12 @@ elif page == "👥 Tìm Mentor":
         with st.container(border=True):
             left, right = st.columns([3, 1])
             with left:
-                st.markdown(f"### {rank}. {mentor['name']} • {mentor['title']}")
-                st.caption(
+                st.text(f"{rank}. {mentor['name']} • {mentor['title']}")
+                st.text(
                     f"{mentor['company']} • {mentor['field']} • "
                     f"{mentor['experience_years']} năm kinh nghiệm"
                 )
-                st.write(mentor["bio"])
+                st.text(mentor["bio"])
             with right:
                 st.metric("Match", f"{match['hybrid_score']:.1f}%")
                 st.caption(f"Semantic: {match['semantic_score']:.1f}%")
@@ -436,7 +607,7 @@ elif page == "👥 Tìm Mentor":
                     student_profile, mentor, match["hybrid_score"], client=authorized_client
                 )
             st.markdown("**Vì sao phù hợp**")
-            st.write(st.session_state.match_explanations[mentor_id])
+            st.text(st.session_state.match_explanations[mentor_id])
 
             saved = any(
                 item["id"] == mentor_id for item in st.session_state.favorite_mentors
@@ -454,7 +625,7 @@ elif page == "👥 Tìm Mentor":
         st.subheader("❤️ Mentor đã lưu")
         for index, mentor in enumerate(st.session_state.favorite_mentors):
             with st.container(border=True):
-                st.write(f"**{mentor['name']}** • {mentor['title']} • {mentor['company']}")
+                st.text(f"{mentor['name']} • {mentor['title']} • {mentor['company']}")
                 if st.button("Xóa", key=f"delete_{index}"):
                     st.session_state.favorite_mentors.pop(index)
                     st.rerun()
