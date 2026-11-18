@@ -11,6 +11,7 @@ from profile_helpers import (
 )
 from rag_engine import KnowledgeBase, answer_with_rag
 from ui_helpers import clear_chat_history, normalize_saved_source, rag_mode_label, source_history_payload
+from security_controls import consented_client, safe_markdown_label
 
 st.set_page_config(page_title="CMC AI Mentor Network", page_icon="🤖", layout="wide")
 
@@ -66,7 +67,7 @@ with st.sidebar:
         st.markdown("[Tạo API key tại Groq Console](https://console.groq.com/keys)")
         st.caption("Nếu quản trị viên cấu hình GROQ_API_KEY trong Render, người dùng vẫn phải đồng ý trước khi gọi API.")
 
-authorized_client = client if online_consent else None
+authorized_client = consented_client(client, online_consent)
 
 # Classroom demo limits are per Streamlit session, not a security boundary:
 # reconnecting can reset counters. A public shared key still needs server-side
@@ -336,7 +337,7 @@ elif page == "💬 AI Assistant":
                     with st.expander("Nguồn truy xuất"):
                         for source in sources:
                             st.markdown(
-                                f"**{source['name']}** • relevance={source['score']:.3f}"
+                                f"**{safe_markdown_label(source['name'])}** • relevance={source['score']:.3f}"
                             )
                             if source["excerpt"]:
                                 st.caption(source["excerpt"])
@@ -421,7 +422,10 @@ elif page == "👥 Tìm Mentor":
         with st.container(border=True):
             left, right = st.columns([3, 1])
             with left:
-                st.markdown(f"### {rank}. {mentor['name']} • {mentor['title']}")
+                st.markdown(
+                    f"### {rank}. {safe_markdown_label(mentor['name'])} • "
+                    f"{safe_markdown_label(mentor['title'])}"
+                )
                 st.caption(
                     f"{mentor['company']} • {mentor['field']} • "
                     f"{mentor['experience_years']} năm kinh nghiệm"
@@ -454,7 +458,11 @@ elif page == "👥 Tìm Mentor":
         st.subheader("❤️ Mentor đã lưu")
         for index, mentor in enumerate(st.session_state.favorite_mentors):
             with st.container(border=True):
-                st.write(f"**{mentor['name']}** • {mentor['title']} • {mentor['company']}")
+                st.markdown(
+                    f"**{safe_markdown_label(mentor['name'])}** • "
+                    f"{safe_markdown_label(mentor['title'])} • "
+                    f"{safe_markdown_label(mentor['company'])}"
+                )
                 if st.button("Xóa", key=f"delete_{index}"):
                     st.session_state.favorite_mentors.pop(index)
                     st.rerun()
