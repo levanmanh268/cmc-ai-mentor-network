@@ -23,3 +23,19 @@ def test_example_api_key_is_not_treated_as_configured(monkeypatch):
     assert get_groq_api_key() == ""
     assert llm_enabled() is False
     assert build_llm_client() is None
+
+
+
+def test_groq_client_has_bounded_timeout_and_sdk_retry(monkeypatch):
+    captured = {}
+
+    class FakeGroq:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr("llm_client.Groq", FakeGroq)
+    client = build_llm_client("test-only-key")
+    assert isinstance(client, FakeGroq)
+    assert captured["api_key"] == "test-only-key"
+    assert captured["timeout"] == 35.0
+    assert captured["max_retries"] == 1
