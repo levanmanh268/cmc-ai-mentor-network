@@ -12,6 +12,7 @@ __pycache__/
 # Database & Cache
 chroma_db/
 *.db
+/data/mentors.json
 
 # Streamlit
 .streamlit/

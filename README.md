@@ -230,6 +230,8 @@ Hệ thống tính hybrid score theo:
 
 Điểm được chặn trong khoảng 0–100 và ranking dùng tie-break ổn định để kết quả có tính tái lập. Có thể lọc theo lĩnh vực/loại hỗ trợ trước khi ranking; lọc không có kết quả sẽ hiển thị thông báo.
 
+Có thể mở **➕ Tạo mentor mới** tại trang này và nhập chức danh, công ty, lĩnh vực, kinh nghiệm, giới thiệu, thế mạnh và loại hỗ trợ. Mentor mới được thêm vào matching và lưu cục bộ trong `data/mentors.json`; file này không được Git theo dõi. Lưu trữ này tồn tại qua lần khởi động lại ứng dụng trên cùng máy, nhưng không đảm bảo tồn tại sau khi triển khai lại trên dịch vụ cloud dùng ổ đĩa tạm thời.
+
 ## Kiểm thử và chất lượng
 
 Chạy toàn bộ kiểm tra local:
@@ -275,7 +277,7 @@ GitHub Actions tự động chạy trên Pull Request và trên `main`:
 ├── llm_client.py              # Optional Groq infrastructure
 ├── rag_engine.py              # Retrieval + grounded answering
 ├── matching_engine.py         # Mentor scoring + explanation
-├── mentors_data.py            # Validated in-memory MentorRepository + dataset
+├── mentors_data.py            # Validated persistent MentorRepository + dataset
 ├── mentor_data_diagnostics.py # Offline mentor data diagnostics
 ├── ingest.py                  # Knowledge-base diagnostics
 ├── scripts/evaluate_rag.py    # Offline retrieval/refusal benchmark
