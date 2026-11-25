@@ -1,5 +1,8 @@
+from copy import deepcopy
+
 import pytest
 
+import matching_engine
 from matching_engine import (
     calculate_hybrid_score,
     generate_match_explanation,
@@ -53,6 +56,66 @@ def test_empty_profile_still_returns_stable_results():
 
     assert len(results) == 5
     assert all(0.0 <= item["hybrid_score"] <= 100.0 for item in results)
+
+
+def test_combined_filters_require_both_matches_without_mutating_repository(monkeypatch):
+    mentors = [
+        {
+            "id": 1, "name": "Both", "title": "Engineer", "company": "Demo",
+            "field": "NLP & LLM", "experience_years": 5, "bio": "Mentor",
+            "strengths": ["RAG"], "available_for": ["Project"],
+        },
+        {
+            "id": 2, "name": "Field only", "title": "Engineer", "company": "Demo",
+            "field": "NLP & LLM", "experience_years": 5, "bio": "Mentor",
+            "strengths": ["RAG"], "available_for": ["CV Review"],
+        },
+        {
+            "id": 3, "name": "Support only", "title": "Engineer", "company": "Demo",
+            "field": "Computer Vision", "experience_years": 5, "bio": "Mentor",
+            "strengths": ["RAG"], "available_for": ["Project"],
+        },
+    ]
+    original = deepcopy(mentors)
+    monkeypatch.setattr(
+        matching_engine, "get_mentor_repository",
+        lambda: type("Repository", (), {"list": lambda self: mentors})(),
+    )
+    monkeypatch.setattr(matching_engine, "_semantic_scores", lambda *_: [0.5] * len(mentors))
+
+    results = get_top_matches(
+        {"year": "Năm 1", "field_interest": "NLP", "goals": "RAG"},
+        top_k=10,
+        field_filter=" nlp & llm ",
+        support_filter=" project ",
+    )
+
+    assert [item["mentor"]["id"] for item in results] == [1]
+    assert mentors == original
+
+
+def test_equal_scores_are_tie_broken_by_mentor_id(monkeypatch):
+    mentors = [
+        {
+            "id": mentor_id, "name": f"Mentor {mentor_id}", "title": "Engineer",
+            "company": "Demo", "field": "NLP", "experience_years": 5,
+            "bio": "Mentor", "strengths": ["RAG"], "available_for": ["Project"],
+        }
+        for mentor_id in (3, 1, 2)
+    ]
+    monkeypatch.setattr(
+        matching_engine, "get_mentor_repository",
+        lambda: type("Repository", (), {"list": lambda self: mentors})(),
+    )
+    monkeypatch.setattr(matching_engine, "_semantic_scores", lambda *_: [0.5] * len(mentors))
+
+    results = get_top_matches(
+        {"year": "Năm 1", "field_interest": "NLP", "goals": "RAG"}, top_k=10
+    )
+
+    assert len({item["hybrid_score"] for item in results}) == 1
+    assert len({item["semantic_score"] for item in results}) == 1
+    assert [item["mentor"]["id"] for item in results] == [1, 2, 3]
 
 
 def test_mentor_validation_rejects_missing_and_invalid_data():
