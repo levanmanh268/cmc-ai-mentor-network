@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from chat_intents import local_social_reply
+from security_controls import valid_rag_question
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,8 @@ class KnowledgeBase:
         return re.sub(r"\s+", " ", text).strip()
 
     def _load_chunks(self) -> list[RetrievedChunk]:
-        if not self.root.exists():
+        # A symlinked root could silently index Markdown outside the declared directory.
+        if not self.root.exists() or self.root.is_symlink():
             return []
 
         chunks: list[RetrievedChunk] = []
@@ -120,6 +122,8 @@ class KnowledgeBase:
         k: int = 4,
         min_score: float = 0.06,
     ) -> list[RetrievedChunk]:
+        if not valid_rag_question(query):
+            return []
         query = self._normalize(query)
         if not query or self._vectorizer is None or self._matrix is None:
             return []
@@ -199,6 +203,11 @@ def answer_with_rag(
     model: str = "openai/gpt-oss-120b",
     k: int = 4,
 ) -> RAGAnswer:
+    if not valid_rag_question(question):
+        return RAGAnswer(
+            answer="Câu hỏi không hợp lệ hoặc quá dài. Hãy nhập nội dung ngắn hơn.",
+            sources=(), mode="no-evidence", top_score=0.0,
+        )
     # A greeting is not a document question. Short, strictly allowlisted
     # social turns never call the online provider or invent citations.
     social_reply = local_social_reply(question)
