@@ -93,6 +93,16 @@ def test_combined_filters_require_both_matches_without_mutating_repository(monke
     assert [item["mentor"]["id"] for item in results] == [1]
     assert mentors == original
 
+    disjoint_results = get_top_matches(
+        {"year": "Năm 1", "field_interest": "NLP", "goals": "RAG"},
+        top_k=10,
+        field_filter=" nlp & llm ",
+        support_filter=" nghiên cứu ",
+    )
+
+    assert disjoint_results == []
+    assert mentors == original
+
 
 def test_equal_scores_are_tie_broken_by_mentor_id(monkeypatch):
     mentors = [
