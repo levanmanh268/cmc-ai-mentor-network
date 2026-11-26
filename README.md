@@ -353,7 +353,6 @@ Grounded AI Assistant áp dụng các cơ chế phòng thủ cơ bản:
 | Thành viên | Mã sinh viên | Workstream |
 | --- | --- | --- |
 | **Lê Văn Mạnh** | BAI250042 | Leader, AI/RAG, integration, review |
-| Đỗ Văn Cường | BCS252484 | Backend, matching |
 | Lê Hải Đăng | BAI250012 | Testing, CI/CD |
 | Dương Tuấn Dũng | BIT250099 | Backend, data |
 | Nguyễn Văn Phúc | BCS252351 | AI/RAG, QA |
