@@ -151,3 +151,32 @@ def test_browser05_favorites_are_isolated_across_browser_sessions(browser, local
     finally:
         first_context.close()
         second_context.close()
+
+
+def test_browser06_created_mentor_is_visible_only_in_creator_session(browser, local_app):
+    first_context = browser.new_context()
+    second_context = browser.new_context()
+    try:
+        first_page = first_context.new_page()
+        first_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(first_page, "👥 Tìm Mentor")
+        first_page.get_by_label("Tên mentor *").fill("Browser Session Mentor")
+        first_page.get_by_label("Chức danh *").fill("RAG Engineer")
+        first_page.get_by_label("Đơn vị *").fill("Demo Lab")
+        first_page.get_by_label("Lĩnh vực *").fill("Recommendation System")
+        first_page.get_by_label("Giới thiệu *").fill("Mentor demo for browser E2E.")
+        first_page.get_by_label("Kỹ năng / thế mạnh *").fill("RAG, Python")
+        first_page.get_by_label("Loại hỗ trợ *").click()
+        first_page.get_by_role("option", name="Project").click()
+        first_page.get_by_role("button", name="Tạo Mentor trong phiên").click()
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor"))).to_be_visible()
+        first_page.get_by_role("button", name=re.compile("Tìm Mentor")).click()
+        expect(first_page.get_by_text(re.compile("Browser Session Mentor"))).to_be_visible(timeout=20_000)
+
+        second_page = second_context.new_page()
+        second_page.goto(local_app, wait_until="domcontentloaded")
+        navigate(second_page, "👥 Tìm Mentor")
+        expect(second_page.get_by_text(re.compile("Browser Session Mentor"))).not_to_be_visible()
+    finally:
+        first_context.close()
+        second_context.close()

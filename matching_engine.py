@@ -127,9 +127,12 @@ def get_top_matches(
     *,
     field_filter: str | None = None,
     support_filter: str | None = None,
+    mentor_pool: list[dict] | None = None,
 ) -> list[dict]:
-    """Rank only mentors matching the selected filters, without mutating repository."""
-    mentor_pool = get_mentor_repository().list()
+    """Rank matching mentors, optionally using a caller-owned session snapshot."""
+    mentor_pool = (
+        get_mentor_repository().list() if mentor_pool is None else [dict(x) for x in mentor_pool]
+    )
     if field_filter:
         chosen_field = field_filter.strip().casefold()
         mentor_pool = [
